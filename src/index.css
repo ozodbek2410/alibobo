@@ -1,0 +1,261 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-orange: #F68622;
+  --primary-dark: #070804;
+  --secondary-gray: #f8f9fa;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Custom Components */
+.btn-primary {
+  @apply bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors duration-200;
+}
+
+.card {
+  @apply bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200;
+}
+
+.input-field {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent;
+}
+
+.text-primary {
+  color: var(--primary-orange);
+}
+
+.bg-primary {
+  background-color: var(--primary-orange);
+}
+
+.border-primary {
+  border-color: var(--primary-orange);
+}
+
+/* Responsive Container */
+.container {
+  @apply mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+@media (min-width: 640px) {
+  .container {
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .container {
+    max-width: 1536px;
+  }
+}
+
+/* Button Styles */
+.btn {
+  @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200;
+}
+
+.btn-sm {
+  @apply px-3 py-1.5 text-xs;
+}
+
+.btn-lg {
+  @apply px-6 py-3 text-base;
+}
+
+/* Line Clamp Utilities */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+/* Craftsmen Card Animations */
+.craftsman-card {
+  @apply transform transition-all duration-300 ease-in-out;
+}
+
+.craftsman-card:hover {
+  @apply scale-105 shadow-xl;
+}
+
+.image-carousel {
+  @apply relative overflow-hidden rounded-t-xl;
+}
+
+.image-carousel img {
+  @apply transition-opacity duration-500 ease-in-out;
+}
+
+/* Modal Animations */
+.modal-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  @apply bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Lightbox Animations */
+.lightbox-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.lightbox-content {
+  @apply relative max-w-4xl max-h-full p-4;
+  animation: zoomIn 0.3s ease-out;
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Image Hover Effects */
+.image-hover-overlay {
+  @apply absolute inset-0 bg-black bg-opacity-0 transition-all duration-300 flex items-center justify-center;
+}
+
+.image-hover-overlay:hover {
+  @apply bg-opacity-20;
+}
+
+.image-hover-icon {
+  @apply opacity-0 transition-opacity duration-300;
+}
+
+.image-hover-overlay:hover .image-hover-icon {
+  @apply opacity-100;
+}
+
+/* Portfolio Grid */
+.portfolio-grid {
+  @apply grid grid-cols-3 gap-3;
+}
+
+.portfolio-item {
+  @apply aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity duration-300;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .modal-content {
+    @apply mx-2 max-h-[95vh];
+  }
+  
+  .portfolio-grid {
+    @apply grid-cols-2 gap-2;
+  }
+}
+
+@media (max-width: 480px) {
+  .craftsman-card:hover {
+    @apply scale-100;
+  }
+  
+  .portfolio-grid {
+    @apply grid-cols-2 gap-2;
+  }
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-gray-100 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-gray-400 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}

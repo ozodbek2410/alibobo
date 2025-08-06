@@ -1,0 +1,197 @@
+// API base URL
+const API_BASE_URL = 'http://localhost:5000/api';
+
+// Generic API call function
+const apiCall = async (endpoint, options = {}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('API call failed:', error);
+    throw error;
+  }
+};
+
+// Craftsmen API
+export const craftsmenAPI = {
+  // Get all craftsmen with pagination and filters
+  getAll: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== '') {
+        queryParams.append(key, params[key]);
+      }
+    });
+    
+    return apiCall(`/craftsmen?${queryParams}`);
+  },
+
+  // Get single craftsman
+  getById: async (id) => {
+    return apiCall(`/craftsmen/${id}`);
+  },
+
+  // Create new craftsman
+  create: async (data) => {
+    return apiCall('/craftsmen', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Update craftsman
+  update: async (id, data) => {
+    return apiCall(`/craftsmen/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Delete craftsman
+  delete: async (id) => {
+    return apiCall(`/craftsmen/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Get craftsmen count
+  getCount: async () => {
+    return apiCall('/craftsmen/count/total');
+  },
+};
+
+// Products API
+export const productsAPI = {
+  // Get all products with pagination and filters
+  getAll: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== '') {
+        queryParams.append(key, params[key]);
+      }
+    });
+    
+    return apiCall(`/products?${queryParams}`);
+  },
+
+  // Get single product
+  getById: async (id) => {
+    return apiCall(`/products/${id}`);
+  },
+
+  // Create new product
+  create: async (data) => {
+    return apiCall('/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Update product
+  update: async (id, data) => {
+    return apiCall(`/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Delete product
+  delete: async (id) => {
+    return apiCall(`/products/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Get products count
+  getCount: async () => {
+    return apiCall('/products/count/total');
+  },
+
+  // Get categories
+  getCategories: async () => {
+    return apiCall('/products/categories/list');
+  },
+};
+
+// Orders API
+export const ordersAPI = {
+  // Get all orders with pagination and filters
+  getAll: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== '') {
+        queryParams.append(key, params[key]);
+      }
+    });
+    
+    return apiCall(`/orders?${queryParams}`);
+  },
+
+  // Get single order
+  getById: async (id) => {
+    return apiCall(`/orders/${id}`);
+  },
+
+  // Create new order
+  create: async (data) => {
+    return apiCall('/orders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Update order
+  update: async (id, data) => {
+    return apiCall(`/orders/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Delete order
+  delete: async (id) => {
+    return apiCall(`/orders/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Update order status
+  updateStatus: async (id, statusData) => {
+    return apiCall(`/orders/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify(statusData),
+    });
+  },
+
+  // Get orders count
+  getCount: async () => {
+    return apiCall('/orders/count/total');
+  },
+
+  // Get orders by status count
+  getCountByStatus: async () => {
+    return apiCall('/orders/count/by-status');
+  },
+};
+
+// Health check
+export const healthCheck = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL.replace('/api', '')}/health`);
+    return response.ok;
+  } catch (error) {
+    console.error('Health check failed:', error);
+    return false;
+  }
+}; 
