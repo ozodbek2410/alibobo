@@ -126,44 +126,7 @@ const Header = ({
             <h1 className="text-2xl font-bold text-white">Alibobo</h1>
           </div>
 
-          {/* Center: Navigation - Show on laptop and larger screens */}
-          <nav className="hidden lg:flex space-x-8">
-            <a
-              href="#"
-              onClick={showHomePage}
-              className="text-white hover:text-primary-orange transition duration-300 font-medium"
-            >
-              Bosh sahifa
-            </a>
-            <a
-              href="#products"
-              onClick={showProducts}
-              className="text-white hover:text-primary-orange transition duration-300 font-medium"
-            >
-              Mahsulotlar
-            </a>
-            <a
-              href="#craftsmen"
-              onClick={() => scrollToSection('craftsmen')}
-              className="text-white hover:text-primary-orange transition duration-300 font-medium"
-            >
-              Ustalar
-            </a>
-            <a
-              href="#services"
-              onClick={() => scrollToSection('services')}
-              className="text-white hover:text-primary-orange transition duration-300 font-medium"
-            >
-              Xizmatlar
-            </a>
-            <a
-              href="#footer"
-              onClick={showContact}
-              className="text-white hover:text-primary-orange transition duration-300 font-medium"
-            >
-              Aloqa
-            </a>
-          </nav>
+      
 
           {/* Right side: Cart and Mobile menu button */}
           <div className="flex items-center space-x-2">

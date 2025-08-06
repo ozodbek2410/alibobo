@@ -18,7 +18,7 @@ const Hero = () => {
           <h3 className="text-xl font-bold text-white mb-2">Mollalar</h3>
           <p className="text-gray-300">Barcha qurilish mollalari bir joyda</p>
         </div>
-
+    
         <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-6 card-hover">
           <i className="fas fa-users text-primary-orange text-3xl mb-4"></i>
           <h3 className="text-xl font-bold text-white mb-2">Ustalar</h3>

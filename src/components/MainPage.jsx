@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Header from './Header';
-import Hero from './Hero';
 import ProductsGrid from './ProductsGrid';
 import Craftsmen from './Craftsmen';
 import Services from './Services';
@@ -96,7 +95,6 @@ const MainPage = ({ onSuccessfulLogin }) => {
         onCheckout={clearCart}
         getTotalItems={getTotalItems}
       />
-      <Hero />
       <ProductsGrid 
         cart={cart}
         onAddToCart={addToCart}
