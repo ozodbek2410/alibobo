@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import CartSidebar from './CartSidebar';
 
-const ProductsGrid = ({ 
-  cart, 
-  onAddToCart, 
-  isCartOpen, 
-  onToggleCart, 
-  onRemoveFromCart, 
-  onUpdateQuantity, 
-  onCheckout 
+const ProductsGrid = ({
+  cart,
+  onAddToCart,
+  isCartOpen,
+  onToggleCart,
+  onRemoveFromCart,
+  onUpdateQuantity,
+  onCheckout
 }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,7 +17,7 @@ const ProductsGrid = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [priceRange, setPriceRange] = useState('all');
-  
+
   // Notification states
   const [showAddToCartNotification, setShowAddToCartNotification] = useState(false);
   const [notificationProduct, setNotificationProduct] = useState('');
@@ -30,7 +30,7 @@ const ProductsGrid = ({
   const addToCart = (product) => {
     if (onAddToCart) {
       onAddToCart(product);
-      
+
       // Show notification
       setNotificationProduct(product.name);
       setShowAddToCartNotification(true);
@@ -76,10 +76,10 @@ const ProductsGrid = ({
       setLoading(true);
       const response = await fetch('http://localhost:5000/api/products?limit=100');
       const data = await response.json();
-      
+
       if (response.ok) {
         setProducts(data.products || []);
-        
+
         // Kategoriyalarni olish
         const uniqueCategories = [...new Set(data.products.map(p => p.category))];
         setCategories(uniqueCategories);
@@ -99,21 +99,21 @@ const ProductsGrid = ({
 
   const getFilteredProducts = () => {
     let filtered = products;
-    
+
     // Kategoriya bo'yicha filtrlash
     if (currentCategory !== 'all') {
       filtered = filtered.filter(product => product.category === currentCategory);
     }
-    
+
     // Qidiruv bo'yicha filtrlash
     if (searchTerm.trim()) {
-      filtered = filtered.filter(product => 
+      filtered = filtered.filter(product =>
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
-    
+
     // Narx oralig'i bo'yicha filtrlash
     if (priceRange !== 'all') {
       filtered = filtered.filter(product => {
@@ -138,16 +138,16 @@ const ProductsGrid = ({
         }
       });
     }
-    
+
     // Saralash
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'price-low':
-          return parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0') - 
-                 parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0');
+          return parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0') -
+            parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0');
         case 'price-high':
-          return parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0') - 
-                 parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0');
+          return parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0') -
+            parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0');
         case 'rating':
           return (b.rating || 0) - (a.rating || 0);
         case 'name':
@@ -155,7 +155,7 @@ const ProductsGrid = ({
           return a.name.localeCompare(b.name);
       }
     });
-    
+
     return filtered;
   };
 
@@ -171,7 +171,7 @@ const ProductsGrid = ({
   const toggleFavorite = (productId, buttonElement) => {
     const icon = buttonElement.querySelector('i');
     const isFavorited = icon.classList.contains('fas');
-    
+
     if (isFavorited) {
       icon.classList.remove('fas', 'text-red-500');
       icon.classList.add('far', 'text-gray-400');
@@ -183,17 +183,17 @@ const ProductsGrid = ({
 
   const createProductCard = (product) => {
     const discount = product.oldPrice ? calculateDiscount(product.price, product.oldPrice) : 0;
-    
+
     // Helper function to format price safely
     const formatPrice = (price) => {
       if (!price || isNaN(price)) return "0 so'm";
       return price.toLocaleString() + " so'm";
     };
-    
+
     return (
-      <div key={product._id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <div className="relative">
-          <img src={product.image || '/assets/default-product.png'} alt={product.name} className="w-full h-56 object-cover" />
+      <div key={product._id} className="bg-white border border-gray-200 overflow-hidden shadow-sm min-h-[400px] rounded-lg">
+        <div className="relative bg-gray-50">
+          <img src={product.image || '/assets/default-product.png'} alt={product.name} className="w-full h-48 object-cover" />
           {product.badge && (
             <span className="absolute top-3 left-3 bg-primary-orange text-white px-3 py-1 rounded-full text-xs font-semibold">
               {product.badge}
@@ -205,18 +205,18 @@ const ProductsGrid = ({
             </span>
           )}
         </div>
-        
-        <div className="p-4">
+
+        <div className="p-3">
           <div className="flex items-start justify-between mb-2">
-            <h3 className="font-semibold text-gray-900 text-lg line-clamp-2 min-h-[2.5rem]">{product.name || 'Noma\'lum mahsulot'}</h3>
+            <h3 className="font-semibold text-gray-900 text-base line-clamp-2 min-h-[2rem]">{product.name || 'Noma\'lum mahsulot'}</h3>
             <div className="flex items-center gap-1">
               <i className="fas fa-star text-yellow-400 text-sm"></i>
               <span className="text-sm text-gray-600">{product.rating || 4.5}</span>
             </div>
           </div>
-          
-          <p className="text-gray-600 text-sm mb-3 line-clamp-2 min-h-[2.5rem]">{product.description || 'Tavsif mavjud emas'}</p>
-          
+
+          <p className="text-gray-600 text-xs mb-2 line-clamp-2 min-h-[2rem]">{product.description || 'Tavsif mavjud emas'}</p>
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-primary-orange font-bold text-lg">
@@ -228,12 +228,12 @@ const ProductsGrid = ({
                 </span>
               )}
             </div>
-            
+
             <div className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
               {product.stock ? `${product.stock} dona` : 'Mavjud emas'}
             </div>
           </div>
-          
+
           {/* Action Buttons */}
           <div className="mt-4 flex gap-2">
             <button
@@ -258,10 +258,10 @@ const ProductsGrid = ({
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {[...Array(8)].map((_, index) => (
-            <div key={index} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm animate-pulse">
-              <div className="h-56 bg-gray-200"></div>
+            <div key={index} className="bg-white border border-gray-200 overflow-hidden shadow-sm animate-pulse rounded-lg">
+              <div className="h-48 bg-gray-200"></div>
               <div className="p-4">
                 <div className="h-4 bg-gray-200 rounded mb-2"></div>
                 <div className="h-3 bg-gray-200 rounded mb-2"></div>
@@ -269,9 +269,9 @@ const ProductsGrid = ({
                 <div className="h-6 bg-gray-200 rounded"></div>
               </div>
             </div>
-                  ))}
-                </div>
-              </div>
+          ))}
+        </div>
+      </div>
     );
   }
 
@@ -314,7 +314,7 @@ const ProductsGrid = ({
               </button>
             )}
           </div>
-          
+
           {/* Price Range Select */}
           <div className="relative">
             <select
@@ -335,7 +335,7 @@ const ProductsGrid = ({
               <i className="fas fa-chevron-down text-gray-400"></i>
             </div>
           </div>
-          
+
           {/* Sort Dropdown */}
           <div className="relative">
             <select
@@ -354,7 +354,7 @@ const ProductsGrid = ({
           </div>
         </div>
       </div>
-      
+
       {/* Category Filter */}
       <div className="mb-6">
         <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -367,29 +367,27 @@ const ProductsGrid = ({
               {filteredProducts.length} ta mahsulot
             </span>
           </div>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
             <button
               onClick={() => filterByCategory('all')}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1 ${
-                currentCategory === 'all'
-                  ? 'bg-primary-orange text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-              }`}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1 ${currentCategory === 'all'
+                ? 'bg-primary-orange text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
             >
               <i className="fas fa-globe text-xs"></i>
               <span>Barchasi</span>
-              <span className={`ml-1 px-1.5 py-0.5 rounded text-xs ${
-                currentCategory === 'all' ? 'bg-white bg-opacity-20' : 'bg-gray-200'
-              }`}>
+              <span className={`ml-1 px-1.5 py-0.5 rounded text-xs ${currentCategory === 'all' ? 'bg-white bg-opacity-20' : 'bg-gray-200'
+                }`}>
                 {products.length}
               </span>
             </button>
-            
+
             {categories.map(category => {
               const categoryCount = products.filter(p => p.category === category).length;
               if (categoryCount === 0) return null;
-              
+
               // Kategoriya ikonlarini belgilash
               const getCategoryIcon = (categoryName) => {
                 const iconMap = {
@@ -418,22 +416,20 @@ const ProductsGrid = ({
                 };
                 return iconMap[categoryName] || 'fas fa-box';
               };
-              
+
               return (
                 <button
                   key={category}
                   onClick={() => filterByCategory(category)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1 ${
-                    currentCategory === category
-                      ? 'bg-primary-orange text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                  }`}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1 ${currentCategory === category
+                    ? 'bg-primary-orange text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                    }`}
                 >
                   <i className={`${getCategoryIcon(category)} text-xs`}></i>
                   <span className="truncate">{category}</span>
-                  <span className={`ml-1 px-1.5 py-0.5 rounded text-xs ${
-                    currentCategory === category ? 'bg-white bg-opacity-20' : 'bg-gray-200'
-                  }`}>
+                  <span className={`ml-1 px-1.5 py-0.5 rounded text-xs ${currentCategory === category ? 'bg-white bg-opacity-20' : 'bg-gray-200'
+                    }`}>
                     {categoryCount}
                   </span>
                 </button>
@@ -447,7 +443,7 @@ const ProductsGrid = ({
 
       {/* Products Grid */}
       {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {filteredProducts.map(product => createProductCard(product))}
         </div>
       ) : (
@@ -457,13 +453,13 @@ const ProductsGrid = ({
               <i className="fas fa-search text-4xl text-gray-400"></i>
             </div>
             <h3 className="text-2xl font-bold text-gray-700 mb-3">
-              {searchTerm ? 'Hech narsa topilmadi' : 
-               currentCategory === 'all' ? 'Mahsulotlar yo\'q' : `${currentCategory} kategoriyasida mahsulot yo'q`}
+              {searchTerm ? 'Hech narsa topilmadi' :
+                currentCategory === 'all' ? 'Mahsulotlar yo\'q' : `${currentCategory} kategoriyasida mahsulot yo'q`}
             </h3>
             <p className="text-gray-500 mb-6">
-              {searchTerm ? 
+              {searchTerm ?
                 `"${searchTerm}" so'rovi bo'yicha hech qanday mahsulot topilmadi. Boshqa kalit so'zlar bilan qidiring.` :
-                currentCategory === 'all' ? 
+                currentCategory === 'all' ?
                   'Hozircha mahsulotlar qo\'shilmagan. Keyinroq qayta urinib ko\'ring.' :
                   'Bu kategoriyada mahsulotlar mavjud emas. Boshqa kategoriyalarni ko\'rib chiqing.'
               }
@@ -491,7 +487,7 @@ const ProductsGrid = ({
           </div>
         </div>
       )}
-      
+
       {/* Cart Sidebar */}
       <CartSidebar
         isOpen={isCartOpen}

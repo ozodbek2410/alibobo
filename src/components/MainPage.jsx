@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Header from './Header';
 import ProductsGrid from './ProductsGrid';
 import Craftsmen from './Craftsmen';
-import Services from './Services';
 import Footer from './Footer';
 
 const MainPage = ({ onSuccessfulLogin }) => {
@@ -105,7 +104,6 @@ const MainPage = ({ onSuccessfulLogin }) => {
         onCheckout={clearCart}
       />
       <Craftsmen craftsmenData={craftsmenData} />
-      <Services />
       <Footer />
     </>
   );
