@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import CartSidebar from './CartSidebar';
 
 const ProductsGrid = ({ 
@@ -17,13 +17,29 @@ const ProductsGrid = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [priceRange, setPriceRange] = useState('all');
+  const [quickFilter, setQuickFilter] = useState('all');
   
   // Notification states
   const [showAddToCartNotification, setShowAddToCartNotification] = useState(false);
   const [notificationProduct, setNotificationProduct] = useState('');
+  const selectRef = useRef(null);
 
   useEffect(() => {
     loadProducts();
+  }, []);
+
+  // Scroll event listener to close select dropdown
+  useEffect(() => {
+    const handleScroll = () => {
+      if (selectRef.current) {
+        selectRef.current.blur();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   // Use centralized addToCart function
@@ -105,6 +121,61 @@ const ProductsGrid = ({
       filtered = filtered.filter(product => product.category === currentCategory);
     }
     
+    // Tezkor filter bo'yicha filtrlash
+    if (quickFilter !== 'all') {
+      const matchingProducts = [];
+      const otherProducts = [];
+      
+      filtered.forEach(product => {
+        let matches = false;
+        switch (quickFilter) {
+          case 'mashhur':
+            // Admin paneldan belgilangan mashhur mahsulotlar
+            matches = product.isPopular || product.badge === 'Mashhur';
+            break;
+          case 'chegirma':
+            // Chegirmadagi mahsulotlar (eski narx mavjud)
+            const currentPrice = parseInt(product.price?.toString().replace(/[^\d]/g, '') || '0');
+            const oldPrice = parseInt(product.oldPrice?.toString().replace(/[^\d]/g, '') || '0');
+            matches = (oldPrice > 0 && currentPrice > 0 && oldPrice > currentPrice) || 
+                     product.badge === 'Chegirma' || 
+                     product.isDiscount;
+            console.log(`Chegirma check for ${product.name}: oldPrice=${oldPrice}, currentPrice=${currentPrice}, badge=${product.badge}, matches=${matches}`);
+            break;
+          case 'yangi':
+            // Admin paneldan belgilangan yangi mahsulotlar
+            matches = product.isNew || product.badge === 'Yangi';
+            break;
+        }
+        
+        if (matches) {
+          matchingProducts.push(product);
+        } else {
+          otherProducts.push(product);
+        }
+      });
+      
+      // Avval mos kelganlar, keyin qolganlar
+      filtered = [...matchingProducts, ...otherProducts];
+    } else {
+      // Saralash
+      filtered.sort((a, b) => {
+        switch (sortBy) {
+          case 'price-low':
+            return parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0') - 
+                   parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0');
+          case 'price-high':
+            return parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0') - 
+                   parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0');
+          case 'rating':
+            return (b.rating || 0) - (a.rating || 0);
+          case 'name':
+          default:
+            return a.name.localeCompare(b.name);
+        }
+      });
+    }
+    
     // Qidiruv bo'yicha filtrlash
     if (searchTerm.trim()) {
       filtered = filtered.filter(product => 
@@ -138,23 +209,6 @@ const ProductsGrid = ({
         }
       });
     }
-    
-    // Saralash
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'price-low':
-          return parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0') - 
-                 parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0');
-        case 'price-high':
-          return parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0') - 
-                 parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0');
-        case 'rating':
-          return (b.rating || 0) - (a.rating || 0);
-        case 'name':
-        default:
-          return a.name.localeCompare(b.name);
-      }
-    });
     
     return filtered;
   };
@@ -204,15 +258,32 @@ const ProductsGrid = ({
               -{Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}%
             </span>
           )}
+          
+          {/* Chegirma badge'i (prioritet yuqori) */}
+          {(product.oldPrice && product.oldPrice > product.price && !product.badge) && (
+            <span className="absolute top-3 left-3 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+              Chegirma
+            </span>
+          )}
+          
+          {/* Mashhur badge'i (faqat chegirma yo'q bo'lsa) */}
+          {(product.rating >= 4.5 && !product.badge && !(product.oldPrice && product.oldPrice > product.price)) && (
+            <span className="absolute top-3 left-3 bg-primary-orange text-white px-3 py-1 rounded-full text-xs font-semibold">
+              Mashhur
+            </span>
+          )}
+          
+          {/* Yangi badge'i (faqat boshqa badge'lar yo'q bo'lsa) */}
+          {(product.isNew && !product.badge && !(product.oldPrice && product.oldPrice > product.price) && !(product.rating >= 4.5)) && (
+            <span className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+              Yangi
+            </span>
+          )}
         </div>
         
         <div className="p-4">
-          <div className="flex items-start justify-between mb-2">
+          <div className="mb-2">
             <h3 className="font-semibold text-gray-900 text-lg line-clamp-2 min-h-[2.5rem]">{product.name || 'Noma\'lum mahsulot'}</h3>
-            <div className="flex items-center gap-1">
-              <i className="fas fa-star text-yellow-400 text-sm"></i>
-              <span className="text-sm text-gray-600">{product.rating || 4.5}</span>
-            </div>
           </div>
           
           <p className="text-gray-600 text-sm mb-3 line-clamp-2 min-h-[2.5rem]">{product.description || 'Tavsif mavjud emas'}</p>
@@ -234,20 +305,14 @@ const ProductsGrid = ({
             </div>
           </div>
           
-          {/* Action Buttons */}
-          <div className="mt-4 flex gap-2">
+          {/* Action Button */}
+          <div className="mt-4">
             <button
               onClick={() => addToCart(product)}
-              className="flex-1 bg-primary-orange text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition duration-300 font-semibold flex items-center justify-center gap-2"
+              className="w-full bg-primary-orange text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition duration-300 font-semibold flex items-center justify-center gap-2"
             >
               <i className="fas fa-shopping-cart text-sm"></i>
               Buyurtma berish
-            </button>
-            <button
-              onClick={(e) => toggleFavorite(product._id, e.currentTarget)}
-              className="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200 transition duration-300"
-            >
-              <i className="far fa-heart"></i>
             </button>
           </div>
         </div>
@@ -290,71 +355,38 @@ const ProductsGrid = ({
           </div>
         </div>
       )}
-      {/* Inline Search Section */}
-      <div className="mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Search Input */}
-          <div className="relative lg:col-span-2">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Mahsulot qidirish..."
-              className="w-full pl-10 pr-4 py-4 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-all duration-200 text-gray-700"
-            />
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-              <i className="fas fa-search text-gray-400"></i>
-            </div>
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+      
+      {/* Badge Filter */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-gray-700 font-medium">Saralash:</span>
+            <div className="relative z-10">
+              <select
+                ref={selectRef}
+                value={quickFilter}
+                onChange={(e) => setQuickFilter(e.target.value)}
+                className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-gray-800 font-medium focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-all duration-200 cursor-pointer text-sm min-w-[120px] relative z-10"
               >
-                <i className="fas fa-times"></i>
-              </button>
-            )}
-          </div>
-          
-          {/* Price Range Select */}
-          <div className="relative">
-            <select
-              value={priceRange}
-              onChange={(e) => setPriceRange(e.target.value)}
-              className="w-full pl-3 pr-8 py-4 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-all duration-200 text-gray-700 appearance-none bg-white"
-            >
-              <option value="all">Barcha narxlar</option>
-              <option value="0-100000">100 ming gacha</option>
-              <option value="100000">100 ming dan yuqori</option>
-              <option value="200000">200 ming dan yuqori</option>
-              <option value="500000">500 ming dan yuqori</option>
-              <option value="1000000">1 million dan yuqori</option>
-              <option value="100000-500000">100-500 ming</option>
-              <option value="500000-1000000">500 ming - 1 million</option>
-            </select>
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-              <i className="fas fa-chevron-down text-gray-400"></i>
+                <option value="all">Hammasi</option>
+                <option value="mashhur">Mashhur</option>
+                <option value="chegirma">Chegirma</option>
+                <option value="yangi">Yangi</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
-          
-          {/* Sort Dropdown */}
-          <div className="relative">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="w-full pl-3 pr-8 py-4 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-all duration-200 text-gray-700 appearance-none bg-white"
-            >
-              <option value="name">Nomi bo'yicha</option>
-              <option value="price-low">Arzon narxdan</option>
-              <option value="price-high">Qimmat narxdan</option>
-              <option value="rating">Reyting bo'yicha</option>
-            </select>
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-              <i className="fas fa-chevron-down text-gray-400"></i>
-            </div>
+          <div className="text-sm text-gray-500 font-medium">
+            {filteredProducts.length} mahsulot topildi
           </div>
         </div>
       </div>
       
+
       {/* Category Filter */}
       <div className="mb-6">
         <div className="bg-white rounded-lg border border-gray-200 p-4">
