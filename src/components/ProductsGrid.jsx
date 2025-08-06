@@ -386,6 +386,97 @@ const ProductsGrid = ({
         </div>
       </div>
       
+
+      {/* Category Filter */}
+      <div className="mb-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <i className="fas fa-th-large text-primary-orange"></i>
+              Kategoriyalar
+            </h3>
+            <span className="text-sm text-gray-500">
+              {filteredProducts.length} ta mahsulot
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
+            <button
+              onClick={() => filterByCategory('all')}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1 ${
+                currentCategory === 'all'
+                  ? 'bg-primary-orange text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+              }`}
+            >
+              <i className="fas fa-globe text-xs"></i>
+              <span>Barchasi</span>
+              <span className={`ml-1 px-1.5 py-0.5 rounded text-xs ${
+                currentCategory === 'all' ? 'bg-white bg-opacity-20' : 'bg-gray-200'
+              }`}>
+                {products.length}
+              </span>
+            </button>
+            
+            {categories.map(category => {
+              const categoryCount = products.filter(p => p.category === category).length;
+              if (categoryCount === 0) return null;
+              
+              // Kategoriya ikonlarini belgilash
+              const getCategoryIcon = (categoryName) => {
+                const iconMap = {
+                  "G'isht va bloklar": 'fas fa-cube',
+                  'Asbob-uskunalar': 'fas fa-tools',
+                  "Bo'yoq va lak": 'fas fa-palette',
+                  'Elektr mollalari': 'fas fa-bolt',
+                  'Metall va armatura': 'fas fa-industry',
+                  "Yog'och va mebel": 'fas fa-tree',
+                  'Tom materiallar': 'fas fa-home',
+                  'Santexnika': 'fas fa-faucet',
+                  'Issiqlik va konditsioner': 'fas fa-thermometer-half',
+                  'Dekor va bezatish': 'fas fa-paint-brush',
+                  'Temir-beton': 'fas fa-building',
+                  'Gips va shpaklovka': 'fas fa-trowel',
+                  'Boshqalar': 'fas fa-box',
+                  // Eski kategoriyalar uchun
+                  'Gisht': 'fas fa-cube',
+                  'Blok': 'fas fa-building',
+                  'Penoblok': 'fas fa-th-large',
+                  'Keramit': 'fas fa-home',
+                  'Gazobeton': 'fas fa-square',
+                  'Asboblar': 'fas fa-tools',
+                  "Bo'yoqlar": 'fas fa-palette',
+                  'Elektr': 'fas fa-bolt'
+                };
+                return iconMap[categoryName] || 'fas fa-box';
+              };
+              
+              return (
+                <button
+                  key={category}
+                  onClick={() => filterByCategory(category)}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1 ${
+                    currentCategory === category
+                      ? 'bg-primary-orange text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                  }`}
+                >
+                  <i className={`${getCategoryIcon(category)} text-xs`}></i>
+                  <span className="truncate">{category}</span>
+                  <span className={`ml-1 px-1.5 py-0.5 rounded text-xs ${
+                    currentCategory === category ? 'bg-white bg-opacity-20' : 'bg-gray-200'
+                  }`}>
+                    {categoryCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+
+
       {/* Products Grid */}
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
