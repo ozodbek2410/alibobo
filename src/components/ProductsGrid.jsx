@@ -258,7 +258,7 @@ const ProductsGrid = ({
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {[...Array(8)].map((_, index) => (
             <div key={index} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm animate-pulse">
               <div className="h-56 bg-gray-200"></div>
@@ -443,45 +443,11 @@ const ProductsGrid = ({
         </div>
       </div>
 
-      {/* Results Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-        <div className="flex items-center gap-3 mb-3 md:mb-0">
-          <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-2 rounded-lg">
-            <i className="fas fa-boxes text-lg"></i>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-800">
-              {searchTerm ? `"${searchTerm}" uchun natijalar` : 
-               currentCategory === 'all' ? 'Barcha mahsulotlar' : `${currentCategory} kategoriyasi`}
-            </h3>
-            <p className="text-sm text-gray-600">
-              {filteredProducts.length} ta mahsulot topildi
-            </p>
-          </div>
-        </div>
-        
-        {(searchTerm || currentCategory !== 'all' || priceRange !== 'all') && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Filtrlarni tozalash:</span>
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                setCurrentCategory('all');
-                setPriceRange('all');
-                setSortBy('name');
-              }}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-lg text-sm transition-colors duration-200 flex items-center gap-1"
-            >
-              <i className="fas fa-times"></i>
-              Barchasini tozalash
-            </button>
-          </div>
-        )}
-      </div>
+
 
       {/* Products Grid */}
       {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {filteredProducts.map(product => createProductCard(product))}
         </div>
       ) : (
