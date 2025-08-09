@@ -901,8 +901,14 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                     O'lchov birligi
                     </label>
                     <select
-                      value={formData.unit}
-                    onChange={e => setFormData(prev => ({ ...prev, unit: e.target.value }))}
+                      value={formData.unit === 'boshqa' ? 'boshqa' : (unitOptions.find(opt => opt.value === formData.unit) ? formData.unit : 'boshqa')}
+                    onChange={e => {
+                      if (e.target.value === 'boshqa') {
+                        setFormData(prev => ({ ...prev, unit: '' }));
+                      } else {
+                        setFormData(prev => ({ ...prev, unit: e.target.value }));
+                      }
+                    }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
                   >
                     {unitOptions.map(option => (
@@ -943,28 +949,33 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                 />
                       </div>
               
-                      <div>
+                <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Rasm
                 </label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
                 />
-                {selectedImage && (
-                  <div className="mt-2 relative">
-                    <img src={selectedImage} alt="Preview" className="w-32 h-32 object-cover rounded-lg" />
+                {(selectedImage || formData.image) && (
+                  <div className="mt-3 relative inline-block">
+                    <img 
+                      src={selectedImage || formData.image} 
+                      alt="Preview" 
+                      className="w-32 h-32 object-cover rounded-lg border border-gray-300" 
+                    />
                     <button
                       type="button"
                       onClick={removeImage}
-                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                      title="Rasmni o'chirish"
                     >
                       <i className="fas fa-times"></i>
                     </button>
-                      </div>
-                    )}
+                  </div>
+                )}
                 </div>
                 
               <div className="flex items-center justify-end space-x-3 pt-4">

@@ -7,7 +7,7 @@ require('dotenv').config({ path: './config.env' });
 
 // Fallback environment variables
 if (!process.env.MONGODB_URI) {
-  process.env.MONGODB_URI = 'mongodb+srv://opscoder:PRv5ASUw6d5Qunz7@cluster0.s5obnul.mongodb.net/alibobo1?retryWrites=true&w=majority';
+  process.env.MONGODB_URI = 'mongodb+srv://ozodbek:KrjxfbC5XGZibWjl@cluster0.dlopces.mongodb.net/alibobo?retryWrites=true&w=majority&appName=Cluster0';
 }
 if (!process.env.PORT) {
   process.env.PORT = '5000';

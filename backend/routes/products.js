@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
+const Notification = require('../models/Notification');
 
 // GET all products
 router.get('/', async (req, res) => {
@@ -102,14 +103,50 @@ router.post('/', async (req, res) => {
 // PUT update product
 router.put('/:id', async (req, res) => {
   try {
+    const oldProduct = await Product.findById(req.params.id);
+    if (!oldProduct) {
+      return res.status(404).json({ message: 'Mahsulot topilmadi' });
+    }
+
     const product = await Product.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true }
     );
     
-    if (!product) {
-      return res.status(404).json({ message: 'Mahsulot topilmadi' });
+    // Create notification for craftsman product edit
+    if (product.craftsman && product.craftsman.name) {
+      try {
+        const changedFields = [];
+        
+        // Check what fields were changed
+        if (oldProduct.name !== product.name) changedFields.push(`Nomi: "${product.name}"`);
+        if (oldProduct.price !== product.price) changedFields.push(`Narxi: ${product.price} so'm`);
+        if (oldProduct.stock !== product.stock) changedFields.push(`Zaxira: ${product.stock} ${product.unit}`);
+        if (oldProduct.category !== product.category) changedFields.push(`Kategoriya: ${product.category}`);
+        
+        const changedFieldsText = changedFields.length > 0 
+          ? changedFields.join(', ') 
+          : 'Ma\'lumotlar yangilandi';
+
+        const notification = new Notification({
+          type: 'info',
+          title: 'Usta mahsuloti tahrirlandi',
+          message: `${product.craftsman.name} ustaning "${product.name}" mahsuloti tahrirlandi. ${changedFieldsText}`,
+          icon: 'fas fa-edit',
+          color: 'blue',
+          entityType: 'product',
+          entityId: product._id,
+          entityName: product.name,
+          action: 'updated'
+        });
+
+        await notification.save();
+        console.log('✅ Usta mahsuloti tahrirlash notification yaratildi:', product.craftsman.name);
+      } catch (notificationError) {
+        console.error('❌ Notification yaratishda xatolik:', notificationError);
+        // Don't fail the main request if notification fails
+      }
     }
     
     res.json(product);

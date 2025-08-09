@@ -201,10 +201,48 @@ const AdminOrders = ({ onMobileToggle, onCountChange, notifications, setNotifica
       });
 
       if (response.ok) {
+        // Immediately update the order in the local state for instant UI feedback
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order._id === orderId 
+              ? { ...order, status: newStatus }
+              : order
+          )
+        );
+
+        // Also update selectedOrder if it's currently being viewed in modal
+        if (selectedOrder && selectedOrder._id === orderId) {
+          setSelectedOrder(prev => ({ ...prev, status: newStatus }));
+        }
+
         setTimeout(() => {
           safeNotifySuccess('Status yangilandi', 'Buyurtma statusi muvaffaqiyatli yangilandi');
         }, 0);
-        setCurrentPage(1);
+
+        // Refresh the orders list from server to ensure data consistency
+        setTimeout(async () => {
+          try {
+            const params = new URLSearchParams({
+              page: currentPage,
+              limit: itemsPerPage,
+              search: searchTerm,
+              status: filterStatus
+            });
+
+            const refreshResponse = await fetch(`http://localhost:5000/api/orders?${params}`);
+            const refreshData = await refreshResponse.json();
+
+            if (refreshResponse.ok) {
+              setOrders(refreshData.orders);
+              setTotalPages(refreshData.totalPages);
+              setTotalCount(refreshData.totalCount);
+              onCountChange(refreshData.totalCount);
+            }
+          } catch (refreshError) {
+            console.error('Orders yangilashda xatolik:', refreshError);
+          }
+        }, 500);
+
       } else {
         const data = await response.json();
         setTimeout(() => {

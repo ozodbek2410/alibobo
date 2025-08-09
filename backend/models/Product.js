@@ -50,6 +50,21 @@ const productSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  craftsman: {
+    id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Craftsman',
+      required: false
+    },
+    name: {
+      type: String,
+      required: false
+    },
+    specialty: {
+      type: String,
+      required: false
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now

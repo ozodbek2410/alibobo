@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CartSidebar from './CartSidebar';
+import Catalog from './Catalog';
+import CategoryNavigation from './CategoryNavigation';
 
 const Header = ({ 
   onSuccessfulLogin, 
@@ -10,15 +12,16 @@ const Header = ({
   onRemoveFromCart, 
   onUpdateQuantity, 
   onCheckout, 
-  getTotalItems 
+  getTotalItems,
+  onCategorySelect,
+  selectedCategory,
+  onSearch
 }) => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [priceFilter, setPriceFilter] = useState('');
-  const [showPriceDropdown, setShowPriceDropdown] = useState(false);
-  const [showCatalogDropdown, setShowCatalogDropdown] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [lastTap, setLastTap] = useState(0);
   const [tapCount, setTapCount] = useState(0);
   const [username, setUsername] = useState('');
@@ -28,8 +31,7 @@ const Header = ({
   // Scroll event listener to close dropdowns
   useEffect(() => {
     const handleScroll = () => {
-      setShowPriceDropdown(false);
-      setShowCatalogDropdown(false);
+      // setShowCatalogDropdown(false);
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -55,6 +57,9 @@ const Header = ({
       console.log('Logo double clicked/tapped!');
       setShowLoginModal(true);
       setTapCount(0);
+      // Lock background scroll
+      document.body.style.overflow = 'hidden';
+      document.body.style.paddingRight = '17px';
     }
   };
 
@@ -66,6 +71,10 @@ const Header = ({
       setUsername('');
       setPassword('');
       
+      // Restore background scroll
+      document.body.style.overflow = 'auto';
+      document.body.style.paddingRight = '0px';
+      
       if (onSuccessfulLogin) {
         onSuccessfulLogin();
       }
@@ -75,6 +84,7 @@ const Header = ({
       setErrorMessage('Noto\'g\'ri login yoki parol!');
       setShowErrorModal(true);
       setShowLoginModal(false);
+      // Keep scroll locked for error modal
     }
   };
 
@@ -83,29 +93,19 @@ const Header = ({
     setErrorMessage('');
     setUsername('');
     setPassword('');
+    // Restore background scroll
+    document.body.style.overflow = 'auto';
+    document.body.style.paddingRight = '0px';
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       console.log('Searching for:', searchQuery);
-      // Search logic here
+      if (onSearch) {
+        onSearch(searchQuery);
+      }
     }
-  };
-
-  const handlePriceFilter = (range) => {
-    setPriceFilter(range);
-    setShowPriceDropdown(false);
-    console.log('Price filter:', range);
-  };
-
-  const handleCatalogClick = () => {
-    setShowCatalogDropdown(!showCatalogDropdown);
-  };
-
-  const handleCategoryClick = (category) => {
-    setShowCatalogDropdown(false);
-    console.log('Selected category:', category);
   };
 
   const showProducts = () => {
@@ -129,133 +129,76 @@ const Header = ({
       {/* Desktop Header */}
       <header className="bg-primary-dark shadow-lg sticky top-0 z-50 hidden lg:block">
         <div className="container mx-auto px-6">
-          <div className="flex items-center py-5 gap-8">
-            {/* Logo */}
-            <div 
-              className="flex items-center space-x-3 cursor-pointer select-none min-w-fit"
-              onClick={handleLogoInteraction}
-              onTouchStart={handleLogoInteraction}
-              title="Admin panel uchun 2 marta bosing"
-              style={{ userSelect: 'none' }}
-            >
-              <i className="fas fa-hammer text-primary-orange text-2xl"></i>
-              <h1 className="text-2xl font-bold text-white">Alibobo</h1>
-            </div>
-
-            {/* Catalog Button */}
-            <div className="relative">
-              <button 
-                onClick={handleCatalogClick}
-                className="flex items-center space-x-2 bg-primary-orange hover:bg-opacity-90 text-white px-5 py-2.5 rounded-lg transition-all duration-300 min-w-fit font-medium group"
+          <div className="flex items-center justify-between py-3">
+            {/* Left side - Logo */}
+            <div className="flex items-center min-w-fit">
+              {/* Logo */}
+              <div 
+                className="flex items-center space-x-3 cursor-pointer select-none"
+                onClick={handleLogoInteraction}
+                onTouchStart={handleLogoInteraction}
+                title="Admin panel uchun 2 marta bosing"
+                style={{ userSelect: 'none' }}
               >
-                <i className={`fas fa-layer-group catalog-icon ${showCatalogDropdown ? 'active' : ''}`}></i>
-                <span>Katalog</span>
-                <i className={`fas fa-chevron-down text-sm transition-transform duration-300 ${showCatalogDropdown ? 'rotate-180' : ''}`}></i>
-              </button>
-
-              {/* Catalog Dropdown */}
-              {showCatalogDropdown && (
-                <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 animate-slideDown">
-                  <div className="py-3">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <h3 className="font-semibold text-gray-800">Kategoriyalar</h3>
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      <button
-                        onClick={() => handleCategoryClick('gisht')}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 text-gray-700 transition duration-200 flex items-center space-x-3"
-                      >
-                        <i className="fas fa-cube text-red-500 w-5"></i>
-                        <span>G'isht va bloklar</span>
-                      </button>
-                      <button
-                        onClick={() => handleCategoryClick('asbob')}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 text-gray-700 transition duration-200 flex items-center space-x-3"
-                      >
-                        <i className="fas fa-tools text-blue-500 w-5"></i>
-                        <span>Asbob-uskunalar</span>
-                      </button>
-                      <button
-                        onClick={() => handleCategoryClick('boyoq')}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 text-gray-700 transition duration-200 flex items-center space-x-3"
-                      >
-                        <i className="fas fa-paint-brush text-purple-500 w-5"></i>
-                        <span>Bo'yoq va lak</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Search Bar */}
-            <form onSubmit={handleSearch} className="flex-1 max-w-2xl mx-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Mahsulotlar va turkumlar izlash"
-                  className="w-full px-5 py-2.5 pr-12 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300"
+                <img 
+                  src="/logo.png" 
+                  alt="Logo" 
+                  className="w-16 h-16 object-cover rounded-lg"
                 />
-                <button 
-                  type="submit"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-orange transition duration-300"
-                >
-                  <i className="fas fa-search text-lg"></i>
-                </button>
+                <img 
+                  src="/alibobo.png" 
+                  alt="Alibobo" 
+                  className="h-16 w-32 object-cover"
+                />
               </div>
-            </form>
-
-            {/* Price Filter */}
-            <div className="relative">
-              <button
-                onClick={() => setShowPriceDropdown(!showPriceDropdown)}
-                className="flex items-center space-x-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2.5 rounded-lg transition duration-300 min-w-fit"
-              >
-                <i className="fas fa-filter"></i>
-                <span className="hidden lg:inline font-medium">
-                  {priceFilter || 'Narx'}
-                </span>
-                <i className="fas fa-chevron-down text-sm"></i>
-              </button>
-
-              {/* Price Dropdown */}
-              {showPriceDropdown && (
-                <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                  <div className="py-2">
-                    <button
-                      onClick={() => handlePriceFilter('')}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-100 text-gray-700 transition duration-200"
-                    >
-                      Barcha narxlar
-                    </button>
-                    <button
-                      onClick={() => handlePriceFilter('0-100000')}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-100 text-gray-700 transition duration-200"
-                    >
-                      100 ming gacha
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Cart Button */}
-            <button
-              onClick={toggleCart}
-              className="relative bg-gray-700 hover:bg-gray-600 text-white px-4 py-2.5 rounded-lg transition duration-300 min-w-fit"
-            >
-              <i className="fas fa-shopping-cart text-lg"></i>
-              {getTotalItems() > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold">
-                  {getTotalItems()}
-                </span>
-              )}
-            </button>
+            {/* Center - Search Bar */}
+            <div className="flex-1 flex justify-center px-8">
+              <form onSubmit={handleSearch} className="w-full max-w-2xl">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Mahsulotlar va turkumlar izlash"
+                    className="w-full px-5 py-2.5 pr-12 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300"
+                  />
+                  <button 
+                    type="submit"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-orange transition duration-300"
+                  >
+                    <i className="fas fa-search text-lg"></i>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Right side - Cart Button */}
+            <div className="flex items-center min-w-fit">
+              <button
+                onClick={toggleCart}
+                className="relative bg-transparent hover:bg-gray-700 hover:bg-opacity-20 text-primary-orange px-4 py-2.5 rounded-lg transition duration-300"
+              >
+                <i className="fas fa-shopping-cart text-2xl"></i>
+                {getTotalItems() > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold">
+                    {getTotalItems()}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </header>
+
+      {/* Category Navigation - Desktop Only */}
+      <CategoryNavigation 
+        onCategorySelect={onCategorySelect}
+        selectedCategory={selectedCategory}
+        isModalOpen={isCategoryModalOpen}
+        setIsModalOpen={setIsCategoryModalOpen}
+      />
 
       {/* Mobile Header - Logo and Search */}
       <header className="bg-primary-dark shadow-lg sticky top-0 z-50 lg:hidden">
@@ -269,8 +212,16 @@ const Header = ({
               title="Admin panel uchun 2 marta bosing"
               style={{ userSelect: 'none' }}
             >
-              <i className="fas fa-hammer text-primary-orange text-xl"></i>
-              <h1 className="text-lg font-bold text-white">Alibobo</h1>
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                className="w-10 h-10 object-cover rounded-lg"
+              />
+              <img 
+                src="/alibobo.png" 
+                alt="Alibobo" 
+                className="h-10 w-20 object-cover"
+              />
             </div>
 
             {/* Mobile Search */}
@@ -281,29 +232,16 @@ const Header = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Mahsulotlar izlash"
-                  className="w-full px-4 py-2.5 pr-12 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300"
+                  className="w-full px-4 py-2 pr-10 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300"
                 />
                 <button 
                   type="submit"
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-orange transition duration-300"
                 >
-                  <i className="fas fa-search text-lg"></i>
+                  <i className="fas fa-search text-sm"></i>
                 </button>
               </div>
             </form>
-
-            {/* Mobile Cart */}
-            <button
-              onClick={toggleCart}
-              className="relative bg-transparent hover:bg-gray-700 hover:bg-opacity-20 text-primary-orange px-4 py-2.5 rounded-lg transition duration-300 min-w-fit"
-            >
-              <i className="fas fa-shopping-cart text-lg"></i>
-              {getTotalItems() > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold">
-                  {getTotalItems()}
-                </span>
-              )}
-            </button>
           </div>
         </div>
       </header>
@@ -311,82 +249,85 @@ const Header = ({
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 lg:hidden">
         <ul className="flex items-center justify-around py-1">
+          {/* 1. Bosh sahifa */}
           <li className="flex-1">
             <button 
-              onClick={showProducts}
+              onClick={() => {
+                // Scroll to top and show both products and craftsmen
+                window.scrollTo({ 
+                  top: 0, 
+                  behavior: 'smooth' 
+                });
+              }}
               className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full"
             >
-              <svg width="28" height="28" viewBox="0 0 29 28" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-1">
-                <g>
-                  <path d="M14.5001 7.54553C14.1116 7.54553 13.7296 7.562 13.351 7.59492L13.3444 12.9357H15.6493V7.59492C15.2706 7.54553 14.8887 7.54553 14.5001 7.54553Z" fill="currentColor"></path>
-                  <path d="M19.0543 19.1165C20.2621 17.9087 20.9407 16.2705 20.9407 14.5623V10.7065C20.1054 10.4275 19.2516 10.2075 18.3855 10.048V14.5393C18.3855 17.7694 17.0158 19.4586 14.5001 19.4586C11.9845 19.4586 10.618 17.7694 10.618 14.5393V10.048C9.75095 10.2079 8.89607 10.4279 8.05957 10.7065V14.5623C8.05957 16.2705 8.73813 17.9087 9.94597 19.1165C11.1538 20.3243 12.792 21.0029 14.5001 21.0029C16.2083 21.0029 17.8465 20.3243 19.0543 19.1165Z" fill="currentColor"></path>
-                  <path d="M14.5 2C7.87258 2 2.5 7.37258 2.5 14C2.5 20.6274 7.87258 26 14.5 26C21.1274 26 26.5 20.6274 26.5 14C26.5 7.37258 21.1274 2 14.5 2ZM4 14C4 8.20101 8.70101 3.5 14.5 3.5C20.299 3.5 25 8.20101 25 14C25 19.799 20.299 24.5 14.5 24.5C8.70101 24.5 4 19.799 4 14Z" fill="currentColor"></path>
-                </g>
-              </svg>
+              <i className="fas fa-home text-2xl mb-1"></i>
               <span className="text-xs font-medium">Bosh sahifa</span>
             </button>
           </li>
           
+          {/* 2. Katalog */}
           <li className="flex-1">
             <button 
-              onClick={handleCatalogClick}
+              onClick={() => setIsCategoryModalOpen(true)}
               className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full"
             >
-              <svg width="28" height="28" viewBox="0 0 29 28" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-1">
-                <g>
-                  <path d="M1.5 12.5C1.5 7.25329 5.75329 3 11 3C16.2467 3 20.5 7.25329 20.5 12.5C20.5 14.853 19.6445 17.0062 18.2276 18.6656L24.2795 24.6993C24.5728 24.9917 24.5735 25.4666 24.2811 25.7599C23.9886 26.0532 23.5138 26.054 23.2204 25.7615L17.1671 19.7264C15.5075 21.144 13.3537 22 11 22C5.75329 22 1.5 17.7467 1.5 12.5ZM11 4.5C6.58172 4.5 3 8.08172 3 12.5C3 16.9183 6.58172 20.5 11 20.5C15.4183 20.5 19 16.9183 19 12.5C19 8.08172 15.4183 4.5 11 4.5Z" fill="currentColor"></path>
-                  <path d="M22.75 6.00003C22.3358 6.00003 22 6.33582 22 6.75003C22 7.16424 22.3358 7.50003 22.75 7.50003H26.75C27.1642 7.50003 27.5 7.16424 27.5 6.75003C27.5 6.33582 27.1642 6.00003 26.75 6.00003H22.75Z" fill="currentColor"></path>
-                  <path d="M22.75 11.75C22.3358 11.75 22 12.0858 22 12.5C22 12.9142 22.3358 13.25 22.75 13.25H26.75C27.1642 13.25 27.5 12.9142 27.5 12.5C27.5 12.0858 27.1642 11.75 26.75 11.75H22.75Z" fill="currentColor"></path>
-                  <path d="M22.75 17.5C22.3358 17.5 22 17.8358 22 18.25C22 18.6642 22.3358 19 22.75 19H26.75C27.1642 19 27.5 18.6642 27.5 18.25C27.5 17.8358 27.1642 17.5 26.75 17.5H22.75Z" fill="currentColor"></path>
-                </g>
-              </svg>
+              <i className="fas fa-layer-group text-2xl mb-1"></i>
               <span className="text-xs font-medium">Katalog</span>
             </button>
           </li>
           
+          {/* 3. Savatcha (O'rtada) */}
           <li className="flex-1">
             <button 
               onClick={toggleCart}
               className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full relative"
             >
-              <div className="relative">
-                <svg width="28" height="28" viewBox="0 0 29 28" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-1">
-                  <g>
-                    <path d="M9.5 7C9.5 4.5444 11.4295 2 14.5 2C17.5705 2 19.5 4.54439 19.5 7H24V22.25C24 24.3211 22.3211 26 20.25 26H8.75C6.67893 26 5 24.3211 5 22.25V7H9.5ZM11 7H18C18 5.25561 16.6295 3.5 14.5 3.5C12.3705 3.5 11 5.2556 11 7ZM9.5 8.5H6.5V22.25C6.5 23.4926 7.50736 24.5 8.75 24.5H20.25C21.4926 24.5 22.5 23.4926 22.5 22.25V8.5H19.5V11.5H18V8.5H11V11.5H9.5V8.5Z" fill="currentColor"></path>
-                  </g>
-                </svg>
-                {getTotalItems() > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                    {getTotalItems()}
-                  </span>
-                )}
-              </div>
-              <span className="text-xs font-medium">Savat</span>
+              <i className="fas fa-shopping-cart text-2xl mb-1"></i>
+              <span className="text-xs font-medium">Savatcha</span>
+              {getTotalItems() > 0 && (
+                <span className="absolute -top-1 right-4 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                  {getTotalItems()}
+                </span>
+              )}
             </button>
           </li>
           
+          {/* 4. Mahsulotlar */}
           <li className="flex-1">
             <button 
-              onClick={() => setShowPriceDropdown(!showPriceDropdown)}
+              onClick={() => {
+                const productsSection = document.getElementById('products');
+                if (productsSection) {
+                  productsSection.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                  });
+                }
+              }}
               className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full"
             >
-              <img width="28" height="28" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjgiIGhlaWdodD0iMjgiIHZpZXdCb3g9IjAgMCAyOCAyOCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGcgaWQ9Ikljb24iPgo8cGF0aCBpZD0iSWNvbl8yIiBkPSJNMTQgMkM3LjM3MjU4IDIgMiA3LjM3MjU4IDIgMTRDMiAyMC42Mjc0IDcuMzcyNTggMjYgMTQgMjZDMjAuNjI3NCAyNiAyNiAyMC42Mjc0IDI2IDE0QzI2IDcuMzcyNTggMjAuNjI3NCAyIDE0IDJaTTEzIDEwSDEwVjhIMTNWMTBaTTE1IDEwSDEyVjhIMTVWMTBaTTE3IDEwSDE0VjhIMTdWMTBaTTE5IDEwSDE2VjhIMTlWMTBaTTEzIDEySDEwVjEwSDEzVjEyWk0xNSAxMkgxMlYxMEgxNVYxMlpNMTcgMTJIMTRWMTBIMTdWMTJaTTE5IDEySDE2VjEwSDE5VjEyWk0xMyAxNEgxMFYxMkgxM1YxNFpNMTUgMTRIMTJWMTJIMTVWMTRaTTE3IDE0SDE0VjEySDE3VjE0Wk0xOSAxNEgxNlYxMkgxOVYxNFpNMTMgMTZIMTBWMTRIMTNWMTZaTTE1IDE2SDEyVjE0SDE1VjE2Wk0xNyAxNkgxNFYxNEgxN1YxNlpNMTkgMTZIMTZWMTRIMTlWMTZaTTEzIDE4SDEwVjE2SDEzVjE4Wk0xNSAxOEgxMlYxNkgxNVYxOFpNMTcgMThIMTRWMTZIMTdWMThaTTE5IDE4SDE2VjE2SDE5VjE4WiIgZmlsbD0iIzhCOEU5OSIvPgo8L2c+Cjwvc3ZnPgo=" className="mb-1" alt="Tezkor" />
-              <span className="text-xs font-medium">Tezkor</span>
+              <i className="fas fa-box text-2xl mb-1"></i>
+              <span className="text-xs font-medium">Mahsulotlar</span>
             </button>
           </li>
           
+          {/* 5. Ustalar */}
           <li className="flex-1">
             <button 
-              onClick={handleLogoInteraction}
+              onClick={() => {
+                const craftsmenSection = document.getElementById('craftsmen');
+                if (craftsmenSection) {
+                  craftsmenSection.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                  });
+                }
+              }}
               className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full"
             >
-              <svg width="28" height="28" viewBox="0 0 29 28" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-1">
-                <g>
-                  <path d="M14.5 3C11.4624 3 9 5.46243 9 8.5C9 11.5376 11.4624 14 14.5 14C17.5376 14 20 11.5376 20 8.5C20 5.46243 17.5376 3 14.5 3ZM10.5 8.5C10.5 6.29086 12.2909 4.5 14.5 4.5C16.7091 4.5 18.5 6.29086 18.5 8.5C18.5 10.7091 16.7091 12.5 14.5 12.5C12.2909 12.5 10.5 10.7091 10.5 8.5Z" fill="currentColor"></path>
-                  <path d="M14.5025 15C9.16883 15 4.5 19.0011 4.5 24C4.5 25.1046 5.39543 26 6.5 26H22.5C23.6046 26 24.5 25.1046 24.5 24C24.5 19.0057 19.8369 15 14.5025 15ZM6 24C6 19.9911 9.82583 16.5 14.5025 16.5C19.1783 16.5 23 19.9943 23 24C23 24.2761 22.7761 24.5 22.5 24.5H6.5C6.22386 24.5 6 24.2761 6 24Z" fill="currentColor"></path>
-                </g>
-              </svg>
-              <span className="text-xs font-medium">Kabinet</span>
+              <i className="fas fa-users text-2xl mb-1"></i>
+              <span className="text-xs font-medium">Ustalar</span>
             </button>
           </li>
         </ul>
@@ -394,8 +335,14 @@ const Header = ({
 
       {/* Login Modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-xl p-6 md:p-8 max-w-md w-full shadow-2xl">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-4"
+          onClick={() => setShowLoginModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl p-6 md:p-8 max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Admin Panel</h2>
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
@@ -452,8 +399,14 @@ const Header = ({
 
       {/* Error Modal */}
       {showErrorModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-xl p-6 md:p-8 max-w-sm w-full shadow-2xl text-center">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-4"
+          onClick={closeErrorModal}
+        >
+          <div 
+            className="bg-white rounded-xl p-6 md:p-8 max-w-sm w-full shadow-2xl text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="w-16 h-16 mx-auto flex items-center justify-center rounded-lg bg-red-500">
               <i className="fas fa-exclamation-triangle text-white text-3xl"></i>
             </div>
@@ -480,6 +433,15 @@ const Header = ({
         onUpdateQuantity={onUpdateQuantity}
         onCheckout={onCheckout}
       />
+
+      {/* Catalog Modal */}
+      {isCategoryModalOpen && (
+        <Catalog
+          onCategorySelect={onCategorySelect}
+          onClose={() => setIsCategoryModalOpen(false)}
+          selectedCategory={selectedCategory}
+        />
+      )}
     </>
   );
 };

@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
 const Craftsmen = ({ craftsmenData = [] }) => {
+  // Debug: Check if data is being received
+  console.log('🔍 Craftsmen component received data:', craftsmenData);
+  console.log('📊 Total craftsmen:', craftsmenData.length);
+  
   // Filter only active craftsmen for the main page
   const activeCraftsmen = craftsmenData.filter(craftsman => craftsman.status === 'active');
+  console.log('✅ Active craftsmen:', activeCraftsmen.length);
+  console.log('👷 Active craftsmen data:', activeCraftsmen);
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,29 +27,40 @@ const Craftsmen = ({ craftsmenData = [] }) => {
     return price.toLocaleString() + " so'm/kun";
   };
 
-  // Get portfolio images for craftsman - only from database
+  // Get portfolio images for craftsman - include main image and portfolio
   const getCraftsmanImages = (craftsman) => {
-    // Return only portfolio images from database
-    if (craftsman.portfolio && craftsman.portfolio.length > 0) {
-      return craftsman.portfolio;
+    const images = [];
+    
+    // Add main image if exists
+    if (craftsman.image) {
+      images.push(craftsman.image);
     }
     
-    // Return empty array if no portfolio images - will show placeholder
-    return [];
+    // Add portfolio images if exist
+    if (craftsman.portfolio && craftsman.portfolio.length > 0) {
+      images.push(...craftsman.portfolio);
+    }
+    
+    // Return images array or placeholder if empty
+    return images.length > 0 ? images : ['/assets/ustalar/placeholder.jpg'];
   };
 
   // Show craftsman details modal
   const showCraftsmanDetails = (craftsman) => {
     setSelectedCraftsman(craftsman);
     setIsModalOpen(true);
+    // Prevent background scroll
     document.body.style.overflow = 'hidden';
+    document.body.style.paddingRight = '0px'; // Prevent layout shift
   };
 
   // Close modal
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedCraftsman(null);
+    // Restore background scroll
     document.body.style.overflow = 'auto';
+    document.body.style.paddingRight = '0px';
   };
 
   // Open lightbox
@@ -51,7 +68,9 @@ const Craftsmen = ({ craftsmenData = [] }) => {
     setLightboxImages(images);
     setCurrentLightboxIndex(startIndex);
     setIsLightboxOpen(true);
+    // Prevent background scroll
     document.body.style.overflow = 'hidden';
+    document.body.style.paddingRight = '0px'; // Prevent layout shift
   };
 
   // Close lightbox
@@ -59,7 +78,9 @@ const Craftsmen = ({ craftsmenData = [] }) => {
     setIsLightboxOpen(false);
     setLightboxImages([]);
     setCurrentLightboxIndex(0);
+    // Restore background scroll
     document.body.style.overflow = 'auto';
+    document.body.style.paddingRight = '0px';
   };
 
   // Navigate lightbox
@@ -107,7 +128,8 @@ const Craftsmen = ({ craftsmenData = [] }) => {
     if (!selectedCraftsman) return;
     
     const images = getCraftsmanImages(selectedCraftsman);
-    const maxSlide = Math.max(0, images.length - 3);
+    const itemsPerPage = window.innerWidth < 640 ? 2 : 3;
+    const maxSlide = Math.max(0, images.length - itemsPerPage);
     
     if (direction === 'prev' && modalSlideIndex > 0) {
       setModalSlideIndex(modalSlideIndex - 1);
@@ -130,6 +152,9 @@ const Craftsmen = ({ craftsmenData = [] }) => {
       // Desktop - show call modal
       setCallPhone(phone);
       setShowCallModal(true);
+      // Prevent background scroll
+      document.body.style.overflow = 'hidden';
+      document.body.style.paddingRight = '0px'; // Prevent layout shift
     }
   };
 
@@ -194,17 +219,17 @@ const Craftsmen = ({ craftsmenData = [] }) => {
 
   return (
     <>
-      {/* Header - exactly like ustalar-qismi */}
+      {/* Header - Mobile Responsive */}
       <header className="bg-white shadow-lg">
-        <div className="container mx-auto px-6 py-8">
-          <h1 className="text-4xl font-bold text-gray-800 text-center">Professional Ustalar</h1>
-          <p className="text-gray-600 text-center mt-2">Eng malakali hunarmandlar bilan tanishing</p>
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 text-center">Professional Ustalar</h1>
+          <p className="text-sm sm:text-base text-gray-600 text-center mt-2">Eng malakali hunarmandlar bilan tanishing</p>
         </div>
       </header>
 
-      {/* Main Content - exactly like ustalar-qismi */}
-      <main className="container mx-auto px-6 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
+      {/* Main Content - Mobile Responsive Grid */}
+      <main className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-20 lg:pb-12">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 xl:gap-8">
           {activeCraftsmen.map((craftsman, index) => {
             const images = getCraftsmanImages(craftsman);
             
@@ -212,32 +237,33 @@ const Craftsmen = ({ craftsmenData = [] }) => {
               <div key={craftsman._id} className="bg-white rounded-xl shadow-lg hover-scale overflow-hidden">
                 <ImageCarousel images={images} craftsmanIndex={index} />
                 
-                <div className="p-4">
-                  <div className="mb-3">
-                    <h3 className="font-semibold text-lg mb-1">{craftsman.name || 'Noma\'lum'}</h3>
-                    <p className="text-gray-600 text-sm">{craftsman.specialty || 'Mutaxassislik belgilanmagan'}</p>
-                    <p className="text-sm text-green-600 font-medium">{formatPrice(craftsman.price)}</p>
+                <div className="p-2 sm:p-3 lg:p-4">
+                  <div className="mb-2 sm:mb-3">
+                    <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-1 line-clamp-1">{craftsman.name || 'Noma\'lum'}</h3>
+                    <p className="text-gray-600 text-xs sm:text-sm line-clamp-1">{craftsman.specialty || 'Mutaxassislik belgilanmagan'}</p>
+                    <p className="text-sm sm:text-base text-green-600 font-medium mt-1">{formatPrice(craftsman.price)}</p>
                   </div>
                   
-                  <div className="mb-3">
-                    <p className="text-xs text-gray-700 mb-2">{craftsman.description || 'Tavsif mavjud emas'}</p>
+                  <div className="mb-2 sm:mb-3">
+                    <p className="text-xs sm:text-sm text-gray-700 mb-1 sm:mb-2 line-clamp-2">{craftsman.description || 'Tavsif mavjud emas'}</p>
                     <div className="flex items-center text-xs text-gray-600">
-                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
                       </svg>
-                      {craftsman.phone || '+998 00 000 00 00'}
+                      <span className="truncate text-xs">{craftsman.phone || '+998 00 000 00 00'}</span>
                     </div>
                   </div>
                   
                   <div className="flex justify-between items-center">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <span className="inline-flex items-center px-1.5 sm:px-2 lg:px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                       Faol
                     </span>
                     <button 
                       onClick={() => showCraftsmanDetails(craftsman)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-medium"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors"
                     >
-                      Bog'lanish
+                      <span className="lg:hidden">Aloqa</span>
+                      <span className="hidden lg:inline">Bog'lanish</span>
                     </button>
                   </div>
                 </div>
@@ -248,41 +274,47 @@ const Craftsmen = ({ craftsmenData = [] }) => {
 
         {activeCraftsmen.length === 0 && (
           <div className="text-center py-12">
-            <svg className="w-24 h-24 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-16 sm:w-24 h-16 sm:h-24 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">Ustalar topilmadi</h3>
-            <p className="text-gray-500">Hozirda faol ustalar mavjud emas</p>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">Ustalar topilmadi</h3>
+            <p className="text-sm sm:text-base text-gray-500">Hozirda faol ustalar mavjud emas</p>
           </div>
         )}
       </main>
 
-      {/* Master Details Modal - exactly like ustalar-qismi */}
+      {/* Master Details Modal - Mobile Responsive */}
       {isModalOpen && selectedCraftsman && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
-            {/* Simple Header */}
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
+          onClick={closeModal}
+        >
+          <div 
+            className="bg-white rounded-lg max-w-lg w-full mx-2 sm:mx-4 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto modal-scroll"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
             <div className="relative bg-white p-4 rounded-t-lg border-b">
               <button 
                 onClick={closeModal}
-                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-10"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-700 z-10 p-1"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-              <h2 className="text-xl font-semibold text-gray-800 pr-10">Usta haqida ma'lumot</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 pr-8 sm:pr-10">Usta haqida ma'lumot</h2>
             </div>
             
-            {/* Work samples - moved to top */}
-            <div className="px-4 pt-6 pb-4">
+            {/* Work samples - Mobile Responsive */}
+            <div className="px-3 sm:px-4 pt-4 sm:pt-6 pb-4">
               <div className="mb-6">
                 <div className="relative">
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div className="col-span-3 grid grid-cols-3 gap-3 transition-all duration-300">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">
+                    <div className="col-span-2 sm:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 transition-all duration-300">
                       {(() => {
                         const images = getCraftsmanImages(selectedCraftsman);
-                        return images.slice(modalSlideIndex, modalSlideIndex + 3).map((img, index) => (
+                        return images.slice(modalSlideIndex, modalSlideIndex + (window.innerWidth < 640 ? 2 : 3)).map((img, index) => (
                           <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer" onClick={() => openLightbox(images, modalSlideIndex + index)}>
                             <img
                               src={img}
@@ -294,7 +326,7 @@ const Craftsmen = ({ craftsmenData = [] }) => {
                               }}
                             />
                             <div className="hidden w-full h-full items-center justify-center bg-gray-200">
-                              <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                              <svg className="w-4 h-4 sm:w-6 sm:h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd"/>
                               </svg>
                             </div>
@@ -306,17 +338,18 @@ const Craftsmen = ({ craftsmenData = [] }) => {
                   
                   {(() => {
                     const images = getCraftsmanImages(selectedCraftsman);
-                    if (images.length > 3) {
-                      const maxSlide = Math.max(0, images.length - 3);
+                    const itemsPerPage = window.innerWidth < 640 ? 2 : 3;
+                    if (images.length > itemsPerPage) {
+                      const maxSlide = Math.max(0, images.length - itemsPerPage);
                       
                       return (
                         <div className="flex justify-between items-center">
                           <button
                             onClick={() => slideModalImages('prev')}
                             disabled={modalSlideIndex === 0}
-                            className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors disabled:opacity-50"
+                            className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors disabled:opacity-50"
                           >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
                           </button>
@@ -325,7 +358,7 @@ const Craftsmen = ({ craftsmenData = [] }) => {
                             {Array.from({ length: maxSlide + 1 }, (_, i) => (
                               <div
                                 key={i}
-                                className={`w-2 h-2 rounded-full transition-colors ${
+                                className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-colors ${
                                   i === modalSlideIndex ? 'bg-blue-500' : 'bg-gray-300'
                                 }`}
                               />
@@ -335,9 +368,9 @@ const Craftsmen = ({ craftsmenData = [] }) => {
                           <button
                             onClick={() => slideModalImages('next')}
                             disabled={modalSlideIndex >= maxSlide}
-                            className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors disabled:opacity-50"
+                            className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors disabled:opacity-50"
                           >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                           </button>
@@ -349,62 +382,42 @@ const Craftsmen = ({ craftsmenData = [] }) => {
                 </div>
               </div>
               
-              {/* Master Info - moved below images */}
-              <div className="border-t pt-4">
-                <div className="mb-4 space-y-3">
-                  <div className="flex">
-                    <span className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">Ism:</span>
-                    <h3 className="text-sm font-semibold text-gray-800">{selectedCraftsman.name}</h3>
+              {/* Craftsman Details - Mobile Responsive */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">{selectedCraftsman.name}</h3>
+                  <p className="text-sm sm:text-base text-gray-600 mb-1">{selectedCraftsman.specialty}</p>
+                  <p className="text-base sm:text-lg text-green-600 font-semibold">{formatPrice(selectedCraftsman.price)}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm sm:text-base font-medium text-gray-700 mb-2">Tavsif:</h4>
+                  <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{selectedCraftsman.description || 'Tavsif mavjud emas'}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm sm:text-base font-medium text-gray-700 mb-2">Aloqa:</h4>
+                  <div className="flex items-center text-sm sm:text-base text-gray-600">
+                    <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                    </svg>
+                    <span>{selectedCraftsman.phone}</span>
                   </div>
-                  <div className="flex">
-                    <span className="text-sm font-medium text-gray-700 w-24 flex-shrink-0">Mutaxassislik:</span>
-                    <p className="text-sm text-gray-600">{selectedCraftsman.specialty}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Contact details */}
-            <div className="px-4 pb-6">
-              {/* Contact Info */}
-              <div className="space-y-3">
-                <div className="flex py-1">
-                  <span className="text-sm font-medium text-gray-700 w-20 flex-shrink-0">Telefon:</span>
-                  <p className="text-sm text-blue-600 font-medium">{selectedCraftsman.phone}</p>
                 </div>
                 
-                <div className="flex py-1">
-                  <span className="text-sm font-medium text-gray-700 w-20 flex-shrink-0">Narx:</span>
-                  <p className="text-sm font-semibold text-green-600">{formatPrice(selectedCraftsman.price)}</p>
-                </div>
-                
-                <div className="flex py-1">
-                  <span className="text-sm font-medium text-gray-700 w-20 flex-shrink-0">Status:</span>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                    selectedCraftsman.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {selectedCraftsman.status === 'active' ? 'Faol' : 'Nofaol'}
-                  </span>
-                </div>
-                
-                <div className="pt-3 border-t border-gray-200">
-                  <span className="text-sm font-medium text-gray-700 block mb-2">Tavsif:</span>
-                  <p className="text-sm text-gray-600">{selectedCraftsman.description}</p>
-                </div>
-              </div>
-              
-              {/* Action buttons */}
-              <div className="pt-4 border-t mt-4">
-                <div className="grid grid-cols-2 gap-3">
+                {/* Action Buttons - Single Row on All Devices */}
+                <div className="flex gap-3 pt-4">
                   <button
                     onClick={() => handlePhoneCall(selectedCraftsman.phone)}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 sm:py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
                   >
-                    Qo'ng'iroq qilish
+                    <i className="fas fa-phone mr-2"></i>
+                    <span className="hidden sm:inline">Qo'ng'iroq qilish</span>
+                    <span className="sm:hidden">Qo'ng'iroq</span>
                   </button>
                   <button
                     onClick={closeModal}
-                    className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-3 sm:py-2 rounded-lg text-sm font-medium transition-colors"
                   >
                     Yopish
                   </button>
@@ -422,7 +435,7 @@ const Craftsmen = ({ craftsmenData = [] }) => {
             <div className="text-center">
               {/* Warning Icon */}
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
@@ -471,6 +484,9 @@ const Craftsmen = ({ craftsmenData = [] }) => {
                   onClick={() => {
                     setShowCallModal(false);
                     setShowCopySuccess(false);
+                    // Restore background scroll
+                    document.body.style.overflow = 'auto';
+                    document.body.style.paddingRight = '0px';
                   }}
                   className="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg font-medium transition-colors"
                 >
@@ -521,7 +537,7 @@ const Craftsmen = ({ craftsmenData = [] }) => {
             )}
             
             {/* Image container */}
-            <div className="relative w-full h-full flex items-center justify-center p-8">
+            <div className="relative w-full h-full flex items-center justify-center p-8 no-scrollbar">
               <img 
                 src={lightboxImages[currentLightboxIndex]} 
                 alt="Ish namunasi" 
@@ -551,6 +567,39 @@ const Craftsmen = ({ craftsmenData = [] }) => {
         }
         .image-carousel img {
           transition: opacity 0.3s ease;
+        }
+        
+        /* Custom scrollbar styles */
+        .modal-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+        }
+        
+        .modal-scroll::-webkit-scrollbar {
+          width: 4px;
+        }
+        
+        .modal-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        .modal-scroll::-webkit-scrollbar-thumb {
+          background-color: rgba(156, 163, 175, 0.5);
+          border-radius: 2px;
+        }
+        
+        .modal-scroll::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(156, 163, 175, 0.7);
+        }
+        
+        /* Hide scrollbar completely for lightbox */
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
         }
       `}</style>
     </>
