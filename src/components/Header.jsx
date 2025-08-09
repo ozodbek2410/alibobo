@@ -130,22 +130,32 @@ const Header = ({
       <header className="bg-primary-dark shadow-lg sticky top-0 z-50 hidden lg:block">
         <div className="container mx-auto px-6">
           <div className="flex items-center justify-between py-3">
-            {/* Left side - Logo, Search, Cart */}
-            <div className="flex items-center gap-6">
+            {/* Left side - Logo */}
+            <div className="flex items-center min-w-fit">
               {/* Logo */}
               <div 
-                className="flex items-center space-x-3 cursor-pointer select-none min-w-fit"
+                className="flex items-center space-x-3 cursor-pointer select-none"
                 onClick={handleLogoInteraction}
                 onTouchStart={handleLogoInteraction}
                 title="Admin panel uchun 2 marta bosing"
                 style={{ userSelect: 'none' }}
               >
-                <i className="fas fa-hammer text-primary-orange text-2xl"></i>
-                <h1 className="text-2xl font-bold text-white">Alibobo</h1>
+                <img 
+                  src="/logo.png" 
+                  alt="Logo" 
+                  className="w-16 h-16 object-cover rounded-lg"
+                />
+                <img 
+                  src="/alibobo.png" 
+                  alt="Alibobo" 
+                  className="h-16 w-32 object-cover"
+                />
               </div>
+            </div>
 
-              {/* Search Bar */}
-              <form onSubmit={handleSearch} className="w-96">
+            {/* Center - Search Bar */}
+            <div className="flex-1 flex justify-center px-8">
+              <form onSubmit={handleSearch} className="w-full max-w-2xl">
                 <div className="relative">
                   <input
                     type="text"
@@ -162,13 +172,15 @@ const Header = ({
                   </button>
                 </div>
               </form>
+            </div>
 
-              {/* Cart Button */}
+            {/* Right side - Cart Button */}
+            <div className="flex items-center min-w-fit">
               <button
                 onClick={toggleCart}
-                className="relative bg-transparent hover:bg-gray-700 hover:bg-opacity-20 text-primary-orange px-4 py-2.5 rounded-lg transition duration-300 min-w-fit"
+                className="relative bg-transparent hover:bg-gray-700 hover:bg-opacity-20 text-primary-orange px-4 py-2.5 rounded-lg transition duration-300"
               >
-                <i className="fas fa-shopping-cart text-lg"></i>
+                <i className="fas fa-shopping-cart text-2xl"></i>
                 {getTotalItems() > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold">
                     {getTotalItems()}
@@ -200,8 +212,16 @@ const Header = ({
               title="Admin panel uchun 2 marta bosing"
               style={{ userSelect: 'none' }}
             >
-              <i className="fas fa-hammer text-primary-orange text-xl"></i>
-              <h1 className="text-lg font-bold text-white">Alibobo</h1>
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                className="w-10 h-10 object-cover rounded-lg"
+              />
+              <img 
+                src="/alibobo.png" 
+                alt="Alibobo" 
+                className="h-10 w-20 object-cover"
+              />
             </div>
 
             {/* Mobile Search */}
@@ -212,29 +232,16 @@ const Header = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Mahsulotlar izlash"
-                  className="w-full px-4 py-2.5 pr-12 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300"
+                  className="w-full px-4 py-2 pr-10 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300"
                 />
                 <button 
                   type="submit"
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-orange transition duration-300"
                 >
-                  <i className="fas fa-search text-lg"></i>
+                  <i className="fas fa-search text-sm"></i>
                 </button>
               </div>
             </form>
-
-            {/* Mobile Cart */}
-            <button
-              onClick={toggleCart}
-              className="relative bg-transparent hover:bg-gray-700 hover:bg-opacity-20 text-primary-orange px-4 py-2.5 rounded-lg transition duration-300 min-w-fit"
-            >
-              <i className="fas fa-shopping-cart text-lg"></i>
-              {getTotalItems() > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold">
-                  {getTotalItems()}
-                </span>
-              )}
-            </button>
           </div>
         </div>
       </header>
@@ -245,7 +252,13 @@ const Header = ({
           {/* 1. Bosh sahifa */}
           <li className="flex-1">
             <button 
-              onClick={showProducts}
+              onClick={() => {
+                // Scroll to top and show both products and craftsmen
+                window.scrollTo({ 
+                  top: 0, 
+                  behavior: 'smooth' 
+                });
+              }}
               className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full"
             >
               <i className="fas fa-home text-2xl mb-1"></i>
@@ -264,28 +277,34 @@ const Header = ({
             </button>
           </li>
           
-          {/* 3. Savat */}
+          {/* 3. Savatcha (O'rtada) */}
           <li className="flex-1">
             <button 
               onClick={toggleCart}
               className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full relative"
             >
-              <div className="relative">
-                <i className="fas fa-shopping-cart text-2xl mb-1"></i>
-                {getTotalItems() > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                    {getTotalItems()}
-                  </span>
-                )}
-              </div>
-              <span className="text-xs font-medium">Savat</span>
+              <i className="fas fa-shopping-cart text-2xl mb-1"></i>
+              <span className="text-xs font-medium">Savatcha</span>
+              {getTotalItems() > 0 && (
+                <span className="absolute -top-1 right-4 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                  {getTotalItems()}
+                </span>
+              )}
             </button>
           </li>
           
           {/* 4. Mahsulotlar */}
           <li className="flex-1">
             <button 
-              onClick={showProducts}
+              onClick={() => {
+                const productsSection = document.getElementById('products');
+                if (productsSection) {
+                  productsSection.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                  });
+                }
+              }}
               className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full"
             >
               <i className="fas fa-box text-2xl mb-1"></i>
@@ -293,14 +312,22 @@ const Header = ({
             </button>
           </li>
           
-          {/* 5. Buyurtmalar */}
+          {/* 5. Ustalar */}
           <li className="flex-1">
             <button 
-              onClick={handleLogoInteraction}
+              onClick={() => {
+                const craftsmenSection = document.getElementById('craftsmen');
+                if (craftsmenSection) {
+                  craftsmenSection.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                  });
+                }
+              }}
               className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full"
             >
-              <i className="fas fa-clipboard-list text-2xl mb-1"></i>
-              <span className="text-xs font-medium">Buyurtmalar</span>
+              <i className="fas fa-users text-2xl mb-1"></i>
+              <span className="text-xs font-medium">Ustalar</span>
             </button>
           </li>
         </ul>

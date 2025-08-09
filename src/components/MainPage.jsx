@@ -113,18 +113,21 @@ const MainPage = ({ onSuccessfulLogin }) => {
         selectedCategory={selectedCategory}
         onSearch={handleSearch}
       />
-      <ProductsGrid 
-        cart={cart}
-        onAddToCart={addToCart}
-        isCartOpen={isCartOpen}
-        onToggleCart={toggleCart}
-        onRemoveFromCart={removeFromCart}
-        onUpdateQuantity={updateCartQuantity}
-        onCheckout={clearCart}
-        selectedCategory={selectedCategory}
-        searchQuery={searchQuery}
-      />
-      <Craftsmen craftsmenData={craftsmenData} />
+      <div id="products">
+        <ProductsGrid 
+          cart={cart}
+          onAddToCart={addToCart}
+          onToggleCart={toggleCart}
+          onRemoveFromCart={removeFromCart}
+          onUpdateQuantity={updateCartQuantity}
+          onCheckout={clearCart}
+          selectedCategory={selectedCategory}
+          searchQuery={searchQuery}
+        />
+      </div>
+      <div id="craftsmen">
+        <Craftsmen craftsmenData={craftsmenData} />
+      </div>
       <Services />
       <Footer />
     </>

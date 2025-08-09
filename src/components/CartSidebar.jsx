@@ -253,13 +253,13 @@ const CartSidebar = ({ isOpen, onClose, cart, onRemoveFromCart, onUpdateQuantity
     <>
       {/* Cart Overlay */}
       <div
-        className={`fixed inset-0 bg-black bg-opacity-50 z-40 ${isOpen ? 'block' : 'hidden'}`}
+        className={`fixed inset-0 bg-black bg-opacity-50 z-30 ${isOpen ? 'block' : 'hidden'}`}
         onClick={onClose}
       ></div>
 
       {/* Shopping Cart Sidebar */}
       <div
-        className={`fixed inset-y-0 right-0 w-full sm:w-96 md:w-[28rem] lg:w-[32rem] bg-white shadow-2xl transform transition-transform duration-300 z-50 flex flex-col ${
+        className={`fixed inset-y-0 right-0 w-full sm:w-96 md:w-[28rem] lg:w-[32rem] bg-white shadow-2xl transform transition-transform duration-300 z-40 flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >

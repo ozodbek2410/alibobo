@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
 const Craftsmen = ({ craftsmenData = [] }) => {
+  // Debug: Check if data is being received
+  console.log('🔍 Craftsmen component received data:', craftsmenData);
+  console.log('📊 Total craftsmen:', craftsmenData.length);
+  
   // Filter only active craftsmen for the main page
   const activeCraftsmen = craftsmenData.filter(craftsman => craftsman.status === 'active');
+  console.log('✅ Active craftsmen:', activeCraftsmen.length);
+  console.log('👷 Active craftsmen data:', activeCraftsmen);
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,15 +27,22 @@ const Craftsmen = ({ craftsmenData = [] }) => {
     return price.toLocaleString() + " so'm/kun";
   };
 
-  // Get portfolio images for craftsman - only from database
+  // Get portfolio images for craftsman - include main image and portfolio
   const getCraftsmanImages = (craftsman) => {
-    // Return only portfolio images from database
-    if (craftsman.portfolio && craftsman.portfolio.length > 0) {
-      return craftsman.portfolio;
+    const images = [];
+    
+    // Add main image if exists
+    if (craftsman.image) {
+      images.push(craftsman.image);
     }
     
-    // Return empty array if no portfolio images - will show placeholder
-    return [];
+    // Add portfolio images if exist
+    if (craftsman.portfolio && craftsman.portfolio.length > 0) {
+      images.push(...craftsman.portfolio);
+    }
+    
+    // Return images array or placeholder if empty
+    return images.length > 0 ? images : ['/assets/ustalar/placeholder.jpg'];
   };
 
   // Show craftsman details modal

@@ -246,27 +246,8 @@ const ProductsGrid = ({
 
   // Show update notification when data changes
   const showUpdateNotification = () => {
-    // Create a temporary notification element
-    const notification = document.createElement('div');
-    notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300';
-    notification.innerHTML = `
-      <div class="flex items-center space-x-2">
-        <i class="fas fa-sync-alt"></i>
-        <span>Ma'lumotlar yangilandi</span>
-      </div>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Remove after 3 seconds
-    setTimeout(() => {
-      notification.style.opacity = '0';
-      setTimeout(() => {
-        if (document.body.contains(notification)) {
-          document.body.removeChild(notification);
-        }
-      }, 300);
-    }, 3000);
+    // Notification disabled - no longer needed
+    return;
   };
 
   // Show error notification
