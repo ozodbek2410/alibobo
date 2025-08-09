@@ -21,6 +21,8 @@ const ProductsGrid = ({
   const [sortBy, setSortBy] = useState('name');
   const [priceRange, setPriceRange] = useState('all');
   const [quickFilter, setQuickFilter] = useState('all');
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [refreshInterval, setRefreshInterval] = useState(null);
   
   // Notification states
   const [showAddToCartNotification, setShowAddToCartNotification] = useState(false);
@@ -52,14 +54,42 @@ const ProductsGrid = ({
     return categoryMapping[frontendCategory] || frontendCategory;
   };
 
+  // Initial load
   useEffect(() => {
     loadProducts();
+    
+    // Set up periodic refresh every 30 seconds to sync with admin changes
+    const interval = setInterval(() => {
+      console.log(' Avtomatik yangilanish: Admin panel o\'zgarishlarini tekshirish...');
+      loadProducts(true); // Silent refresh
+    }, 30000); // 30 seconds
+    
+    setRefreshInterval(interval);
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, []);
 
   // Reload products when category or search changes
   useEffect(() => {
     loadProducts();
   }, [selectedCategory, searchQuery]);
+
+  // Refresh when window gains focus (user returns to tab)
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log(' Sahifa fokusga qaytdi: Ma\'lumotlarni yangilash...');
+      loadProducts(true);
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   // Scroll event listener to close select dropdown
   useEffect(() => {
@@ -131,13 +161,17 @@ const ProductsGrid = ({
     setSelectedProduct(null);
   };
 
-  const loadProducts = async () => {
+  const loadProducts = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       
       // Build query parameters
       const params = new URLSearchParams();
       params.append('limit', '100');
+      params.append('sortBy', 'updatedAt'); // Sort by last updated to get latest changes first
+      params.append('sortOrder', 'desc');
       
       if (selectedCategory && selectedCategory !== '') {
         params.append('category', getCategoryApiValue(selectedCategory));
@@ -147,38 +181,121 @@ const ProductsGrid = ({
         params.append('search', searchQuery.trim());
       }
       
+      console.log(' Backend dan mahsulotlarni yuklash...', silent ? '(silent)' : '');
       const response = await fetch(`http://localhost:5000/api/products?${params.toString()}`);
       const data = await response.json();
       
       // Debug logging
-      console.log('API Request URL:', `http://localhost:5000/api/products?${params.toString()}`);
-      console.log('API Response:', data);
-      console.log('Products count:', data.products?.length);
-      console.log('Selected category:', selectedCategory);
+      if (!silent) {
+        console.log('API Request URL:', `http://localhost:5000/api/products?${params.toString()}`);
+        console.log('API Response:', data);
+        console.log('Products count:', data.products?.length);
+        console.log('Selected category:', selectedCategory);
+      }
       
       if (response.ok) {
-        setProducts(data.products || []);
+        const newProducts = data.products || [];
+        
+        // Check if products have changed
+        const hasChanged = JSON.stringify(products) !== JSON.stringify(newProducts);
+        
+        if (hasChanged || !silent) {
+          setProducts(newProducts);
+          setLastUpdated(new Date());
+          
+          if (hasChanged && silent) {
+            console.log(' Mahsulotlar yangilandi! Admin paneldan o\'zgarishlar keldi.');
+            // Show a subtle notification that data was updated
+            showUpdateNotification();
+          }
+        }
         
         // Kategoriyalarni olish
-        const uniqueCategories = [...new Set(data.products.map(p => p.category))];
+        const uniqueCategories = [...new Set(newProducts.map(p => p.category))];
         setCategories(uniqueCategories);
-        console.log('Unique categories from products:', uniqueCategories);
         
-        // Show individual product categories for debugging
-        if (data.products.length > 0) {
-          console.log('First few products with categories:');
-          data.products.slice(0, 5).forEach((product, index) => {
-            console.log(`Product ${index + 1}: "${product.name}" - Category: "${getCategoryApiValue(product.category)}"`);
-          });
+        if (!silent) {
+          console.log('Unique categories from products:', uniqueCategories);
+          
+          // Show individual product categories for debugging
+          if (newProducts.length > 0) {
+            console.log('First few products with categories:');
+            newProducts.slice(0, 5).forEach((product, index) => {
+              console.log(`Product ${index + 1}: "${product.name}" - Category: "${getCategoryApiValue(product.category)}"`);
+            });
+          }
         }
       } else {
         console.error('Mahsulotlar yuklanmadi:', data.message);
+        if (!silent) {
+          // Show error notification
+          showErrorNotification('Ma\'lumotlarni yuklashda xatolik yuz berdi');
+        }
       }
     } catch (error) {
       console.error('Mahsulotlar yuklashda xatolik:', error);
+      if (!silent) {
+        showErrorNotification('Server bilan bog\'lanishda xatolik');
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
+  };
+
+  // Show update notification when data changes
+  const showUpdateNotification = () => {
+    // Create a temporary notification element
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300';
+    notification.innerHTML = `
+      <div class="flex items-center space-x-2">
+        <i class="fas fa-sync-alt"></i>
+        <span>Ma'lumotlar yangilandi</span>
+      </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      notification.style.opacity = '0';
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 300);
+    }, 3000);
+  };
+
+  // Show error notification
+  const showErrorNotification = (message) => {
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300';
+    notification.innerHTML = `
+      <div class="flex items-center space-x-2">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>${message}</span>
+      </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.opacity = '0';
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 300);
+    }, 5000);
+  };
+
+  // Manual refresh function
+  const handleManualRefresh = () => {
+    console.log(' Qo\'lda yangilash boshlandi...');
+    loadProducts();
   };
 
   const filterByCategory = (category) => {
@@ -358,21 +475,38 @@ const ProductsGrid = ({
             <h3 className="font-semibold text-gray-900 text-sm sm:text-base lg:text-lg line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem] hover:text-primary-orange transition-colors duration-200">{product.name || 'Noma\'lum mahsulot'}</h3>
           </div>
           
-          <p className="text-gray-600 text-xs sm:text-sm mb-2 lg:mb-3 line-clamp-2 min-h-[2rem] lg:min-h-[2.5rem] cursor-pointer hover:text-gray-800 transition-colors duration-200" onClick={() => openProductDetail(product)}>{product.description || 'Tavsif mavjud emas'}</p>
-          
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 lg:mb-4">
-            <span className="text-primary-orange font-bold text-base sm:text-lg">
-              {formatPrice(product.price)}
-            </span>
-            {product.oldPrice && product.oldPrice > product.price && (
-              <span className="text-gray-400 line-through text-xs sm:text-sm decoration-red-500 decoration-2">
-                {formatPrice(product.oldPrice)}
-              </span>
-            )}
-          </div>
-          
-          {/* Action Button - Always at bottom */}
           <div className="mt-auto">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col">
+                <span className="font-bold text-gray-900 text-sm lg:text-lg">
+                  {formatPrice(product.price)}
+                </span>
+                {product.oldPrice && product.oldPrice > product.price && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-500 line-through text-xs lg:text-sm">
+                      {formatPrice(product.oldPrice)}
+                    </span>
+                    <span className="text-red-500 text-xs font-medium">
+                      -{discount}%
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Stock info */}
+              {product.stock !== undefined && (
+                <div className="text-right">
+                  <p className="text-xs text-gray-600">
+                    {product.stock > 0 ? `${product.stock} ${product.unit || 'dona'}` : 'Tugagan'}
+                  </p>
+                  {product.stock > 0 && product.stock < 10 && (
+                    <p className="text-xs text-red-500 font-medium">Kam qoldi!</p>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Action Button - Always at bottom */}
             <button
               onClick={() => addToCart(product)}
               className="w-full bg-primary-orange text-white py-2 lg:py-2.5 px-3 lg:px-4 rounded-lg hover:bg-opacity-90 transition duration-300 font-semibold flex items-center justify-center gap-2 text-sm lg:text-base"
