@@ -20,6 +20,22 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Mobile responsive typography */
+@media (min-width: 640px) {
+  body {
+    font-size: 16px;
+  }
+}
+
+/* Mobile bottom padding for fixed navigation */
+@media (max-width: 1023px) {
+  body {
+    padding-bottom: 80px;
+  }
 }
 
 code {

@@ -13,6 +13,10 @@ const MainPage = ({ onSuccessfulLogin }) => {
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
+  // Catalog and search states
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
   useEffect(() => {
     loadCraftsmen();
   }, []);
@@ -83,6 +87,17 @@ const MainPage = ({ onSuccessfulLogin }) => {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
   };
 
+  // Catalog functions
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category);
+    console.log('Selected category in MainPage:', category);
+  };
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    console.log('Search query in MainPage:', query);
+  };
+
   return (
     <>
       <Header 
@@ -94,6 +109,9 @@ const MainPage = ({ onSuccessfulLogin }) => {
         onUpdateQuantity={updateCartQuantity}
         onCheckout={clearCart}
         getTotalItems={getTotalItems}
+        onCategorySelect={handleCategorySelect}
+        selectedCategory={selectedCategory}
+        onSearch={handleSearch}
       />
       <ProductsGrid 
         cart={cart}
@@ -103,6 +121,8 @@ const MainPage = ({ onSuccessfulLogin }) => {
         onRemoveFromCart={removeFromCart}
         onUpdateQuantity={updateCartQuantity}
         onCheckout={clearCart}
+        selectedCategory={selectedCategory}
+        searchQuery={searchQuery}
       />
       <Craftsmen craftsmenData={craftsmenData} />
       <Services />

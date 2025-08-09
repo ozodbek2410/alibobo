@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import CartSidebar from './CartSidebar';
+import ProductDetail from './ProductDetail';
 
 const ProductsGrid = ({ 
   cart, 
@@ -8,7 +9,9 @@ const ProductsGrid = ({
   onToggleCart, 
   onRemoveFromCart, 
   onUpdateQuantity, 
-  onCheckout 
+  onCheckout,
+  selectedCategory,
+  searchQuery 
 }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,10 +26,40 @@ const ProductsGrid = ({
   const [showAddToCartNotification, setShowAddToCartNotification] = useState(false);
   const [notificationProduct, setNotificationProduct] = useState('');
   const selectRef = useRef(null);
+  
+  // Product detail modal states
+  const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // Category mapping function - frontend to backend
+  const getCategoryApiValue = (frontendCategory) => {
+    const categoryMapping = {
+      "g'isht-va-bloklar": "gisht",
+      "asbob-uskunalar": "asbob", 
+      "bo'yoq-va-lak": "boyoq",
+      "elektr-mollalari": "elektr",
+      "metall-va-armatura": "metall",
+      "yog'och-va-mebel": "yog'och",
+      "tom-materiallar": "tom",
+      "santexnika": "santexnika",
+      "issiqlik-va-konditsioner": "issiqlik",
+      "dekor-va-bezatish": "dekor",
+      "temir-beton": "temir",
+      "gips-va-shpaklovka": "gips",
+      "boshqalar": "boshqalar"
+    };
+    
+    return categoryMapping[frontendCategory] || frontendCategory;
+  };
 
   useEffect(() => {
     loadProducts();
   }, []);
+
+  // Reload products when category or search changes
+  useEffect(() => {
+    loadProducts();
+  }, [selectedCategory, searchQuery]);
 
   // Scroll event listener to close select dropdown
   useEffect(() => {
@@ -87,11 +120,41 @@ const ProductsGrid = ({
     return 0;
   };
 
+  // Product detail modal functions
+  const openProductDetail = (product) => {
+    setSelectedProduct(product);
+    setIsProductDetailOpen(true);
+  };
+
+  const closeProductDetail = () => {
+    setIsProductDetailOpen(false);
+    setSelectedProduct(null);
+  };
+
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/products?limit=100');
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      params.append('limit', '100');
+      
+      if (selectedCategory && selectedCategory !== '') {
+        params.append('category', getCategoryApiValue(selectedCategory));
+      }
+      
+      if (searchQuery && searchQuery.trim() !== '') {
+        params.append('search', searchQuery.trim());
+      }
+      
+      const response = await fetch(`http://localhost:5000/api/products?${params.toString()}`);
       const data = await response.json();
+      
+      // Debug logging
+      console.log('API Request URL:', `http://localhost:5000/api/products?${params.toString()}`);
+      console.log('API Response:', data);
+      console.log('Products count:', data.products?.length);
+      console.log('Selected category:', selectedCategory);
       
       if (response.ok) {
         setProducts(data.products || []);
@@ -99,6 +162,15 @@ const ProductsGrid = ({
         // Kategoriyalarni olish
         const uniqueCategories = [...new Set(data.products.map(p => p.category))];
         setCategories(uniqueCategories);
+        console.log('Unique categories from products:', uniqueCategories);
+        
+        // Show individual product categories for debugging
+        if (data.products.length > 0) {
+          console.log('First few products with categories:');
+          data.products.slice(0, 5).forEach((product, index) => {
+            console.log(`Product ${index + 1}: "${product.name}" - Category: "${getCategoryApiValue(product.category)}"`);
+          });
+        }
       } else {
         console.error('Mahsulotlar yuklanmadi:', data.message);
       }
@@ -118,7 +190,7 @@ const ProductsGrid = ({
     
     // Kategoriya bo'yicha filtrlash
     if (currentCategory !== 'all') {
-      filtered = filtered.filter(product => product.category === currentCategory);
+      filtered = filtered.filter(product => product.category === getCategoryApiValue(currentCategory));
     }
     
     // Tezkor filter bo'yicha filtrlash
@@ -245,74 +317,69 @@ const ProductsGrid = ({
     };
     
     return (
-      <div key={product._id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <div className="relative">
-          <img src={product.image || '/assets/default-product.png'} alt={product.name} className="w-full h-56 object-cover" />
+      <div key={product._id} className="bg-white rounded-lg lg:rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col h-full">
+        <div className="relative cursor-pointer" onClick={() => openProductDetail(product)}>
+          <img src={product.image || '/assets/default-product.png'} alt={product.name} className="w-full h-40 sm:h-48 lg:h-56 object-cover" />
           {product.badge && (
-            <span className="absolute top-3 left-3 bg-primary-orange text-white px-3 py-1 rounded-full text-xs font-semibold">
+            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-primary-orange text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold">
               {product.badge}
             </span>
           )}
           {product.oldPrice && product.oldPrice > product.price && (
-            <span className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+            <span className="absolute top-2 right-2 lg:top-3 lg:right-3 bg-red-500 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold">
               -{Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}%
             </span>
           )}
           
           {/* Chegirma badge'i (prioritet yuqori) */}
           {(product.oldPrice && product.oldPrice > product.price && !product.badge) && (
-            <span className="absolute top-3 left-3 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-red-600 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold">
               Chegirma
             </span>
           )}
           
           {/* Mashhur badge'i (faqat chegirma yo'q bo'lsa) */}
           {(product.rating >= 4.5 && !product.badge && !(product.oldPrice && product.oldPrice > product.price)) && (
-            <span className="absolute top-3 left-3 bg-primary-orange text-white px-3 py-1 rounded-full text-xs font-semibold">
+            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-primary-orange text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold">
               Mashhur
             </span>
           )}
           
           {/* Yangi badge'i (faqat boshqa badge'lar yo'q bo'lsa) */}
           {(product.isNew && !product.badge && !(product.oldPrice && product.oldPrice > product.price) && !(product.rating >= 4.5)) && (
-            <span className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-green-500 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold">
               Yangi
             </span>
           )}
         </div>
         
-        <div className="p-4">
-          <div className="mb-2">
-            <h3 className="font-semibold text-gray-900 text-lg line-clamp-2 min-h-[2.5rem]">{product.name || 'Noma\'lum mahsulot'}</h3>
+        <div className="p-3 lg:p-4 flex flex-col flex-grow">
+          <div className="mb-2 cursor-pointer" onClick={() => openProductDetail(product)}>
+            <h3 className="font-semibold text-gray-900 text-sm sm:text-base lg:text-lg line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem] hover:text-primary-orange transition-colors duration-200">{product.name || 'Noma\'lum mahsulot'}</h3>
           </div>
           
-          <p className="text-gray-600 text-sm mb-3 line-clamp-2 min-h-[2.5rem]">{product.description || 'Tavsif mavjud emas'}</p>
+          <p className="text-gray-600 text-xs sm:text-sm mb-2 lg:mb-3 line-clamp-2 min-h-[2rem] lg:min-h-[2.5rem] cursor-pointer hover:text-gray-800 transition-colors duration-200" onClick={() => openProductDetail(product)}>{product.description || 'Tavsif mavjud emas'}</p>
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-primary-orange font-bold text-lg">
-                {formatPrice(product.price)}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 lg:mb-4">
+            <span className="text-primary-orange font-bold text-base sm:text-lg">
+              {formatPrice(product.price)}
+            </span>
+            {product.oldPrice && product.oldPrice > product.price && (
+              <span className="text-gray-400 line-through text-xs sm:text-sm decoration-red-500 decoration-2">
+                {formatPrice(product.oldPrice)}
               </span>
-              {product.oldPrice && product.oldPrice > product.price && (
-                <span className="text-gray-400 line-through text-sm decoration-red-500 decoration-2">
-                  {formatPrice(product.oldPrice)}
-                </span>
-              )}
-            </div>
-            
-            <div className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
-              {product.stock ? `${product.stock} dona` : 'Mavjud emas'}
-            </div>
+            )}
           </div>
           
-          {/* Action Button */}
-          <div className="mt-4">
+          {/* Action Button - Always at bottom */}
+          <div className="mt-auto">
             <button
               onClick={() => addToCart(product)}
-              className="w-full bg-primary-orange text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition duration-300 font-semibold flex items-center justify-center gap-2"
+              className="w-full bg-primary-orange text-white py-2 lg:py-2.5 px-3 lg:px-4 rounded-lg hover:bg-opacity-90 transition duration-300 font-semibold flex items-center justify-center gap-2 text-sm lg:text-base"
             >
-              <i className="fas fa-shopping-cart text-sm"></i>
-              Buyurtma berish
+              <i className="fas fa-shopping-cart text-xs lg:text-sm"></i>
+              <span className="hidden sm:inline">Buyurtma berish</span>
+              <span className="sm:hidden">Buyurtma</span>
             </button>
           </div>
         </div>
@@ -343,7 +410,7 @@ const ProductsGrid = ({
   const filteredProducts = getFilteredProducts();
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 lg:px-6 py-6 lg:py-8">
 
 
       {/* Add to Cart Notification */}
@@ -357,123 +424,35 @@ const ProductsGrid = ({
       )}
       
       {/* Badge Filter */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="text-gray-700 font-medium">Saralash:</span>
-            <div className="relative z-10">
+      <div className="mb-6 lg:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3 lg:gap-4">
+            <span className="text-gray-700 font-medium text-sm lg:text-base">Saralash:</span>
+            <div className="relative">
               <select
                 ref={selectRef}
                 value={quickFilter}
                 onChange={(e) => setQuickFilter(e.target.value)}
-                className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-gray-800 font-medium focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-all duration-200 cursor-pointer text-sm min-w-[120px] relative z-10"
+                className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-gray-800 font-medium focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-all duration-200 cursor-pointer text-sm min-w-[110px] lg:min-w-[120px]"
               >
                 <option value="all">Hammasi</option>
                 <option value="mashhur">Mashhur</option>
                 <option value="chegirma">Chegirma</option>
                 <option value="yangi">Yangi</option>
               </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none z-10">
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
             </div>
           </div>
-          <div className="text-sm text-gray-500 font-medium">
-            {filteredProducts.length} mahsulot topildi
-          </div>
+
         </div>
       </div>
       
 
-      {/* Category Filter */}
-      <div className="mb-6">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <i className="fas fa-th-large text-primary-orange"></i>
-              Kategoriyalar
-            </h3>
-            <span className="text-sm text-gray-500">
-              {filteredProducts.length} ta mahsulot
-            </span>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
-            <button
-              onClick={() => filterByCategory('all')}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1 ${
-                currentCategory === 'all'
-                  ? 'bg-primary-orange text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-              }`}
-            >
-              <i className="fas fa-globe text-xs"></i>
-              <span>Barchasi</span>
-              <span className={`ml-1 px-1.5 py-0.5 rounded text-xs ${
-                currentCategory === 'all' ? 'bg-white bg-opacity-20' : 'bg-gray-200'
-              }`}>
-                {products.length}
-              </span>
-            </button>
-            
-            {categories.map(category => {
-              const categoryCount = products.filter(p => p.category === category).length;
-              if (categoryCount === 0) return null;
-              
-              // Kategoriya ikonlarini belgilash
-              const getCategoryIcon = (categoryName) => {
-                const iconMap = {
-                  "G'isht va bloklar": 'fas fa-cube',
-                  'Asbob-uskunalar': 'fas fa-tools',
-                  "Bo'yoq va lak": 'fas fa-palette',
-                  'Elektr mollalari': 'fas fa-bolt',
-                  'Metall va armatura': 'fas fa-industry',
-                  "Yog'och va mebel": 'fas fa-tree',
-                  'Tom materiallar': 'fas fa-home',
-                  'Santexnika': 'fas fa-faucet',
-                  'Issiqlik va konditsioner': 'fas fa-thermometer-half',
-                  'Dekor va bezatish': 'fas fa-paint-brush',
-                  'Temir-beton': 'fas fa-building',
-                  'Gips va shpaklovka': 'fas fa-trowel',
-                  'Boshqalar': 'fas fa-box',
-                  // Eski kategoriyalar uchun
-                  'Gisht': 'fas fa-cube',
-                  'Blok': 'fas fa-building',
-                  'Penoblok': 'fas fa-th-large',
-                  'Keramit': 'fas fa-home',
-                  'Gazobeton': 'fas fa-square',
-                  'Asboblar': 'fas fa-tools',
-                  "Bo'yoqlar": 'fas fa-palette',
-                  'Elektr': 'fas fa-bolt'
-                };
-                return iconMap[categoryName] || 'fas fa-box';
-              };
-              
-              return (
-                <button
-                  key={category}
-                  onClick={() => filterByCategory(category)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1 ${
-                    currentCategory === category
-                      ? 'bg-primary-orange text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                  }`}
-                >
-                  <i className={`${getCategoryIcon(category)} text-xs`}></i>
-                  <span className="truncate">{category}</span>
-                  <span className={`ml-1 px-1.5 py-0.5 rounded text-xs ${
-                    currentCategory === category ? 'bg-white bg-opacity-20' : 'bg-gray-200'
-                  }`}>
-                    {categoryCount}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+   
 
 
 
@@ -532,6 +511,14 @@ const ProductsGrid = ({
         onRemoveFromCart={onRemoveFromCart}
         onUpdateQuantity={onUpdateQuantity}
         onCheckout={onCheckout}
+      />
+      
+      {/* Product Detail Modal */}
+      <ProductDetail
+        product={selectedProduct}
+        isOpen={isProductDetailOpen}
+        onClose={closeProductDetail}
+        onAddToCart={addToCart}
       />
     </div>
   );

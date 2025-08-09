@@ -384,8 +384,7 @@ const Header = ({
           </button>
         </div>
       </div>
-
-
+      </header>
 
       {/* Login Modal */}
       {showLoginModal && (
@@ -500,10 +499,6 @@ const Header = ({
         onUpdateQuantity={onUpdateQuantity}
         onCheckout={onCheckout}
       />
-
-          </div>
-        </div>
-      </header>
 
       {/* Mobile Header - Top Search Only */}
       <header className="bg-primary-dark shadow-lg sticky top-0 z-50 md:hidden">

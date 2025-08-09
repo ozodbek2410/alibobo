@@ -1,0 +1,100 @@
+import React, { useState } from 'react';
+
+const Catalog = ({ onCategorySelect, onClose, selectedCategory }) => {
+  // Static categories from admin panel - matching CategoryNavigation.jsx format and order
+  const categories = [
+    { name: "G'isht va bloklar", value: "g'isht-va-bloklar" },
+    { name: "Asbob-uskunalar", value: "asbob-uskunalar" },
+    { name: "Bo'yoq va lak", value: "bo'yoq-va-lak" },
+    { name: "Elektr mollalari", value: "elektr-mollalari" },
+    { name: "Dekor va bezatish", value: "dekor-va-bezatish" },
+    { name: "Santexnika", value: "santexnika" },
+    { name: "Issiqlik va konditsioner", value: "issiqlik-va-konditsioner" },
+    { name: "Metall va armatura", value: "metall-va-armatura" },
+    { name: "Yog'och va mebel", value: "yog'och-va-mebel" },
+    { name: "Tom materiallar", value: "tom-materiallar" },
+    { name: "Temir-beton", value: "temir-beton" },
+    { name: "Gips va shpaklovka", value: "gips-va-shpaklovka" },
+    { name: "Boshqalar", value: "boshqalar" }
+  ];
+
+  const [loading] = useState(false);
+  const [error] = useState(null);
+
+  const handleCategoryClick = (categoryValue) => {
+    onCategorySelect(categoryValue);
+    onClose();
+  };
+
+  const handleAllProductsClick = () => {
+    onCategorySelect('');
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4 pb-4">
+      <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-800">Katalog</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition duration-300"
+          >
+            <i className="fas fa-times text-xl"></i>
+          </button>
+        </div>
+
+        {/* Categories List */}
+        <div className="overflow-y-auto max-h-[60vh]">
+          <div className="p-4 space-y-2">
+            {/* All Products Option */}
+            <button
+              onClick={handleAllProductsClick}
+              className={`w-full text-left p-3 rounded-lg transition duration-300 flex items-center space-x-3 ${
+                selectedCategory === '' 
+                  ? 'bg-primary-orange text-white' 
+                  : 'hover:bg-gray-100 text-gray-700'
+              }`}
+            >
+              <i className="fas fa-th-large text-lg"></i>
+              <span className="font-medium">Barcha mahsulotlar</span>
+            </button>
+
+            {/* Category Options */}
+            {categories.map((category, index) => (
+              <button
+                key={index}
+                onClick={() => handleCategoryClick(category.value)}
+                className={`w-full text-left p-3 rounded-lg transition duration-300 flex items-center space-x-3 ${
+                  selectedCategory === category.value 
+                    ? 'bg-primary-orange text-white' 
+                    : 'hover:bg-gray-100 text-gray-700'
+                }`}
+              >
+                <i className="fas fa-tag text-lg"></i>
+                <span className="font-medium">{category.name}</span>
+              </button>
+            ))}
+
+            {categories.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <i className="fas fa-inbox text-3xl mb-3"></i>
+                <p>Hech qanday kategoriya topilmadi</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <p className="text-sm text-gray-600 text-center">
+            Jami {categories.length} ta kategoriya
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Catalog;
