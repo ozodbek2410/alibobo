@@ -4,12 +4,13 @@ import AdminRecentActivities from './AdminRecentActivities';
 import AdminNotificationBell from './AdminNotificationBell';
 import AdminNotificationModals from './AdminNotificationModals';
 import useNotifications from '../hooks/useNotifications';
+import useStatistics from '../hooks/useStatistics';
 
 const AdminDashboard = ({ onMobileToggle, onNavigate }) => {
   const [craftsmenData, setCraftsmenData] = useState([]);
   const [productsData, setProductsData] = useState([]);
   const [ordersData, setOrdersData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
   
   // Use notification system
   const {
@@ -26,26 +27,36 @@ const AdminDashboard = ({ onMobileToggle, onNavigate }) => {
     notifyInfo
   } = useNotifications();
 
-  // Fetch data from backend
+  // Use statistics hook for real-time data
+  const {
+    statistics,
+    editStats,
+    loading: statsLoading,
+    error: statsError,
+    refreshStats,
+    formatNumber
+  } = useStatistics(true, 300000); // Auto-refresh every 5 minutes
+
+  // Fetch data for activities (separate from statistics)
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const fetchActivitiesData = async () => {
+      setActivitiesLoading(true);
       try {
-        // Fetch craftsmen
+        // Fetch craftsmen for activities
         const craftsmenResponse = await fetch('/api/craftsmen');
         if (craftsmenResponse.ok) {
           const craftsmenResult = await craftsmenResponse.json();
           setCraftsmenData(craftsmenResult.craftsmen || []);
         }
 
-        // Fetch products
+        // Fetch products for activities
         const productsResponse = await fetch('/api/products');
         if (productsResponse.ok) {
           const productsResult = await productsResponse.json();
           setProductsData(productsResult.products || []);
         }
 
-        // Fetch orders
+        // Fetch orders for activities
         const ordersResponse = await fetch('/api/orders');
         if (ordersResponse.ok) {
           const ordersResult = await ordersResponse.json();
@@ -55,12 +66,19 @@ const AdminDashboard = ({ onMobileToggle, onNavigate }) => {
         console.error('Ma\'lumotlarni yuklashda xatolik:', error);
         notifyError('Xatolik', 'Ma\'lumotlarni yuklashda xatolik yuz berdi');
       } finally {
-        setLoading(false);
+        setActivitiesLoading(false);
       }
     };
 
-    fetchData();
+    fetchActivitiesData();
   }, [notifyError]);
+
+  // Handle statistics errors
+  useEffect(() => {
+    if (statsError) {
+      notifyError('Statistika xatoligi', statsError);
+    }
+  }, [statsError, notifyError]);
 
   // Handle navigation from activities
   const handleNavigateFromActivity = (section, searchTerm) => {
@@ -96,7 +114,7 @@ const AdminDashboard = ({ onMobileToggle, onNavigate }) => {
 
       {/* Main content */}
       <main className="p-6 max-w-7xl mx-auto">
-        {loading ? (
+        {activitiesLoading && statsLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <i className="fas fa-spinner fa-spin text-3xl text-primary-orange mb-4"></i>
@@ -107,9 +125,11 @@ const AdminDashboard = ({ onMobileToggle, onNavigate }) => {
           <>
             {/* Stats Cards */}
             <AdminStatsCards 
-              craftsmenCount={craftsmenData.length} 
-              productsCount={productsData.length} 
-              ordersCount={ordersData.length} 
+              statistics={statistics}
+              editStats={editStats}
+              loading={statsLoading}
+              error={statsError}
+              formatNumber={formatNumber}
             />
             
             {/* Recent Activities */}

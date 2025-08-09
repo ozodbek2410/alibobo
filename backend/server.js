@@ -66,6 +66,7 @@ app.use('/api/craftsmen', require('./routes/craftsmen'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/statistics', require('./routes/statistics'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

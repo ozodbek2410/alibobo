@@ -26,12 +26,6 @@ const sidebarLinks = [
     label: 'Buyurtmalar',
     badge: 'ordersCount',
   },
-  {
-    key: 'analytics',
-    icon: 'fas fa-chart-bar',
-    label: 'Tahlillar',
-    badge: null,
-  },
 ];
 
 // countlarni prop orqali olish mumkin, default qiymat 0

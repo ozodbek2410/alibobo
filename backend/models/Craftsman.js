@@ -67,8 +67,12 @@ const craftsmanSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for better performance
+// Indexes for better performance
 craftsmanSchema.index({ specialty: 1, status: 1 });
 craftsmanSchema.index({ name: 'text', specialty: 'text' });
+craftsmanSchema.index({ status: 1 });
+craftsmanSchema.index({ createdAt: 1 });
+craftsmanSchema.index({ updatedAt: 1 });
+craftsmanSchema.index({ createdAt: 1, updatedAt: 1 }, { name: 'edit_tracking' });
 
 module.exports = mongoose.model('Craftsman', craftsmanSchema); 

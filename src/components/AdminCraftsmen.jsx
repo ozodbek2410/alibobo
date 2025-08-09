@@ -50,7 +50,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
   const [totalCount, setTotalCount] = useState(0);
   const [sortField, setSortField] = useState('joinDate');
   const [sortDirection, setSortDirection] = useState('desc');
-  
+
   // Component states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -67,7 +67,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
   });
   const [showCustomSpecialty, setShowCustomSpecialty] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const specialties = [
     "Barcha mutaxassisliklar",
     "Elektrik",
@@ -109,6 +109,8 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
     try {
       setLoading(true);
       
+      console.log('🔍 Loading craftsmen with filter:', filterSpecialty);
+
       const params = new URLSearchParams({
         page: currentPage,
         limit: itemsPerPage,
@@ -118,6 +120,8 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
         sortOrder: sortDirection
       });
 
+      console.log('📡 Request URL:', `http://localhost:5000/api/craftsmen?${params}`);
+
       const response = await fetch(`http://localhost:5000/api/craftsmen?${params}`);
       const data = await response.json();
 
@@ -125,22 +129,30 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
         setCraftsmen(data.craftsmen);
         setTotalPages(data.totalPages);
         setTotalCount(data.totalCount);
-        if (onCountChange) {
-          onCountChange(data.totalCount);
-        }
+        console.log('✅ Loaded craftsmen:', data.craftsmen.length, 'Filter:', filterSpecialty);
+        // Removed onCountChange call to prevent infinite re-renders
       } else {
         throw new Error(data.message || 'Ustalar yuklanmadi');
       }
     } catch (error) {
+      console.error('❌ Error loading craftsmen:', error);
       safeNotifyError('Ustalar yuklanmadi');
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, filterSpecialty, sortField, sortDirection, onCountChange]);
+  }, [currentPage, itemsPerPage, searchTerm, filterSpecialty, sortField, sortDirection]);
 
   useEffect(() => {
     loadCraftsmen();
   }, [loadCraftsmen]);
+
+  // Reset page when search or filter changes
+  useEffect(() => {
+    console.log('🔄 Filter or search changed, resetting page. Filter:', filterSpecialty, 'Search:', searchTerm);
+    if (searchTerm !== '' || filterSpecialty !== '') {
+      setCurrentPage(1);
+    }
+  }, [searchTerm, filterSpecialty]);
 
   // Prevent body scrolling when modal is open
   useEffect(() => {
@@ -184,11 +196,11 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
   const openEditModal = (craftsman) => {
     console.log('🔍 Tahrirlash uchun usta ma\'lumotlari:', JSON.stringify(craftsman, null, 2));
     setSelectedCraftsman(craftsman);
-    
+
     // Check if specialty is in the predefined list
     const predefinedSpecialties = specialties.slice(1);
     const isPredefinedSpecialty = predefinedSpecialties.includes(craftsman.specialty);
-    
+
     const formDataToSet = {
       name: craftsman.name || '',
       phone: craftsman.phone || '',
@@ -199,14 +211,14 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
       description: craftsman.description || '',
       portfolio: craftsman.portfolio || []
     };
-    
+
     console.log('📝 Form ma\'lumotlari:', JSON.stringify(formDataToSet, null, 2));
     console.log('🔍 Mutaxassislik tekshiruv:', {
       specialty: craftsman.specialty,
       isPredefined: isPredefinedSpecialty,
       predefinedList: predefinedSpecialties
     });
-    
+
     setFormData(formDataToSet);
     setShowCustomSpecialty(!isPredefinedSpecialty);
     setIsModalOpen(true);
@@ -270,9 +282,9 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
 
   const handlePortfolioChange = (e) => {
     const files = Array.from(e.target.files);
-    
+
     if (files.length === 0) return;
-    
+
     // Convert files to base64 for preview and storage
     const filePromises = files.map(file => {
       return new Promise((resolve, reject) => {
@@ -282,16 +294,16 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
         reader.readAsDataURL(file);
       });
     });
-    
+
     Promise.all(filePromises).then(results => {
       setFormData(prev => ({
         ...prev,
         portfolio: [...prev.portfolio, ...results]
       }));
-      
+
       // Clear the file input
       e.target.value = '';
-      
+
       // Show success message
       console.log(`${results.length} ta rasm qo'shildi`);
     }).catch(error => {
@@ -347,10 +359,10 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
 
       console.log('📤 Yuborilayotgan ma\'lumotlar:', JSON.stringify(craftsmanData, null, 2));
 
-      const url = selectedCraftsman 
+      const url = selectedCraftsman
         ? `http://localhost:5000/api/craftsmen/${selectedCraftsman._id}`
         : 'http://localhost:5000/api/craftsmen';
-      
+
       const method = selectedCraftsman ? 'PUT' : 'POST';
 
       console.log('🌐 URL:', url, 'Method:', method);
@@ -372,9 +384,9 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
         if (selectedCraftsman) {
           // Tahrirlash - local state ni yangilash
           console.log('🔄 Local state yangilanmoqda...', JSON.stringify(data, null, 2));
-          setCraftsmen(prevCraftsmen => 
-            prevCraftsmen.map(craftsman => 
-              craftsman._id === selectedCraftsman._id 
+          setCraftsmen(prevCraftsmen =>
+            prevCraftsmen.map(craftsman =>
+              craftsman._id === selectedCraftsman._id
                 ? { ...craftsman, ...data }
                 : craftsman
             )
@@ -449,26 +461,26 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
           }
           return newCount;
         });
-        
+
         // Show deletion notification with craftsman details
         safeNotifyCraftsmanDeleted(craftsmanName, craftsmanSpecialty);
       } else {
         // Har qanday xatolik (404 ham) haqiqiy xatolik
         const data = await response.json();
         const errorMessage = data.message || `Server xatoligi: ${response.status}`;
-        
+
         // Local state ni yangilash (agar usta mavjud bo'lsa)
         setCraftsmen(prevCraftsmen => prevCraftsmen.filter(craftsman => craftsman._id !== id));
-        
+
         // Xatolik xabarini ko'rsatish
         safeNotifyError(errorMessage);
       }
     } catch (error) {
       console.error('Craftsman o\'chirishda xatolik:', error);
-      
+
       // Tarmoq xatoligi bo'lsa ham local state ni yangilash
       setCraftsmen(prevCraftsmen => prevCraftsmen.filter(craftsman => craftsman._id !== id));
-      
+
       // Tarmoq xatoligi uchun notification
       safeNotifyError('Server bilan bog\'lanishda xatolik yuz berdi');
     }
@@ -528,7 +540,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
   };
 
   const handleNotificationClick = (notificationId) => {
-    setNotifications(prev => prev.map(n => 
+    setNotifications(prev => prev.map(n =>
       n.id === notificationId ? { ...n, read: true } : n
     ));
   };
@@ -561,12 +573,12 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
   };
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="min-h-screen bg-gray-50">
       {/* Fixed Top Header */}
-      <header className="bg-white shadow-sm border-b flex-shrink-0 z-20">
+      <header className="bg-white shadow-sm border-b sticky top-0 z-20">
         <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center space-x-2 sm:space-x-4">
-            <button 
+            <button
               onClick={onMobileToggle}
               className="lg:hidden text-gray-600 p-1"
             >
@@ -581,8 +593,8 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
       </header>
 
       {/* Main content area */}
-      <main className="flex-1 flex flex-col ">
-        <div className="p-3 sm:p-4 lg:p-6 flex flex-col max-w-7xl mx-auto w-full">
+      <main className="p-3 sm:p-4 lg:p-6">
+        <div className="max-w-7xl mx-auto">
           {/* Fixed controls section */}
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-4 sm:mb-6 space-y-3 sm:space-y-4 lg:space-y-0">
             <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-primary-dark">Ustalar</h2>
@@ -599,9 +611,13 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                 <i className="fas fa-search absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
               </div>
               {/* Specialty Filter */}
-              <select 
+              <select
                 value={filterSpecialty}
-                onChange={(e) => setFilterSpecialty(e.target.value)}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  console.log('🔄 Filter changed to:', newValue);
+                  setFilterSpecialty(newValue);
+                }}
                 className="px-2 sm:px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange text-sm sm:text-base"
               >
                 <option value="">Barcha mutaxassisliklar</option>
@@ -609,7 +625,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
-              <button 
+              <button
                 onClick={openAddModal}
                 className="bg-primary-orange text-white px-3 sm:px-4 lg:px-6 py-2 rounded-lg hover:bg-opacity-90 transition duration-300 whitespace-nowrap text-sm sm:text-base"
               >
@@ -620,19 +636,50 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
             </div>
           </div>
 
-          {/* Table container - only this scrolls horizontally */}
+          {/* Table container - no scroll */}
           <div className="bg-white rounded-xl shadow-sm">
-            {/* Table wrapper with horizontal scroll */}
-            <div className="overflow-x-auto scrollbar-hide">
+            {/* Table wrapper without scroll */}
+            <div className="overflow-hidden">
               {loading ? (
                 <div className="p-3 sm:p-6">
                   <LoadingCard count={5} type="craftsman" />
                 </div>
+              ) : craftsmen.length === 0 ? (
+                <div className="p-8 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <i className="fas fa-search text-6xl text-gray-300 mb-4"></i>
+                    <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                      {filterSpecialty || searchTerm ? 'Hech narsa topilmadi' : 'Ustalar mavjud emas'}
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      {filterSpecialty && searchTerm 
+                        ? `"${searchTerm}" qidiruvi va "${filterSpecialty}" mutaxassisligi bo'yicha hech qanday usta topilmadi`
+                        : filterSpecialty 
+                        ? `"${filterSpecialty}" mutaxassisligi bo'yicha hech qanday usta topilmadi`
+                        : searchTerm 
+                        ? `"${searchTerm}" qidiruvi bo'yicha hech qanday usta topilmadi`
+                        : 'Hozircha hech qanday usta qo\'shilmagan'
+                      }
+                    </p>
+                    {(filterSpecialty || searchTerm) && (
+                      <button
+                        onClick={() => {
+                          setFilterSpecialty('');
+                          setSearchTerm('');
+                        }}
+                        className="bg-primary-orange text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition duration-300"
+                      >
+                        <i className="fas fa-times mr-2"></i>
+                        Filterni tozalash
+                      </button>
+                    )}
+                  </div>
+                </div>
               ) : (
-                <table className="min-w-[800px]">
+                <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th 
+                      <th
                         className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 whitespace-nowrap"
                         onClick={() => handleSort('name')}
                       >
@@ -648,7 +695,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                         <span className="hidden sm:inline">Telefon</span>
                         <span className="sm:hidden">Tel</span>
                       </th>
-                      <th 
+                      <th
                         className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 whitespace-nowrap"
                         onClick={() => handleSort('price')}
                       >
@@ -671,8 +718,8 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                      {craftsmen.map((c) => (
-                        <tr key={c._id} className="hover:bg-gray-50 transition-colors">
+                    {craftsmen.map((c) => (
+                      <tr key={c._id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
                           <div className="flex items-center space-x-2 sm:space-x-3">
                             <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-primary-orange rounded-full flex items-center justify-center shadow-lg border-2 border-white ring-2 ring-gray-100 flex-shrink-0">
@@ -682,7 +729,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                               <div className="font-semibold text-gray-800 text-sm sm:text-base hover:text-primary-orange transition-colors cursor-pointer truncate">{c.name}</div>
                               <div className="text-xs sm:text-sm text-gray-500 flex items-center mt-0.5">
                                 <i className="fas fa-calendar-alt text-xs mr-1 sm:mr-1.5 text-gray-400 flex-shrink-0"></i>
-                                  <span className="whitespace-nowrap">{formatDate(c.joinDate)}</span>
+                                <span className="whitespace-nowrap">{formatDate(c.joinDate)}</span>
                               </div>
                             </div>
                           </div>
@@ -708,23 +755,23 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                         </td>
                         <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
                           <div className="flex space-x-1 sm:space-x-2">
-                            <button 
+                            <button
                               onClick={() => openViewModal(c)}
-                              className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-50" 
+                              className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-50"
                               title="Ko'rish"
                             >
                               <i className="fas fa-eye text-sm sm:text-base"></i>
                             </button>
-                            <button 
+                            <button
                               onClick={() => openEditModal(c)}
-                              className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50" 
+                              className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
                               title="Tahrirlash"
                             >
                               <i className="fas fa-edit text-sm sm:text-base"></i>
                             </button>
-                            <button 
+                            <button
                               onClick={() => openDeleteConfirm(c)}
-                              className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50" 
+                              className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
                               title="O'chirish"
                             >
                               <i className="fas fa-trash text-sm sm:text-base"></i>
@@ -744,7 +791,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                 Ko'rsatilmoqda <span>{(currentPage - 1) * itemsPerPage + 1}</span> dan <span>{Math.min(currentPage * itemsPerPage, totalCount)}</span> gacha, jami <span>{totalCount}</span> ta
               </div>
               <div className="flex space-x-1 sm:space-x-2">
-                <button 
+                <button
                   onClick={prevPage}
                   disabled={currentPage === 1}
                   className="pagination-btn px-2 sm:px-3 py-1 border border-gray-300 rounded text-xs sm:text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -753,7 +800,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                   <span className="hidden sm:inline">Oldingi</span>
                   <span className="sm:hidden">Old</span>
                 </button>
-                <button 
+                <button
                   onClick={nextPage}
                   disabled={currentPage >= totalPages}
                   className="pagination-btn px-2 sm:px-3 py-1 border border-gray-300 rounded text-xs sm:text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -770,11 +817,11 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden"
           onClick={closeModal}
         >
-          <div 
+          <div
             className="bg-white rounded-xl max-w-lg w-full max-h-[96vh] sm:max-h-[92vh] overflow-y-auto m-1 sm:m-0"
             onClick={(e) => e.stopPropagation()}
           >
@@ -790,37 +837,37 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Ism *</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    required 
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Telefon raqami *</label>
-                  <input 
-                    type="tel" 
+                  <input
+                    type="tel"
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
-                    required 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange" 
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
                     placeholder="+998901234567"
                   />
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Mutaxassislik *</label>
-                  <select 
+                  <select
                     name="specialty"
                     value={formData.specialty}
                     onChange={handleInputChange}
-                    required 
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
                   >
                     <option value="">Tanlang</option>
@@ -829,12 +876,12 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                     ))}
                   </select>
                 </div>
-                
+
                 {showCustomSpecialty && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Boshqa mutaxassislik</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="customSpecialty"
                       value={formData.customSpecialty}
                       onChange={handleInputChange}
@@ -845,16 +892,16 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                   </div>
                 )}
               </div>
-                
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Narx (so'm/soat) *</label>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     name="price"
                     value={formData.price}
                     onChange={handleInputChange}
-                    required 
+                    required
                     min="0"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
                     placeholder="50000"
@@ -862,7 +909,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                  <select 
+                  <select
                     name="status"
                     value={formData.status}
                     onChange={handleInputChange}
@@ -873,10 +920,10 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                   </select>
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Tavsif</label>
-                <textarea 
+                <textarea
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
@@ -885,11 +932,11 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                   placeholder="Usta haqida qisqacha ma'lumot..."
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Portfolio</label>
-                <input 
-                  type="file" 
+                <input
+                  type="file"
                   name="portfolio"
                   multiple
                   accept="image/*"
@@ -902,12 +949,12 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {formData.portfolio.map((image, index) => (
                         <div key={index} className="relative group">
-                          <img 
-                            src={image} 
-                            alt={`Portfolio ${index + 1}`} 
+                          <img
+                            src={image}
+                            alt={`Portfolio ${index + 1}`}
                             className="w-full h-24 object-cover rounded-lg border border-gray-200"
                           />
-                          <button 
+                          <button
                             type="button"
                             onClick={() => removePortfolioImage(index)}
                             className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
@@ -920,7 +967,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                   </div>
                 )}
               </div>
-              
+
               <div className="flex space-x-3 pt-4">
                 <button
                   type="button"
@@ -951,11 +998,11 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
 
       {/* View Modal */}
       {isViewModalOpen && selectedCraftsman && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 modal z-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden"
           onClick={() => setIsViewModalOpen(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-xl max-w-lg w-full max-h-[96vh] sm:max-h-[92vh] overflow-y-auto m-1 sm:m-0"
             onClick={(e) => e.stopPropagation()}
           >
@@ -975,7 +1022,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                   <p className="text-gray-600">{selectedCraftsman.specialty}</p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
@@ -996,14 +1043,14 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                   <p className="text-gray-900">{formatDate(selectedCraftsman.joinDate)}</p>
                 </div>
               </div>
-              
+
               {selectedCraftsman.description && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tavsif</label>
                   <p className="text-gray-900">{selectedCraftsman.description}</p>
                 </div>
               )}
-              
+
               {selectedCraftsman.portfolio && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Portfolio</label>
@@ -1011,7 +1058,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                     {selectedCraftsman.portfolio.map((image, index) => (
                       <div key={index} className="relative">
                         <img src={image} alt="Portfolio image" className="w-full h-full object-cover" />
-                        <button 
+                        <button
                           onClick={() => removeExistingPortfolioImage(index)}
                           className="absolute top-2 right-2 text-red-500 hover:text-red-700"
                         >
@@ -1022,7 +1069,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                   </div>
                 </div>
               )}
-              
+
               <div className="flex space-x-3 pt-4">
                 <button
                   onClick={() => setIsViewModalOpen(false)}

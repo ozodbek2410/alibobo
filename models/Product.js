@@ -64,4 +64,13 @@ const productSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Indexes for better performance
+productSchema.index({ status: 1 });
+productSchema.index({ category: 1 });
+productSchema.index({ createdAt: 1 });
+productSchema.index({ updatedAt: 1 });
+productSchema.index({ category: 1, status: 1 });
+productSchema.index({ createdAt: 1, updatedAt: 1 }, { name: 'edit_tracking' });
+productSchema.index({ name: 'text', category: 'text', brand: 'text' });
+
 module.exports = mongoose.model('Product', productSchema); 

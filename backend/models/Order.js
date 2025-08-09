@@ -57,8 +57,14 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for better performance
-orderSchema.index({ status: 1, createdAt: -1 });
+// Indexes for better performance
+orderSchema.index({ status: 1 });
+orderSchema.index({ createdAt: 1 });
+orderSchema.index({ updatedAt: 1 });
+orderSchema.index({ totalAmount: 1 });
+orderSchema.index({ status: 1, createdAt: 1 });
+orderSchema.index({ createdAt: 1, updatedAt: 1 }, { name: 'edit_tracking' });
+orderSchema.index({ createdAt: 1, totalAmount: 1 }, { name: 'revenue_calculations' });
 orderSchema.index({ customerName: 'text', customerPhone: 'text' });
 
 module.exports = mongoose.model('Order', orderSchema); 

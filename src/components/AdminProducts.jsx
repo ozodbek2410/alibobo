@@ -58,38 +58,24 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
   const debounceTimeoutRef = useRef(null);
   const isInitializedRef = useRef(false);
 
-  const categories = [
-    'Barcha kategoriyalar',
-    "G'isht va bloklar",
-    'Asbob-uskunalar',
-    "Bo'yoq va lak",
-    'Elektr mollalari',
-    'Metall va armatura',
-    "Yog'och va mebel",
-    'Tom materiallar',
-    'Santexnika',
-    'Issiqlik va konditsioner',
-    'Dekor va bezatish',
-    'Temir-beton',
-    'Gips va shpaklovka',
-    'Boshqalar'
-  ];
+  // Dynamic categories loaded from database
+  const [categories, setCategories] = useState(['Barcha kategoriyalar']);
 
-  const categoryMap = {
-    'gisht': "G'isht va bloklar",
-    'asbob': 'Asbob-uskunalar',
-    'boyoq': "Bo'yoq va lak",
-    'elektr': 'Elektr mollalari',
-    'metall': 'Metall va armatura',
-    'yogoch': "Yog'och va mebel",
-    'tom': 'Tom materiallar',
-    'santexnika': 'Santexnika',
-    'issiqlik': 'Issiqlik va konditsioner',
-    'dekor': 'Dekor va bezatish',
-    'temir-beton': 'Temir-beton',
-    'gips': 'Gips va shpaklovka',
-    'boshqa': 'Boshqalar'
-  };
+  // Load categories from API
+  const loadCategories = useCallback(async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/products/categories/list');
+      if (response.ok) {
+        const categoriesData = await response.json();
+        console.log('📋 Loaded categories:', categoriesData);
+        setCategories(['Barcha kategoriyalar', ...categoriesData]);
+      }
+    } catch (error) {
+      console.error('❌ Error loading categories:', error);
+    }
+  }, []);
+
+  // categoryMap removed - now using direct category names from database
 
   const badgeOptions = [
     { value: '', label: "Badge yo'q" },
@@ -145,9 +131,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
         setProducts(data.products);
         setTotalPages(data.totalPages);
         setTotalCount(data.totalCount);
-        if (onCountChange) {
-          onCountChange(data.totalCount);
-        }
+        // Removed onCountChange call to prevent infinite re-renders
       } else {
         throw new Error(data.message || 'Mahsulotlar yuklanmadi');
       }
@@ -159,7 +143,12 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     } finally {
       setLoading(false);
     }
-  }, [sortField, sortDirection, itemsPerPage, onCountChange]); // Faqat barqaror dependencylar
+  }, [sortField, sortDirection, itemsPerPage]); // Removed onCountChange to prevent infinite re-renders
+
+  // Load categories on component mount
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
 
   // Single useEffect for search and filter with proper debouncing
   useEffect(() => {
@@ -259,33 +248,13 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       }, 0);
       return;
     }
-
-    // Kategoriya formatini to'g'rilash
-    let categoryValue = '';
-    if (product.category) {
-      // Avval to'g'ridan-to'g'ri kategoriya nomini topishga harakat qilamiz
-      const categoryName = getCategoryName(product.category);
-      if (categoryName && categoryName !== product.category) {
-        // Agar getCategoryName boshqa nom qaytarsa, uni ishlatamiz
-        categoryValue = categoryName.toLowerCase().replace(/\s+/g, '-');
-      } else {
-        // Agar yo'qsa, original kategoriyani ishlatamiz
-        categoryValue = product.category.toLowerCase().replace(/\s+/g, '-');
-      }
-    }
     
     console.log('🔍 Tahrirlash uchun mahsulot ma\'lumotlari:', JSON.stringify(product, null, 2));
-    console.log('📝 Kategoriya tekshiruv:', {
-      originalCategory: product.category,
-      formattedCategory: categoryValue,
-      availableCategories: categories.slice(1),
-      categoryMap: Object.keys(categoryMap)
-    });
 
     setSelectedProduct(product);
     setFormData({
       name: product.name || '',
-      category: categoryValue,
+      category: product.category || '',
       description: product.description || '',
       price: product.price ? product.price.toString() : '',
       oldPrice: product.oldPrice ? product.oldPrice.toString() : '',
@@ -514,6 +483,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
         // Mahsulotlarni qayta yuklash
         setTimeout(() => {
           fetchProducts(); // Use fetchProducts to reload with current filters
+          loadCategories(); // Reload categories to include new ones
         }, 500);
       } else {
         // Har qanday xatolik (404 ham) haqiqiy xatolik
@@ -551,21 +521,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     }).format(amount);
   };
 
-  const getCategoryName = (category) => {
-    // Agar kategoriya categoryMap da bo'lsa, uni qaytaradi
-    if (categoryMap[category]) {
-      return categoryMap[category];
-    }
-    
-    // Agar kategoriya to'g'ridan-to'g'ri kategoriya nomi bo'lsa, uni qaytaradi
-    const categoryValue = category.toLowerCase().replace(/\s+/g, '-');
-    if (categoryMap[categoryValue]) {
-      return categoryMap[categoryValue];
-    }
-    
-    // Agar hech qanday moslik topilmasa, original kategoriyani qaytaradi
-    return category;
-  };
+  // getCategoryName function removed - now using direct category names from database
 
   const getProductInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -599,7 +555,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
   };
 
   const handleFilterChange = (value) => {
-    console.log('🔍 Filter input o\'zgartirildi:', value);
+    console.log('🔄 Filter changed to:', value);
     setFilterCategory(value);
   };
 
@@ -699,14 +655,11 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
               >
                 <option value="">Barcha kategoriyalar</option>
-              {categories.slice(1).map(category => {
-                const categoryValue = category.toLowerCase().replace(/\s+/g, '-');
-                return (
-                  <option key={category} value={categoryValue}>
-                    {category}
-                  </option>
-                );
-              })}
+              {categories.slice(1).map(category => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
               </select>
             
             {/* Add Product Button */}
@@ -892,14 +845,11 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                       required
                     >
                     <option value="">Kategoriya tanlang</option>
-                    {categories.slice(1).map(category => {
-                      const categoryValue = category.toLowerCase().replace(/\s+/g, '-');
-                      return (
-                        <option key={category} value={categoryValue}>
-                          {category}
-                        </option>
-                      );
-                    })}
+                    {categories.slice(1).map(category => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
                     </select>
                 </div>
                 
@@ -1073,7 +1023,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                   
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Kategoriya</label>
-                  <p className="text-gray-900">{getCategoryName(selectedProduct.category)}</p>
+                  <p className="text-gray-900">{selectedProduct.category}</p>
                       </div>
                 
                 <div>
