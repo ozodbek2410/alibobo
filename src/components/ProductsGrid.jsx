@@ -37,6 +37,7 @@ const ProductsGrid = ({
   const [currentImageIndexes, setCurrentImageIndexes] = useState({});
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
+  const [lastHoverTimes, setLastHoverTimes] = useState({});
 
   // Category mapping function - frontend to backend
   const getCategoryApiValue = (frontendCategory) => {
@@ -428,28 +429,112 @@ const ProductsGrid = ({
     const currentImageIndex = currentImageIndexes[product._id] || 0;
     const currentImage = productImages.length > 0 ? productImages[currentImageIndex] : null;
     
-    // Handle image navigation
-    const handleImageNavigation = (productId, direction, e) => {
-      e.stopPropagation(); // Prevent opening product detail
+    // Handle scroll-based image navigation (keep existing)
+    const handleScroll = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       
-      const images = product.images && product.images.length > 0 
-        ? product.images 
-        : (product.image ? [product.image] : []);
+      if (productImages.length <= 1) return;
       
-      if (images.length <= 1) return;
+      const delta = e.deltaY;
+      const direction = delta > 0 ? 'next' : 'prev';
       
       setCurrentImageIndexes(prev => {
-        const currentIndex = prev[productId] || 0;
+        const currentIndex = prev[product._id] || 0;
         let newIndex;
         
         if (direction === 'next') {
-          newIndex = currentIndex >= images.length - 1 ? 0 : currentIndex + 1;
+          newIndex = currentIndex >= productImages.length - 1 ? 0 : currentIndex + 1;
         } else {
-          newIndex = currentIndex <= 0 ? images.length - 1 : currentIndex - 1;
+          newIndex = currentIndex <= 0 ? productImages.length - 1 : currentIndex - 1;
         }
         
-        return { ...prev, [productId]: newIndex };
+        return { ...prev, [product._id]: newIndex };
       });
+    };
+
+    // Handle hover-based image navigation for desktop (like craftsmen cards)
+    const handleMouseMove = (e) => {
+      if (productImages.length <= 1) return;
+      
+      const currentTime = Date.now();
+      const lastHoverTime = lastHoverTimes[product._id] || 0;
+      const hoverDelay = 800; // 800ms delay between changes
+      
+      if (currentTime - lastHoverTime < hoverDelay) {
+        return; // Too soon, ignore this hover
+      }
+
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const width = rect.width;
+      
+      const currentIndex = currentImageIndexes[product._id] || 0;
+      let newIndex;
+      
+      if (x < width / 2) {
+        // Left side - previous image (don't loop to last image)
+        newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex;
+      } else {
+        // Right side - next image (don't loop to first image)
+        newIndex = currentIndex < productImages.length - 1 ? currentIndex + 1 : currentIndex;
+      }
+      
+      if (newIndex !== currentIndex) {
+        setCurrentImageIndexes(prev => ({ ...prev, [product._id]: newIndex }));
+        setLastHoverTimes(prev => ({ ...prev, [product._id]: currentTime }));
+      }
+    };
+
+    // Handle mouse leave (keep current image, don't reset)
+    const handleMouseLeave = () => {
+      // Keep the current image active when mouse leaves
+      // Do not reset to first image
+      setLastHoverTimes(prev => ({ ...prev, [product._id]: 0 }));
+    };
+
+    // Handle touch events for mobile swipe navigation
+    const handleTouchStart = (e) => {
+      if (productImages.length <= 1) return;
+      setTouchEnd(null); // Reset touch end
+      setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchMove = (e) => {
+      if (productImages.length <= 1) return;
+      setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchEnd = (e) => {
+      if (!touchStart || !touchEnd || productImages.length <= 1) return;
+      
+      const distance = touchStart - touchEnd;
+      const isLeftSwipe = distance > 50;
+      const isRightSwipe = distance < -50;
+      
+      if (isLeftSwipe || isRightSwipe) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        setCurrentImageIndexes(prev => {
+          const currentIndex = prev[product._id] || 0;
+          let newIndex;
+          
+          if (isLeftSwipe) {
+            // Swipe left - next image
+            newIndex = currentIndex >= productImages.length - 1 ? 0 : currentIndex + 1;
+          } else {
+            // Swipe right - previous image
+            newIndex = currentIndex <= 0 ? productImages.length - 1 : currentIndex - 1;
+          }
+          
+          return { ...prev, [product._id]: newIndex };
+        });
+      }
+      
+      // Reset touch states
+      setTouchStart(null);
+      setTouchEnd(null);
     };
     
     // Handle dot navigation
@@ -458,47 +543,19 @@ const ProductsGrid = ({
       setCurrentImageIndexes(prev => ({ ...prev, [productId]: imageIndex }));
     };
     
-    // Touch/swipe handlers for mobile
-    const handleTouchStart = (e) => {
-      setTouchEnd(null); // Reset touchEnd
-      setTouchStart(e.targetTouches[0].clientX);
-    };
-    
-    const handleTouchMove = (e) => {
-      setTouchEnd(e.targetTouches[0].clientX);
-    };
-    
-    const handleTouchEnd = (productId, e) => {
-      if (!touchStart || !touchEnd) return;
-      
-      const distance = touchStart - touchEnd;
-      const isLeftSwipe = distance > 50;
-      const isRightSwipe = distance < -50;
-      
-      const images = product.images && product.images.length > 0 
-        ? product.images 
-        : (product.image ? [product.image] : []);
-      
-      if (images.length <= 1) return;
-      
-      if (isLeftSwipe) {
-        // Swipe left - next image
-        handleImageNavigation(productId, 'next', e);
-      } else if (isRightSwipe) {
-        // Swipe right - previous image
-        handleImageNavigation(productId, 'prev', e);
-      }
-      
-      // Reset touch states
-      setTouchStart(null);
-      setTouchEnd(null);
-    };
-    
     return (
       <div key={product._id} className="bg-white rounded-lg lg:rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col h-full transform hover:scale-[1.02]">
         <div className="relative cursor-pointer" onClick={() => openProductDetail(product)}>
-          {/* Image Container */}
-          <div className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-gray-50">
+          {/* Image Container with Multiple Navigation Methods */}
+          <div 
+            className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-gray-50"
+            onWheel={handleScroll}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             {currentImage ? (
               <img 
                 src={currentImage} 
@@ -511,27 +568,7 @@ const ProductsGrid = ({
               </div>
             )}
             
-            {/* Image Navigation Arrows - Only show if multiple images */}
-            {productImages.length > 1 && (
-              <>
-                <button
-                  onClick={(e) => handleImageNavigation(product._id, 'prev', e)}
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-70 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                  style={{ zIndex: 10 }}
-                >
-                  <i className="fas fa-chevron-left text-xs"></i>
-                </button>
-                <button
-                  onClick={(e) => handleImageNavigation(product._id, 'next', e)}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-70 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                  style={{ zIndex: 10 }}
-                >
-                  <i className="fas fa-chevron-right text-xs"></i>
-                </button>
-              </>
-            )}
-            
-            {/* Image Dots - Show at bottom instead of counter */}
+            {/* Image Dots - Show at bottom */}
             {productImages.length > 1 && (
               <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
                 {productImages.map((_, index) => (
@@ -547,8 +584,22 @@ const ProductsGrid = ({
                 ))}
               </div>
             )}
+            
+            {/* Navigation hints for multiple images */}
+            {productImages.length > 1 && (
+              <>
+                {/* Desktop hover hint */}
+                <div className="hidden lg:block absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                  Hover
+                </div>
+                {/* Mobile swipe hint */}
+                <div className="lg:hidden absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                  Swipe
+                </div>
+              </>
+            )}
           </div>
-          
+
           {/* Badges */}
           {product.badge && (
             <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-primary-orange text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
