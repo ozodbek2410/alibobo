@@ -7,14 +7,17 @@ const CategoryNavigation = ({ onCategorySelect, selectedCategory, isModalOpen, s
   const modalOpen = isModalOpen !== undefined ? isModalOpen : internalModalOpen;
   const setModalOpen = setIsModalOpen !== undefined ? setIsModalOpen : setInternalModalOpen;
 
-  // Categories from admin panel
+  // Categories from admin panel - Main categories first
   const categories = [
+    { name: "Santexnika", value: "santexnika", icon: "fas fa-faucet", hasProducts: true },
+    { name: "Yevro remont", value: "yevro-remont", icon: "fas fa-home", hasProducts: true },
+    { name: "Elektrika", value: "elektrika", icon: "fas fa-bolt", hasProducts: true },
+    { name: "Xoz mag", value: "xoz-mag", icon: "fas fa-shopping-basket", hasProducts: true },
+    { name: "Dekorativ mahsulotlar", value: "dekorativ-mahsulotlar", icon: "fas fa-palette", hasProducts: true },
     { name: "G'isht va bloklar", value: "g'isht-va-bloklar", icon: "fas fa-cube", hasProducts: true },
     { name: "Asbob-uskunalar", value: "asbob-uskunalar", icon: "fas fa-tools", hasProducts: true },
     { name: "Bo'yoq va lak", value: "bo'yoq-va-lak", icon: "fas fa-paint-brush", hasProducts: true },
-    { name: "Elektr mollalari", value: "elektr-mollalari", icon: "fas fa-bolt", hasProducts: true },
-    { name: "Dekor va bezatish", value: "dekor-va-bezatish", icon: "fas fa-palette", hasProducts: true },
-    { name: "Santexnika", value: "santexnika", icon: "fas fa-faucet", hasProducts: true },
+    { name: "Elektr mollalari", value: "elektr-mollalari", icon: "fas fa-plug", hasProducts: true },
     { name: "Issiqlik va konditsioner", value: "issiqlik-va-konditsioner", icon: "fas fa-thermometer-half", hasProducts: true },
     { name: "Metall va armatura", value: "metall-va-armatura", icon: "fas fa-industry" },
     { name: "Yog'och va mebel", value: "yog'och-va-mebel", icon: "fas fa-tree" },

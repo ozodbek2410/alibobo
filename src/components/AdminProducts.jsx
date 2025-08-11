@@ -48,10 +48,10 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     oldPrice: '',
     stock: '',
     unit: 'dona',
-    image: '',
+    images: [], // Changed from single image to images array
     badge: ''
   });
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImages, setSelectedImages] = useState([]); // Changed from selectedImage to selectedImages
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Refs for debouncing and initialization tracking
@@ -61,17 +61,41 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
   // Dynamic categories loaded from database
   const [categories, setCategories] = useState(['Barcha kategoriyalar']);
 
-  // Load categories from API
+  // Main categories (asosiy kategoriyalar) - fallback and default categories
+  const mainCategories = [
+    'santexnika',
+    'yevro-remont', 
+    'elektrika',
+    'xoz-mag',
+    'dekorativ-mahsulotlar',
+    'g\'isht-va-bloklar',
+    'asbob-uskunalar',
+    'bo\'yoq-va-lak',
+    'elektr-mollalari',
+    'issiqlik-va-konditsioner',
+    'metall-va-armatura',
+    'yog\'och-va-mebel',
+    'tom-materiallar',
+    'temir-beton',
+    'gips-va-shpaklovka',
+    'boshqalar'
+  ];
+
+  // Load categories from API with fallback to main categories
   const loadCategories = useCallback(async () => {
     try {
       const response = await fetch('http://localhost:5000/api/products/categories/list');
       if (response.ok) {
         const categoriesData = await response.json();
-        console.log('📋 Loaded categories:', categoriesData);
+        console.log('📋 Loaded categories from API:', categoriesData);
         setCategories(['Barcha kategoriyalar', ...categoriesData]);
+      } else {
+        console.log('⚠️ API failed, using main categories as fallback');
+        setCategories(['Barcha kategoriyalar', ...mainCategories]);
       }
     } catch (error) {
-      console.error('❌ Error loading categories:', error);
+      console.error('❌ Error loading categories, using main categories as fallback:', error);
+      setCategories(['Barcha kategoriyalar', ...mainCategories]);
     }
   }, []);
 
@@ -233,10 +257,10 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       oldPrice: '',
       stock: '',
       unit: 'dona',
-      image: '',
+      images: [], // Changed from single image to images array
       badge: ''
     });
-    setSelectedImage(null);
+    setSelectedImages([]); // Changed from selectedImage to selectedImages
     setIsModalOpen(true);
   };
 
@@ -260,10 +284,10 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       oldPrice: product.oldPrice ? product.oldPrice.toString() : '',
       stock: product.stock ? product.stock.toString() : '',
       unit: product.unit || 'dona',
-      image: product.image || '',
+      images: product.images || (product.image ? [product.image] : []), // Support both old and new format
       badge: product.badge || ''
     });
-    setSelectedImage(null);
+    setSelectedImages([]); // Changed from selectedImage to selectedImages
     setIsModalOpen(true);
   };
 
@@ -291,10 +315,10 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       oldPrice: '',
       stock: '',
       unit: 'dona',
-      image: '',
+      images: [], // Changed from single image to images array
       badge: ''
     });
-    setSelectedImage(null);
+    setSelectedImages([]); // Changed from selectedImage to selectedImages
   };
 
   const openDeleteConfirm = (product) => {
@@ -377,21 +401,84 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
 
   // cancelDelete function removed - now using useNotifications hook
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setSelectedImage(e.target.result);
-        setFormData(prev => ({ ...prev, image: e.target.result }));
-      };
-      reader.readAsDataURL(file);
+  // Multiple images upload handler
+  const handleImagesUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const maxImages = 8; // Increased from 5 to 8
+    const currentImagesCount = formData.images.length + selectedImages.length;
+    
+    if (currentImagesCount + files.length > maxImages) {
+      safeNotifyError('Xatolik', `Maksimal ${maxImages}ta rasm qo'shish mumkin`);
+      return;
+    }
+
+    files.forEach(file => {
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setSelectedImages(prev => [...prev, e.target.result]);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  };
+
+  // Remove image from selected images
+  const removeSelectedImage = (index) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Remove image from existing images
+  const removeExistingImage = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Move image up in order
+  const moveImageUp = (index, isSelected = false) => {
+    if (index === 0) return;
+    
+    if (isSelected) {
+      setSelectedImages(prev => {
+        const newImages = [...prev];
+        [newImages[index - 1], newImages[index]] = [newImages[index], newImages[index - 1]];
+        return newImages;
+      });
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        images: prev.images.map((img, i) => {
+          if (i === index - 1) return prev.images[index];
+          if (i === index) return prev.images[index - 1];
+          return img;
+        })
+      }));
     }
   };
 
-  const removeImage = () => {
-    setSelectedImage(null);
-    setFormData(prev => ({ ...prev, image: '' }));
+  // Move image down in order
+  const moveImageDown = (index, isSelected = false) => {
+    const maxIndex = isSelected ? selectedImages.length - 1 : formData.images.length - 1;
+    if (index === maxIndex) return;
+    
+    if (isSelected) {
+      setSelectedImages(prev => {
+        const newImages = [...prev];
+        [newImages[index], newImages[index + 1]] = [newImages[index + 1], newImages[index]];
+        return newImages;
+      });
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        images: prev.images.map((img, i) => {
+          if (i === index) return prev.images[index + 1];
+          if (i === index + 1) return prev.images[index];
+          return img;
+        })
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -411,15 +498,26 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     console.log('📝 Form ma\'lumotlari:', formData);
 
     try {
-    const productData = {
+      // Combine existing and new images
+      const allImages = [...formData.images, ...selectedImages];
+      
+      // Ensure at least one image is provided
+      if (allImages.length === 0) {
+        safeNotifyError('Xatolik', 'Kamida bitta rasm qo\'shish kerak');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const productData = {
         name: formData.name.trim(),
-      category: formData.category,
+        category: formData.category,
         description: formData.description.trim(),
         price: parseFloat(formData.price),
         oldPrice: formData.oldPrice ? parseFloat(formData.oldPrice) : null,
         stock: parseInt(formData.stock),
         unit: formData.unit,
-        image: formData.image,
+        image: allImages[0], // First image for backward compatibility
+        images: allImages, // All images array
         badge: formData.badge,
         rating: 0,
         reviews: 0,
@@ -427,6 +525,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       };
 
       console.log('📤 Yuborilayotgan ma\'lumotlar:', productData);
+      console.log('🖼️ Rasmlar soni:', allImages.length);
       console.log('💰 Eski narx:', productData.oldPrice);
 
       const url = selectedProduct && selectedProduct._id 
@@ -446,6 +545,13 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       });
 
       console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Backend xatolik response:', errorText);
+        throw new Error(`Backend xatolik: ${response.status} - ${errorText}`);
+      }
 
       const data = await response.json();
       console.log('📥 Response data:', data);
@@ -453,7 +559,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
 
       if (response.ok) {
         console.log('✅ Muvaffaqiyatli saqlandi');
-    if (selectedProduct) {
+        if (selectedProduct) {
           // Tahrirlash - local state ni yangilash
           setProducts(prevProducts => 
             prevProducts.map(product => 
@@ -462,7 +568,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                 : product
             )
           );
-    } else {
+        } else {
           // Yangi qo'shish - local state ga qo'shish
           setProducts(prevProducts => [...prevProducts, data]);
           setTotalCount(prev => prev + 1);
@@ -604,73 +710,73 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       <main className="p-6 max-w-7xl mx-auto">
         {/* Search and Filter Section */}
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0 responsive-search-filter">
-            <h2 className="text-2xl font-bold text-primary-dark">Mahsulotlar</h2>
+          <h2 className="text-2xl font-bold text-primary-dark">Mahsulotlar</h2>
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 mobile-search-container">
             {/* Search */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Mahsulot qidirish..."
-                  value={searchTerm}
-                  onChange={e => {
-                    const value = e.target.value;
-                    handleSearchChange(value);
-                  }}
-                  onKeyPress={e => {
-                    if (e.key === 'Enter') {
-                      console.log('🔍 Enter bosildi, qidiruv boshlandi');
-                      // Clear existing timeouts
-                      if (debounceTimeoutRef.current) {
-                        clearTimeout(debounceTimeoutRef.current);
-                      }
-                      // Immediate search using centralized function
-                      setCurrentPage(1);
-                      fetchProducts({
-                        page: 1,
-                        search: searchTerm,
-                        category: filterCategory
-                      });
-                    }
-                  }}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange w-full sm:w-64"
-                />
-                <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                {(searchTerm || filterCategory) && (
-                  <button
-                    onClick={clearSearchAndFilter}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <i className="fas fa-times"></i>
-                  </button>
-                )}
-              </div>
-            
-            {/* Category Filter */}
-              <select
-                value={filterCategory}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Mahsulot qidirish..."
+                value={searchTerm}
                 onChange={e => {
                   const value = e.target.value;
-                  handleFilterChange(value);
+                  handleSearchChange(value);
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
-              >
-                <option value="">Barcha kategoriyalar</option>
-              {categories.slice(1).map(category => (
+                onKeyPress={e => {
+                  if (e.key === 'Enter') {
+                    console.log('🔍 Enter bosildi, qidiruv boshlandi');
+                    // Clear existing timeouts
+                    if (debounceTimeoutRef.current) {
+                      clearTimeout(debounceTimeoutRef.current);
+                    }
+                    // Immediate search using centralized function
+                    setCurrentPage(1);
+                    fetchProducts({
+                      page: 1,
+                      search: searchTerm,
+                      category: filterCategory
+                    });
+                  }
+                }}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange w-full sm:w-64"
+              />
+              <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              {(searchTerm || filterCategory) && (
+                <button
+                  onClick={clearSearchAndFilter}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
+            </div>
+            
+            {/* Category Filter */}
+            <select
+              value={filterCategory}
+              onChange={e => {
+                const value = e.target.value;
+                handleFilterChange(value);
+              }}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+            >
+              <option value="">Barcha kategoriyalar</option>
+              {mainCategories.slice(1).map(category => (
                 <option key={category} value={category}>
                   {category}
                 </option>
               ))}
-              </select>
+            </select>
             
             {/* Add Product Button */}
-              <button 
-                onClick={openAddModal}
-                className="bg-primary-orange text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition duration-300 whitespace-nowrap"
-              >
-                <i className="fas fa-plus mr-2"></i>Yangi mahsulot
-              </button>
-            </div>
+            <button 
+              onClick={openAddModal}
+              className="bg-primary-orange text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition duration-300 whitespace-nowrap"
+            >
+              <i className="fas fa-plus mr-2"></i>Yangi mahsulot
+            </button>
           </div>
+        </div>
 
         {/* Products Grid */}
         <div className="desktop-grid grid gap-4 mb-6">
@@ -679,28 +785,28 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
               <LoadingCard count={6} />
             </div>
           ) : products.length === 0 ? (
-                <div className="col-span-full text-center py-12">
+            <div className="col-span-full text-center py-12">
               <div className="text-gray-500">
                 <i className="fas fa-box-open text-6xl mb-4"></i>
                 <h3 className="text-xl font-semibold mb-2">Mahsulotlar topilmadi</h3>
                 <p className="text-gray-400">Qidiruv natijalariga mos mahsulotlar yo\'q</p>
               </div>
-                </div>
-              ) : (
+            </div>
+          ) : (
             products.map(product => (
               <div key={product._id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 product-card flex flex-col h-full">
                 {/* Product Image */}
                 <div className="relative h-48 bg-gray-100 rounded-t-lg overflow-hidden">
-                  {product.image ? (
+                  {(product.images && product.images.length > 0) || product.image ? (
                     <img 
-                      src={product.image} 
+                      src={product.images && product.images.length > 0 ? product.images[0] : product.image} 
                       alt={product.name}
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <div className={`w-full h-full flex items-center justify-center bg-gradient-to-r ${getAvatarGradient(product.name)}`}>
                       <span className="text-white text-2xl font-bold">{getProductInitials(product.name)}</span>
-                            </div>
+                    </div>
                   )}
                   
                   {/* Badge */}
@@ -709,16 +815,16 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                       <span className="bg-primary-orange text-white text-xs px-2 py-1 rounded-full">
                         {product.badge}
                       </span>
-                          </div>
-                        )}
+                    </div>
+                  )}
                   
                   {/* Discount Badge */}
                   {product.oldPrice && product.oldPrice > product.price && (
                     <div className="absolute top-2 right-2">
                       <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
                         -{Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}%
-                          </span>
-                        </div>
+                      </span>
+                    </div>
                   )}
                   
                   {/* Stock Status */}
@@ -726,14 +832,14 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                     <span className={`text-xs px-2 py-1 rounded-full ${getStockStatus(product.stock).class}`}>
                       {getStockStatus(product.stock).text}
                     </span>
-                      </div>
-                    </div>
+                  </div>
+                </div>
 
                 {/* Product Info */}
                 <div className="p-4 flex flex-col flex-1">
                   <div className="mb-2">
                     <h3 className="font-semibold text-gray-900 line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
-                      </div>
+                  </div>
                   
                   <p className="text-gray-600 text-sm mb-3 line-clamp-2 min-h-[2.5rem]">{product.description}</p>
                   
@@ -743,43 +849,43 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                       {product.oldPrice && product.oldPrice > product.price && (
                         <span className="text-sm text-gray-400 line-through decoration-red-500 decoration-2">{formatCurrency(product.oldPrice)}</span>
                       )}
-                      </div>
+                    </div>
                     <span className="text-sm text-gray-500 whitespace-nowrap flex-shrink-0">{product.stock} {product.unit}</span>
                   </div>
                   
                   {/* Action Buttons */}
                   <div className="flex items-center justify-center space-x-2 mt-auto pt-3">
-                        <button 
-                          onClick={() => openViewModal(product)}
+                    <button 
+                      onClick={() => openViewModal(product)}
                       className="flex-1 bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition duration-200 flex items-center justify-center"
-                        >
+                    >
                       <i className="fas fa-eye"></i>
-                        </button>
-                        <button 
-                          onClick={() => openEditModal(product)}
+                    </button>
+                    <button 
+                      onClick={() => openEditModal(product)}
                       className="flex-1 bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition duration-200 flex items-center justify-center"
-                        >
+                    >
                       <i className="fas fa-edit"></i>
-                        </button>
-                        <button 
+                    </button>
+                    <button 
                       onClick={() => openDeleteConfirm(product)}
                       className="flex-1 bg-red-100 text-red-700 p-2 rounded-lg hover:bg-red-200 transition duration-200 flex items-center justify-center"
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
-                      </div>
-                    </div>
+                    >
+                      <i className="fas fa-trash"></i>
+                    </button>
                   </div>
-                ))
-              )}
-            </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between bg-white px-6 py-4 rounded-lg shadow-sm">
             <div className="text-sm text-gray-600">
               {totalCount} ta mahsulotdan {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} tasi ko'rsatilmoqda
-          </div>
+            </div>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => changePage('prev')}
@@ -798,7 +904,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
               >
                 <i className="fas fa-chevron-right"></i>
               </button>
-        </div>
+            </div>
           </div>
         )}
       </main>
@@ -820,37 +926,37 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Mahsulot nomi *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.name}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mahsulot nomi *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
                     onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
-                      required
-                    />
-                  </div>
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                    required
+                  />
+                </div>
                 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Kategoriya *
-                    </label>
-                    <select
-                      value={formData.category}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Kategoriya *
+                  </label>
+                  <select
+                    value={formData.category}
                     onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
-                      required
-                    >
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                    required
+                  >
                     <option value="">Kategoriya tanlang</option>
-                    {categories.slice(1).map(category => (
+                    {mainCategories.slice(1).map(category => (
                       <option key={category} value={category}>
                         {category}
                       </option>
                     ))}
-                    </select>
+                  </select>
                 </div>
                 
                 <div>
@@ -868,40 +974,40 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                   />
                 </div>
                 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Eski narx (so'm)
-                    </label>
-                    <input
-                      type="number"
+                  </label>
+                  <input
+                    type="number"
                     value={formData.oldPrice}
                     onChange={e => setFormData(prev => ({ ...prev, oldPrice: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
-                      min="0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                    min="0"
                     step="0.01"
-                    />
-                  </div>
+                  />
+                </div>
                 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Zaxira *
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.stock}
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.stock}
                     onChange={e => setFormData(prev => ({ ...prev, stock: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
-                      min="0"
-                      required
-                    />
-                  </div>
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                    min="0"
+                    required
+                  />
+                </div>
                 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     O'lchov birligi
-                    </label>
-                    <select
-                      value={formData.unit === 'boshqa' ? 'boshqa' : (unitOptions.find(opt => opt.value === formData.unit) ? formData.unit : 'boshqa')}
+                  </label>
+                  <select
+                    value={formData.unit === 'boshqa' ? 'boshqa' : (unitOptions.find(opt => opt.value === formData.unit) ? formData.unit : 'boshqa')}
                     onChange={e => {
                       if (e.target.value === 'boshqa') {
                         setFormData(prev => ({ ...prev, unit: '' }));
@@ -909,25 +1015,25 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                         setFormData(prev => ({ ...prev, unit: e.target.value }));
                       }
                     }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
                   >
                     {unitOptions.map(option => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
                     ))}
-                    </select>
-                  </div>
+                  </select>
                 </div>
-                
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Badge
-                    </label>
+                </label>
                 <select
                   value={formData.badge}
                   onChange={e => setFormData(prev => ({ ...prev, badge: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
                 >
                   {badgeOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -935,59 +1041,150 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                     </option>
                   ))}
                 </select>
-                  </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tavsif
-                  </label>
+                </label>
                 <textarea
                   value={formData.description}
                   onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   rows="3"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
                 />
-                      </div>
+              </div>
               
-                <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Rasm
+                  Rasmlar (maksimal 8ta)
                 </label>
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={handleImageUpload}
+                  multiple
+                  onChange={handleImagesUpload}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
                 />
-                {(selectedImage || formData.image) && (
-                  <div className="mt-3 relative inline-block">
-                    <img 
-                      src={selectedImage || formData.image} 
-                      alt="Preview" 
-                      className="w-32 h-32 object-cover rounded-lg border border-gray-300" 
-                    />
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                      title="Rasmni o'chirish"
-                    >
-                      <i className="fas fa-times"></i>
-                    </button>
+                
+                {/* Existing images */}
+                {formData.images.length > 0 && (
+                  <div className="mt-3">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Mavjud rasmlar:</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {formData.images.map((image, index) => (
+                        <div key={`existing-${index}`} className="relative group">
+                          <img 
+                            src={image} 
+                            alt={`Existing ${index + 1}`} 
+                            className="w-full h-24 object-cover rounded-lg border border-gray-300" 
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg flex items-center justify-center">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-1">
+                              <button
+                                type="button"
+                                onClick={() => moveImageUp(index, false)}
+                                disabled={index === 0}
+                                className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Yuqoriga ko'chirish"
+                              >
+                                <i className="fas fa-chevron-up"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveImageDown(index, false)}
+                                disabled={index === formData.images.length - 1}
+                                className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Pastga ko'chirish"
+                              >
+                                <i className="fas fa-chevron-down"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeExistingImage(index)}
+                                className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                                title="Rasmni o'chirish"
+                              >
+                                <i className="fas fa-times"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <div className="absolute -top-2 -left-2 bg-primary-orange text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                            {index + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-                </div>
                 
+                {/* New selected images */}
+                {selectedImages.length > 0 && (
+                  <div className="mt-3">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Yangi rasmlar:</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {selectedImages.map((image, index) => (
+                        <div key={`selected-${index}`} className="relative group">
+                          <img 
+                            src={image} 
+                            alt={`Selected ${index + 1}`} 
+                            className="w-full h-24 object-cover rounded-lg border border-gray-300" 
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg flex items-center justify-center">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-1">
+                              <button
+                                type="button"
+                                onClick={() => moveImageUp(index, true)}
+                                disabled={index === 0}
+                                className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Yuqoriga ko'chirish"
+                              >
+                                <i className="fas fa-chevron-up"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveImageDown(index, true)}
+                                disabled={index === selectedImages.length - 1}
+                                className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Pastga ko'chirish"
+                              >
+                                <i className="fas fa-chevron-down"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeSelectedImage(index)}
+                                className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                                title="Rasmni o'chirish"
+                              >
+                                <i className="fas fa-times"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <div className="absolute -top-2 -left-2 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                            {formData.images.length + index + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Image count info */}
+                <div className="mt-2 text-sm text-gray-600">
+                  Jami rasmlar: {formData.images.length + selectedImages.length}/8
+                </div>
+              </div>
+              
               <div className="flex items-center justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={closeModal}
+                <button
+                  type="button"
+                  onClick={closeModal}
                   className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200"
-                  >
-                    Bekor qilish
-                  </button>
-                  <button
-                    type="submit"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="submit"
                   disabled={isSubmitting}
                   className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-opacity-90 transition duration-200 disabled:opacity-50"
                 >
@@ -996,9 +1193,9 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                   ) : (
                     <span>{selectedProduct ? 'Yangilash' : 'Qo\'shish'}</span>
                   )}
-                  </button>
-                </div>
-              </form>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1020,47 +1217,47 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                   onClick={() => setIsViewModalOpen(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                <i className="fas fa-times text-xl"></i>
-              </button>
+                  <i className="fas fa-times text-xl"></i>
+                </button>
+              </div>
             </div>
-                    </div>
             
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Mahsulot nomi</label>
                   <p className="text-gray-900">{selectedProduct.name}</p>
-                  </div>
-                  
+                </div>
+                
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Kategoriya</label>
                   <p className="text-gray-900">{selectedProduct.category}</p>
-                      </div>
+                </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Narx</label>
                   <p className="text-gray-900">{formatCurrency(selectedProduct.price)}</p>
-                      </div>
+                </div>
                 
                 {selectedProduct.oldPrice && (
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Eski narx</label>
                     <p className="text-gray-900 line-through">{formatCurrency(selectedProduct.oldPrice)}</p>
-                      </div>
+                  </div>
                 )}
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Zaxira</label>
                   <p className="text-gray-900">{selectedProduct.stock} {selectedProduct.unit}</p>
-                      </div>
+                </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
                   <span className={`px-2 py-1 text-xs rounded-full ${selectedProduct.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                     {selectedProduct.status === 'active' ? 'Faol' : 'Nofaol'}
                   </span>
-                    </div>
-                  </div>
+                </div>
+              </div>
               
               {selectedProduct.description && (
                 <div>
@@ -1074,30 +1271,30 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                   <label className="block text-sm font-medium text-gray-500 mb-1">Badge</label>
                   <span className="bg-primary-orange text-white text-xs px-2 py-1 rounded-full">
                     {selectedProduct.badge}
-                      </span>
-                    </div>
+                  </span>
+                </div>
               )}
               
               <div className="flex items-center justify-end space-x-3 pt-4">
-                      <button 
+                <button 
                   onClick={() => setIsViewModalOpen(false)}
                   className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200"
                 >
                   Yopish
-                      </button>
-                      <button 
-                        onClick={() => {
+                </button>
+                <button 
+                  onClick={() => {
                     setIsViewModalOpen(false);
                     openEditModal(selectedProduct);
                   }}
                   className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-opacity-90 transition duration-200"
                 >
                   Tahrirlash
-                      </button>
-                    </div>
-                  </div>
-                        </div>
-                        </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* AdminNotificationModals - matching index.html exactly */}

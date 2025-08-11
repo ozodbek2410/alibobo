@@ -7,12 +7,10 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
 
-  // Sample images - in real app, this would come from product.images array
-  const productImages = product?.images || [
-    product?.image || '/assets/default-product.png',
-    product?.image || '/assets/default-product.png',
-    product?.image || '/assets/default-product.png'
-  ];
+  // Get product images - support both old and new format
+  const productImages = product?.images && product.images.length > 0 
+    ? product.images 
+    : (product?.image ? [product.image] : ['/assets/default-product.png']);
 
   // Reset state when product changes
   useEffect(() => {
@@ -110,7 +108,7 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                       <img
                         src={image}
                         alt={`${product.name} ${index + 1}`}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain bg-white"
                       />
                     </button>
                   ))}
@@ -118,11 +116,11 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
               )}
               
               {/* Main Image */}
-              <div className="relative bg-gray-50 rounded-lg overflow-hidden aspect-square">
+              <div className="relative bg-white rounded-lg overflow-hidden aspect-square border border-gray-100">
                 <img
                   src={productImages[selectedImageIndex]}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
                 
                 {/* Navigation Arrows */}

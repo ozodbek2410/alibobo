@@ -69,9 +69,9 @@ router.post('/', async (req, res) => {
   try {
     console.log('📝 POST /api/products - Kelgan ma\'lumotlar:', req.body);
     
-    const { name, category, price, oldPrice, stock, image, description, brand, unit, status, badge } = req.body;
+    const { name, category, price, oldPrice, stock, image, images, description, brand, unit, status, badge } = req.body;
     
-    console.log('🔍 Ajratilgan ma\'lumotlar:', { name, category, price, oldPrice, stock, image, description, brand, unit, status, badge });
+    console.log('🔍 Ajratilgan ma\'lumotlar:', { name, category, price, oldPrice, stock, image, images, description, brand, unit, status, badge });
     
     const product = new Product({
       name,
@@ -79,7 +79,8 @@ router.post('/', async (req, res) => {
       price,
       oldPrice: oldPrice || null,
       stock: stock || 0,
-      image,
+      image: image || '', // Keep for backward compatibility
+      images: images || [], // New multiple images array
       description: description || '',
       brand: brand || '',
       unit: unit || 'dona',
@@ -183,9 +184,41 @@ router.get('/count/total', async (req, res) => {
 // GET categories
 router.get('/categories/list', async (req, res) => {
   try {
-    const categories = await Product.distinct('category');
-    res.json(categories);
+    // Predefined main categories (asosiy kategoriyalar) - matching main page
+    const mainCategories = [
+      'santexnika',
+      'yevro-remont', 
+      'elektrika',
+      'xoz-mag',
+      'dekorativ-mahsulotlar',
+      'g\'isht-va-bloklar',
+      'asbob-uskunalar',
+      'bo\'yoq-va-lak',
+      'elektr-mollalari',
+      'issiqlik-va-konditsioner',
+      'metall-va-armatura',
+      'yog\'och-va-mebel',
+      'tom-materiallar',
+      'temir-beton',
+      'gips-va-shpaklovka',
+      'boshqalar'
+    ];
+    
+    // Get additional categories from database products
+    const dbCategories = await Product.distinct('category');
+    
+    // Combine main categories with any additional categories from database
+    const allCategories = [...mainCategories];
+    dbCategories.forEach(category => {
+      if (category && !allCategories.includes(category)) {
+        allCategories.push(category);
+      }
+    });
+    
+    console.log('📋 Returning categories:', allCategories);
+    res.json(allCategories);
   } catch (error) {
+    console.error('❌ Categories API error:', error);
     res.status(500).json({ message: error.message });
   }
 });

@@ -32,6 +32,9 @@ const ProductsGrid = ({
   // Product detail modal states
   const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  
+  // Image carousel states for product cards
+  const [currentImageIndexes, setCurrentImageIndexes] = useState({});
 
   // Category mapping function - frontend to backend
   const getCategoryApiValue = (frontendCategory) => {
@@ -253,7 +256,7 @@ const ProductsGrid = ({
   // Show error notification
   const showErrorNotification = (message) => {
     const notification = document.createElement('div');
-    notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300';
+    notification.className = 'fixed top-4 right-4 md:top-24 md:right-6 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-300';
     notification.innerHTML = `
       <div class="flex items-center space-x-2">
         <i class="fas fa-exclamation-triangle"></i>
@@ -414,38 +417,136 @@ const ProductsGrid = ({
       return price.toLocaleString() + " so'm";
     };
     
+    // Get product images (support both new images array and old image field)
+    const productImages = product.images && product.images.length > 0 
+      ? product.images 
+      : (product.image ? [product.image] : []);
+    
+    // Get current image index for this product
+    const currentImageIndex = currentImageIndexes[product._id] || 0;
+    const currentImage = productImages.length > 0 ? productImages[currentImageIndex] : null;
+    
+    // Handle image navigation
+    const handleImageNavigation = (productId, direction, e) => {
+      e.stopPropagation(); // Prevent opening product detail
+      
+      const images = product.images && product.images.length > 0 
+        ? product.images 
+        : (product.image ? [product.image] : []);
+      
+      if (images.length <= 1) return;
+      
+      setCurrentImageIndexes(prev => {
+        const currentIndex = prev[productId] || 0;
+        let newIndex;
+        
+        if (direction === 'next') {
+          newIndex = currentIndex >= images.length - 1 ? 0 : currentIndex + 1;
+        } else {
+          newIndex = currentIndex <= 0 ? images.length - 1 : currentIndex - 1;
+        }
+        
+        return { ...prev, [productId]: newIndex };
+      });
+    };
+    
+    // Handle dot navigation
+    const handleDotClick = (productId, imageIndex, e) => {
+      e.stopPropagation(); // Prevent opening product detail
+      setCurrentImageIndexes(prev => ({ ...prev, [productId]: imageIndex }));
+    };
+    
     return (
       <div key={product._id} className="bg-white rounded-lg lg:rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col h-full">
         <div className="relative cursor-pointer" onClick={() => openProductDetail(product)}>
-          <img src={product.image || '/assets/default-product.png'} alt={product.name} className="w-full h-40 sm:h-48 lg:h-56 object-cover" />
+          {/* Image Container */}
+          <div className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-white">
+            {currentImage ? (
+              <img 
+                src={currentImage} 
+                alt={product.name} 
+                className="w-full h-full object-contain transition-opacity duration-300" 
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                <i className="fas fa-image text-gray-400 text-3xl"></i>
+              </div>
+            )}
+            
+            {/* Image Navigation Arrows - Only show if multiple images */}
+            {productImages.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => handleImageNavigation(product._id, 'prev', e)}
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-70 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                  style={{ zIndex: 10 }}
+                >
+                  <i className="fas fa-chevron-left text-sm"></i>
+                </button>
+                <button
+                  onClick={(e) => handleImageNavigation(product._id, 'next', e)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-70 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                  style={{ zIndex: 10 }}
+                >
+                  <i className="fas fa-chevron-right text-sm"></i>
+                </button>
+              </>
+            )}
+            
+            {/* Image Dots Indicator - Only show if multiple images */}
+            {productImages.length > 1 && (
+              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1" style={{ zIndex: 10 }}>
+                {productImages.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={(e) => handleDotClick(product._id, index, e)}
+                    className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                      index === currentImageIndex 
+                        ? 'bg-white' 
+                        : 'bg-white bg-opacity-50 hover:bg-opacity-75'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+            
+            {/* Image Counter - Show current image number */}
+            {productImages.length > 1 && (
+              <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
+                {currentImageIndex + 1}/{productImages.length}
+              </div>
+            )}
+          </div>
+          
+          {/* Badges */}
           {product.badge && (
-            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-primary-orange text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold">
+            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-primary-orange text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
               {product.badge}
             </span>
           )}
           {product.oldPrice && product.oldPrice > product.price && (
-            <span className="absolute top-2 right-2 lg:top-3 lg:right-3 bg-red-500 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold">
+            <span className="absolute top-2 right-2 lg:top-3 lg:right-3 bg-red-500 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
               -{Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}%
             </span>
           )}
           
           {/* Chegirma badge'i (prioritet yuqori) */}
           {(product.oldPrice && product.oldPrice > product.price && !product.badge) && (
-            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-red-600 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold">
+            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-red-600 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
               Chegirma
             </span>
           )}
           
           {/* Mashhur badge'i (faqat chegirma yo'q bo'lsa) */}
           {(product.rating >= 4.5 && !product.badge && !(product.oldPrice && product.oldPrice > product.price)) && (
-            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-primary-orange text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold">
+            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-primary-orange text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
               Mashhur
             </span>
           )}
           
           {/* Yangi badge'i (faqat boshqa badge'lar yo'q bo'lsa) */}
           {(product.isNew && !product.badge && !(product.oldPrice && product.oldPrice > product.price) && !(product.rating >= 4.5)) && (
-            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-green-500 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold">
+            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-green-500 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
               Yangi
             </span>
           )}

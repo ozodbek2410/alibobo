@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 
 const Catalog = ({ onCategorySelect, onClose, selectedCategory }) => {
-  // Static categories from admin panel - matching CategoryNavigation.jsx format and order
+  // Static categories from admin panel - Main categories first, matching CategoryNavigation.jsx format and order
   const categories = [
+    { name: "Santexnika", value: "santexnika" },
+    { name: "Yevro remont", value: "yevro-remont" },
+    { name: "Elektrika", value: "elektrika" },
+    { name: "Xoz mag", value: "xoz-mag" },
+    { name: "Dekorativ mahsulotlar", value: "dekorativ-mahsulotlar" },
     { name: "G'isht va bloklar", value: "g'isht-va-bloklar" },
     { name: "Asbob-uskunalar", value: "asbob-uskunalar" },
     { name: "Bo'yoq va lak", value: "bo'yoq-va-lak" },
     { name: "Elektr mollalari", value: "elektr-mollalari" },
     { name: "Dekor va bezatish", value: "dekor-va-bezatish" },
-    { name: "Santexnika", value: "santexnika" },
     { name: "Issiqlik va konditsioner", value: "issiqlik-va-konditsioner" },
     { name: "Metall va armatura", value: "metall-va-armatura" },
     { name: "Yog'och va mebel", value: "yog'och-va-mebel" },
