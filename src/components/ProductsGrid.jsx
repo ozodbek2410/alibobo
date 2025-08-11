@@ -457,10 +457,10 @@ const ProductsGrid = ({
     };
     
     return (
-      <div key={product._id} className="bg-white rounded-lg lg:rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col h-full">
+      <div key={product._id} className="bg-white rounded-lg lg:rounded-xl border border-gray-300 overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col h-full transform hover:scale-[1.02] hover:border-gray-400">
         <div className="relative cursor-pointer" onClick={() => openProductDetail(product)}>
           {/* Image Container */}
-          <div className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-white">
+          <div className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-gray-50 border-b border-gray-200">
             {currentImage ? (
               <img 
                 src={currentImage} 
@@ -556,6 +556,15 @@ const ProductsGrid = ({
           <div className="mb-2 cursor-pointer" onClick={() => openProductDetail(product)}>
             <h3 className="font-semibold text-gray-900 text-sm sm:text-base lg:text-lg line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem] hover:text-primary-orange transition-colors duration-200">{product.name || 'Noma\'lum mahsulot'}</h3>
           </div>
+          
+          {/* Product Description */}
+          {product.description && (
+            <div className="mb-3">
+              <p className="text-gray-600 text-xs sm:text-sm line-clamp-2 leading-relaxed">
+                {product.description}
+              </p>
+            </div>
+          )}
           
           <div className="mt-auto">
             <div className="flex items-center justify-between mb-3">

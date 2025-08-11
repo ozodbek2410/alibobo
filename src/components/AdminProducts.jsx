@@ -61,24 +61,13 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
   // Dynamic categories loaded from database
   const [categories, setCategories] = useState(['Barcha kategoriyalar']);
 
-  // Main categories (asosiy kategoriyalar) - fallback and default categories
+  // Main categories (asosiy kategoriyalar) - only the 5 main categories
   const mainCategories = [
     'santexnika',
     'yevro-remont', 
     'elektrika',
     'xoz-mag',
-    'dekorativ-mahsulotlar',
-    'g\'isht-va-bloklar',
-    'asbob-uskunalar',
-    'bo\'yoq-va-lak',
-    'elektr-mollalari',
-    'issiqlik-va-konditsioner',
-    'metall-va-armatura',
-    'yog\'och-va-mebel',
-    'tom-materiallar',
-    'temir-beton',
-    'gips-va-shpaklovka',
-    'boshqalar'
+    'dekorativ-mahsulotlar'
   ];
 
   // Load categories from API with fallback to main categories
