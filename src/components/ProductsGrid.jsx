@@ -35,6 +35,8 @@ const ProductsGrid = ({
   
   // Image carousel states for product cards
   const [currentImageIndexes, setCurrentImageIndexes] = useState({});
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
 
   // Category mapping function - frontend to backend
   const getCategoryApiValue = (frontendCategory) => {
@@ -456,11 +458,47 @@ const ProductsGrid = ({
       setCurrentImageIndexes(prev => ({ ...prev, [productId]: imageIndex }));
     };
     
+    // Touch/swipe handlers for mobile
+    const handleTouchStart = (e) => {
+      setTouchEnd(null); // Reset touchEnd
+      setTouchStart(e.targetTouches[0].clientX);
+    };
+    
+    const handleTouchMove = (e) => {
+      setTouchEnd(e.targetTouches[0].clientX);
+    };
+    
+    const handleTouchEnd = (productId, e) => {
+      if (!touchStart || !touchEnd) return;
+      
+      const distance = touchStart - touchEnd;
+      const isLeftSwipe = distance > 50;
+      const isRightSwipe = distance < -50;
+      
+      const images = product.images && product.images.length > 0 
+        ? product.images 
+        : (product.image ? [product.image] : []);
+      
+      if (images.length <= 1) return;
+      
+      if (isLeftSwipe) {
+        // Swipe left - next image
+        handleImageNavigation(productId, 'next', e);
+      } else if (isRightSwipe) {
+        // Swipe right - previous image
+        handleImageNavigation(productId, 'prev', e);
+      }
+      
+      // Reset touch states
+      setTouchStart(null);
+      setTouchEnd(null);
+    };
+    
     return (
-      <div key={product._id} className="bg-white rounded-lg lg:rounded-xl border border-gray-300 overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col h-full transform hover:scale-[1.02] hover:border-gray-400">
+      <div key={product._id} className="bg-white rounded-lg lg:rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col h-full transform hover:scale-[1.02]">
         <div className="relative cursor-pointer" onClick={() => openProductDetail(product)}>
           {/* Image Container */}
-          <div className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-gray-50 border-b border-gray-200">
+          <div className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-gray-50">
             {currentImage ? (
               <img 
                 src={currentImage} 
@@ -481,39 +519,32 @@ const ProductsGrid = ({
                   className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-70 transition-all duration-200 opacity-0 group-hover:opacity-100"
                   style={{ zIndex: 10 }}
                 >
-                  <i className="fas fa-chevron-left text-sm"></i>
+                  <i className="fas fa-chevron-left text-xs"></i>
                 </button>
                 <button
                   onClick={(e) => handleImageNavigation(product._id, 'next', e)}
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-70 transition-all duration-200 opacity-0 group-hover:opacity-100"
                   style={{ zIndex: 10 }}
                 >
-                  <i className="fas fa-chevron-right text-sm"></i>
+                  <i className="fas fa-chevron-right text-xs"></i>
                 </button>
               </>
             )}
             
-            {/* Image Dots Indicator - Only show if multiple images */}
+            {/* Image Dots - Show at bottom instead of counter */}
             {productImages.length > 1 && (
-              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1" style={{ zIndex: 10 }}>
+              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
                 {productImages.map((_, index) => (
                   <button
                     key={index}
                     onClick={(e) => handleDotClick(product._id, index, e)}
                     className={`w-2 h-2 rounded-full transition-all duration-200 ${
                       index === currentImageIndex 
-                        ? 'bg-white' 
-                        : 'bg-white bg-opacity-50 hover:bg-opacity-75'
+                        ? 'bg-gray-600' 
+                        : 'bg-gray-300 hover:bg-gray-400'
                     }`}
                   />
                 ))}
-              </div>
-            )}
-            
-            {/* Image Counter - Show current image number */}
-            {productImages.length > 1 && (
-              <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
-                {currentImageIndex + 1}/{productImages.length}
               </div>
             )}
           </div>
@@ -552,14 +583,15 @@ const ProductsGrid = ({
           )}
         </div>
         
-        <div className="p-3 lg:p-4 flex flex-col flex-grow">
-          <div className="mb-2 cursor-pointer" onClick={() => openProductDetail(product)}>
-            <h3 className="font-semibold text-gray-900 text-sm sm:text-base lg:text-lg line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem] hover:text-primary-orange transition-colors duration-200">{product.name || 'Noma\'lum mahsulot'}</h3>
+        <div className="p-3 lg:p-4 flex flex-col flex-grow bg-white">
+          {/* Product Name Section */}
+          <div className={`cursor-pointer ${product.description ? 'mb-2' : 'mb-4'}`} onClick={() => openProductDetail(product)}>
+            <h3 className="font-semibold text-gray-800 text-sm sm:text-base lg:text-lg line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem] hover:text-primary-orange transition-colors duration-200 leading-snug">{product.name || 'Noma\'lum mahsulot'}</h3>
           </div>
           
-          {/* Product Description */}
+          {/* Product Description - Only show if exists */}
           {product.description && (
-            <div className="mb-3">
+            <div className="mb-4 p-2 bg-blue-50 rounded-md border-l-3 border-blue-200">
               <p className="text-gray-600 text-xs sm:text-sm line-clamp-2 leading-relaxed">
                 {product.description}
               </p>
@@ -567,17 +599,17 @@ const ProductsGrid = ({
           )}
           
           <div className="mt-auto">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex flex-col">
-                <span className="font-bold text-gray-900 text-sm lg:text-lg">
+                <span className="font-bold text-gray-900 text-sm sm:text-base lg:text-lg">
                   {formatPrice(product.price)}
                 </span>
                 {product.oldPrice && product.oldPrice > product.price && (
                   <div className="flex items-center space-x-2">
-                    <span className="text-gray-500 line-through text-xs lg:text-sm">
+                    <span className="text-gray-500 line-through text-xs sm:text-sm">
                       {formatPrice(product.oldPrice)}
                     </span>
-                    <span className="text-red-500 text-xs font-medium">
+                    <span className="text-red-500 text-xs sm:text-sm font-medium">
                       -{discount}%
                     </span>
                   </div>
@@ -587,7 +619,7 @@ const ProductsGrid = ({
               {/* Stock info */}
               {product.stock !== undefined && (
                 <div className="text-right">
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs sm:text-sm text-blue-600 font-medium">
                     {product.stock > 0 ? `${product.stock} ${product.unit || 'dona'}` : 'Tugagan'}
                   </p>
                   {product.stock > 0 && product.stock < 10 && (
