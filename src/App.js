@@ -64,7 +64,7 @@ function App() {
         <Route path="/admin" element={
           <ProtectedRoute>
             <div className="flex">
-              <AdminSidebar 
+              <AdminSidebar
                 active="dashboard"
                 onLogout={handleLogout}
                 isMobileOpen={isMobileSidebarOpen}
@@ -72,7 +72,7 @@ function App() {
                 counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
               />
               <div className="flex-1 lg:ml-64">
-                <AdminDashboard 
+                <AdminDashboard
                   onMobileToggle={handleMobileToggle}
                   craftsmenCount={craftsmenCount}
                   productsCount={productsCount}
@@ -85,7 +85,7 @@ function App() {
         <Route path="/admin/craftsmen" element={
           <ProtectedRoute>
             <div className="flex ">
-              <AdminSidebar 
+              <AdminSidebar
                 active="craftsmen"
                 onLogout={handleLogout}
                 isMobileOpen={isMobileSidebarOpen}
@@ -93,7 +93,7 @@ function App() {
                 counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
               />
               <div className="flex-1 lg:ml-64">
-                <AdminCraftsmen 
+                <AdminCraftsmen
                   onCountChange={handleCraftsmenCountChange}
                   onMobileToggle={handleMobileToggle}
                 />
@@ -104,7 +104,7 @@ function App() {
         <Route path="/admin/products" element={
           <ProtectedRoute>
             <div className="flex">
-              <AdminSidebar 
+              <AdminSidebar
                 active="products"
                 onLogout={handleLogout}
                 isMobileOpen={isMobileSidebarOpen}
@@ -112,7 +112,7 @@ function App() {
                 counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
               />
               <div className="flex-1 lg:ml-64">
-                <AdminProducts 
+                <AdminProducts
                   onMobileToggle={handleMobileToggle}
                   onCountChange={handleProductsCountChange}
                 />
@@ -123,7 +123,7 @@ function App() {
         <Route path="/admin/orders" element={
           <ProtectedRoute>
             <div className="flex">
-              <AdminSidebar 
+              <AdminSidebar
                 active="orders"
                 onLogout={handleLogout}
                 isMobileOpen={isMobileSidebarOpen}
@@ -131,7 +131,7 @@ function App() {
                 counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
               />
               <div className="flex-1 lg:ml-64">
-                <AdminOrders 
+                <AdminOrders
                   onMobileToggle={handleMobileToggle}
                   onCountChange={handleOrdersCountChange}
                 />
@@ -142,7 +142,7 @@ function App() {
         <Route path="/admin/analytics" element={
           <ProtectedRoute>
             <div className="flex">
-              <AdminSidebar 
+              <AdminSidebar
                 active="analytics"
                 onLogout={handleLogout}
                 isMobileOpen={isMobileSidebarOpen}
@@ -150,7 +150,7 @@ function App() {
                 counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
               />
               <div className="flex-1">
-                <AdminAnalytics 
+                <AdminAnalytics
                   onMobileToggle={handleMobileToggle}
                 />
               </div>
