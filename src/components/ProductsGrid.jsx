@@ -498,15 +498,24 @@ const ProductsGrid = ({
       <div key={product._id} className="bg-white rounded-lg lg:rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col h-full transform hover:scale-[1.02]">
         <div className="relative cursor-pointer" onClick={() => openProductDetail(product)}>
           {/* Image Container */}
-          <div className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-gray-50">
+          <div className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-white">
             {currentImage ? (
-              <img 
-                src={currentImage} 
-                alt={product.name} 
-                className="w-full h-full object-contain transition-opacity duration-300" 
-              />
+              <>
+                <img 
+                  src={currentImage} 
+                  alt={product.name} 
+                  className="w-full h-full object-contain transition-opacity duration-300" 
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling.style.display = 'flex';
+                  }}
+                />
+                <div className="w-full h-full flex items-center justify-center bg-white" style={{ display: 'none' }}>
+                  <i className="fas fa-image text-gray-400 text-3xl"></i>
+                </div>
+              </>
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-100">
+              <div className="w-full h-full flex items-center justify-center bg-white">
                 <i className="fas fa-image text-gray-400 text-3xl"></i>
               </div>
             )}
@@ -650,7 +659,7 @@ const ProductsGrid = ({
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {[...Array(8)].map((_, index) => (
             <div key={index} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm animate-pulse">
-              <div className="h-56 bg-gray-200"></div>
+              <div className="h-56 bg-white"></div>
               <div className="p-4">
                 <div className="h-4 bg-gray-200 rounded mb-2"></div>
                 <div className="h-3 bg-gray-200 rounded mb-2"></div>
