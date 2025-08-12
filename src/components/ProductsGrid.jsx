@@ -26,6 +26,8 @@ const ProductsGrid = ({
   const [maxPrice, setMaxPrice] = useState('');
   const [appliedMinPrice, setAppliedMinPrice] = useState('');
   const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
+  const [displayedProducts, setDisplayedProducts] = useState(20);
+  const [showLoadMore, setShowLoadMore] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [refreshInterval, setRefreshInterval] = useState(null);
 
@@ -114,6 +116,11 @@ const ProductsGrid = ({
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  // Reset displayed products when filters change
+  useEffect(() => {
+    setDisplayedProducts(20);
+  }, [quickFilter, appliedMinPrice, appliedMaxPrice, searchTerm, currentCategory]);
 
   // Use centralized addToCart function
   const addToCart = (product) => {
@@ -730,38 +737,58 @@ const ProductsGrid = ({
             <div className="flex items-center gap-2">
               <input
                 type="number"
+                min="0"
                 placeholder="dan"
                 value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
-                className="w-24 lg:w-28 px-3 py-2 border-2 border-gray-400 rounded-xl text-gray-600 text-sm focus:outline-none focus:border-primary-orange focus:ring-2 focus:ring-primary-orange/20 transition-all duration-200 bg-white shadow-sm"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || (Number.isInteger(parseFloat(value)) && parseFloat(value) >= 0)) {
+                    setMinPrice(value);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.' || e.key === ',') {
+                    e.preventDefault();
+                  }
+                }}
+                className="w-20 lg:w-24 px-2 py-1.5 border border-gray-300 rounded-lg text-gray-700 text-sm focus:outline-none focus:border-primary-orange transition-colors duration-200 bg-white"
               />
-              <span className="text-gray-500 text-sm">-</span>
+              <span className="text-gray-400 text-sm">-</span>
               <input
                 type="number"
+                min="0"
                 placeholder="oldin"
                 value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-                className="w-24 lg:w-28 px-3 py-2 border-2 border-gray-400 rounded-xl text-gray-600 text-sm focus:outline-none focus:border-primary-orange focus:ring-2 focus:ring-primary-orange/20 transition-all duration-200 bg-white shadow-sm"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || (Number.isInteger(parseFloat(value)) && parseFloat(value) >= 0)) {
+                    setMaxPrice(value);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.' || e.key === ',') {
+                    e.preventDefault();
+                  }
+                }}
+                className="w-20 lg:w-24 px-2 py-1.5 border border-gray-300 rounded-lg text-gray-700 text-sm focus:outline-none focus:border-primary-orange transition-colors duration-200 bg-white"
               />
-              
-              {/* Search Button */}
-              {(minPrice || maxPrice) && (
-                <button
-                  onClick={applyPriceFilter}
-                  className="flex items-center justify-center px-3 py-2 bg-primary-orange hover:bg-primary-orange/90 text-white rounded-xl transition-all duration-200 text-sm font-medium"
-                  title="Narx bo'yicha qidirish"
-                >
-                  <i className="fas fa-search text-xs mr-1"></i>
-                  Qidirish
-                </button>
-              )}
 
-              {/* Clear Button */}
+              <button
+                onClick={applyPriceFilter}
+                disabled={minPrice && maxPrice && parseInt(maxPrice) < parseInt(minPrice)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${minPrice && maxPrice && parseInt(maxPrice) < parseInt(minPrice)
+                    ? 'bg-gray-300 cursor-not-allowed text-gray-500'
+                    : 'bg-primary-orange hover:bg-primary-orange/90 text-white'
+                  }`}
+              >
+                Qidirish
+              </button>
+
               {(appliedMinPrice || appliedMaxPrice) && (
                 <button
                   onClick={clearPriceFilter}
-                  className="flex items-center justify-center w-7 h-7 bg-red-100 hover:bg-red-200 text-red-500 hover:text-red-600 rounded-full transition-all duration-200"
-                  title="Narxlarni tozalash"
+                  className="w-6 h-6 bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-700 rounded transition-colors duration-200 flex items-center justify-center"
+                  title="Tozalash"
                 >
                   <i className="fas fa-times text-xs"></i>
                 </button>
@@ -779,9 +806,23 @@ const ProductsGrid = ({
 
       {/* Products Grid */}
       {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-          {filteredProducts.map(product => createProductCard(product))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            {filteredProducts.slice(0, displayedProducts).map(product => createProductCard(product))}
+          </div>
+
+          {/* Load More Button */}
+          {filteredProducts.length > displayedProducts && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={() => setDisplayedProducts(prev => prev + 20)}
+                className="px-6 py-3 bg-primary-orange hover:bg-primary-orange/90 text-white rounded-lg font-medium transition-colors duration-200"
+              >
+                Ko'proq
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-16">
           <div className="max-w-md mx-auto">
