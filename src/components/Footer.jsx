@@ -70,6 +70,57 @@ const Footer = () => {
             )}
           </div>
 
+          {/* Aloqa - Expandable */}
+          <div className="border-b border-gray-600 pb-4 mb-4">
+            <button 
+              onClick={() => toggleSection('contact')}
+              className="flex items-center justify-between w-full text-left py-3"
+            >
+              <span className="text-base font-semibold text-white">Aloqa</span>
+              <svg 
+                width="20" 
+                height="20" 
+                viewBox="0 0 36 36" 
+                fill="none" 
+                xmlns="http://www.w3.org/2000/svg" 
+                className={`transform transition-transform duration-300 ${expandedSections.contact ? 'rotate-180' : ''}`}
+              >
+                <path 
+                  fillRule="evenodd" 
+                  clipRule="evenodd" 
+                  d="M5.29276 12.293C5.68321 11.9024 6.31637 11.9023 6.70697 12.2928L18.0044 23.5858L29.2928 12.293C29.6832 11.9024 30.3164 11.9023 30.707 12.2928C31.0976 12.6832 31.0977 13.3164 30.7072 13.707L18.7119 25.707C18.5244 25.8945 18.27 25.9999 18.0048 26C17.7396 26.0001 17.4852 25.8947 17.2977 25.7072L5.29303 13.7072C4.90243 13.3168 4.90231 12.6836 5.29276 12.293Z" 
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
+            {expandedSections.contact && (
+              <div className="mt-3 space-y-3">
+                <div className="space-y-3">
+                  <div className="flex items-center text-gray-300">
+                    <i className="fas fa-phone mr-3 text-primary-orange text-sm"></i>
+                    <a href="tel:+998948494956" className="hover:text-primary-orange transition duration-300 text-sm">
+                      +998 94 849 49 56
+                    </a>
+                  </div>
+                  <div className="flex items-center text-gray-300">
+                    <i className="fas fa-envelope mr-3 text-primary-orange text-sm"></i>
+                    <span className="text-sm">info@alibobo.uz</span>
+                  </div>
+                  <div className="flex items-center text-gray-300">
+                    <i className="fas fa-map-marker-alt mr-3 text-primary-orange text-sm"></i>
+                    <span className="text-sm">Toshkent, O'zbekiston</span>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-gray-600">
+                    <p className="text-xs text-gray-400 leading-relaxed">
+                      Savollaringiz bormi? Bizga qo'ng'iroq qiling yoki xabar yuboring. 
+                      Mutaxassislarimiz sizga yordam berishga tayyor!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Bottom Row - Social Icons on Side & Copyright */}
           <div className="flex items-center justify-between">
             <div className="flex space-x-4">

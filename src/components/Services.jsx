@@ -54,37 +54,25 @@ const Services = () => {
             </div>
           </div>
 
-        <div className="bg-gray-50 rounded-2xl p-8">
-          <h3 className="text-2xl font-bold text-primary-dark mb-6">Bepul taklif oling</h3>
-          <form className="space-y-4">
-              <input
-                type="text"
-                placeholder="Ismingiz"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:border-primary-orange"
-              />
-              <input
-                type="tel"
-                placeholder="Telefon raqamingiz"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:border-primary-orange"
-              />
-            <select className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:border-primary-orange">
-              <option>Xizmat turini tanlang</option>
-              <option>Mollalar sotib olish</option>
-              <option>Ustalar topish</option>
-              <option>Loyiha maslahat</option>
-            </select>
-              <textarea
-                placeholder="Loyihangiz haqida qisqacha ma'lumot"
-                rows="4"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:border-primary-orange resize-none"
-              ></textarea>
-              <button
-                type="submit"
-                className="w-full bg-primary-orange text-white py-3 rounded-lg hover:bg-opacity-90 transition duration-300"
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 lg:p-8 border border-gray-200">
+          <h3 className="text-xl lg:text-2xl font-bold text-primary-orange mb-4 text-center">Taklif olish uchun</h3>
+          
+          <div className="text-center">
+            <div className="mb-4">
+              <p className="text-gray-600 text-sm lg:text-base leading-relaxed mb-6 font-medium">
+                Mahsulot sotib olishda va loyihangizni amalga oshirishda ikkilanadigan bo'lsangiz, 
+                bizning mutaxassislarimizdan <span className="text-primary-orange font-semibold">bepul maslahat</span> oling!
+              </p>
+              
+              <a 
+                href="tel:+998948494956" 
+                className="inline-flex items-center justify-center gap-3 bg-primary-orange hover:bg-orange-600 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-110 hover:-translate-y-1 active:scale-95"
               >
-              Taklif olish
-            </button>
-          </form>
+                <i className="fas fa-phone text-base animate-pulse"></i>
+                <span className="tracking-wide">+998 94 849 49 56</span>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>

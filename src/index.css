@@ -32,11 +32,7 @@ body {
 }
 
 /* Mobile bottom padding for fixed navigation */
-@media (max-width: 1023px) {
-  body {
-    padding-bottom: 80px;
-  }
-}
+
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
@@ -55,6 +51,15 @@ code {
   }
 }
 
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @keyframes slideDown {
   from {
     opacity: 0;
@@ -68,6 +73,10 @@ code {
 
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
 }
 
 .animate-slideDown {

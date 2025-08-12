@@ -247,7 +247,7 @@ const Header = ({
       </header>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-primary-dark border-t border-gray-600 z-50 lg:hidden shadow-lg">
+      <nav className="fixed bottom-[-1px] left-0 right-0 bg-primary-dark border-t border-gray-600 z-50 lg:hidden shadow-lg">
         <ul className="flex items-center justify-around">
           {/* 1. Akademiya */}
           <li className="flex-1">
