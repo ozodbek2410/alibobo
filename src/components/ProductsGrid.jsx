@@ -21,6 +21,15 @@ const ProductsGrid = ({
   const [sortBy, setSortBy] = useState('name');
   const [priceRange, setPriceRange] = useState('all');
   const [quickFilter, setQuickFilter] = useState('all');
+<<<<<<< HEAD
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [appliedMinPrice, setAppliedMinPrice] = useState('');
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
+  const [displayedProducts, setDisplayedProducts] = useState(20);
+  const [showLoadMore, setShowLoadMore] = useState(false);
+=======
+>>>>>>> ed5ed928d435e2b03e60e7e54b52a6b01790de4f
   const [lastUpdated, setLastUpdated] = useState(null);
   const [refreshInterval, setRefreshInterval] = useState(null);
   
@@ -110,6 +119,11 @@ const ProductsGrid = ({
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  // Reset displayed products when filters change
+  useEffect(() => {
+    setDisplayedProducts(20);
+  }, [quickFilter, appliedMinPrice, appliedMaxPrice, searchTerm, currentCategory]);
 
   // Use centralized addToCart function
   const addToCart = (product) => {
@@ -754,6 +768,72 @@ const ProductsGrid = ({
                 </svg>
               </div>
             </div>
+<<<<<<< HEAD
+
+            {/* Price Filter */}
+            <span className="text-gray-700 font-medium text-sm lg:text-base">Narx:</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="0"
+                placeholder="dan"
+                value={minPrice}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || (Number.isInteger(parseFloat(value)) && parseFloat(value) >= 0)) {
+                    setMinPrice(value);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.' || e.key === ',') {
+                    e.preventDefault();
+                  }
+                }}
+                className="w-20 lg:w-24 px-2 py-1.5 border border-gray-300 rounded-lg text-gray-700 text-sm focus:outline-none focus:border-primary-orange transition-colors duration-200 bg-white"
+              />
+              <span className="text-gray-400 text-sm">-</span>
+              <input
+                type="number"
+                min="0"
+                placeholder="oldin"
+                value={maxPrice}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || (Number.isInteger(parseFloat(value)) && parseFloat(value) >= 0)) {
+                    setMaxPrice(value);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.' || e.key === ',') {
+                    e.preventDefault();
+                  }
+                }}
+                className="w-20 lg:w-24 px-2 py-1.5 border border-gray-300 rounded-lg text-gray-700 text-sm focus:outline-none focus:border-primary-orange transition-colors duration-200 bg-white"
+              />
+
+              <button
+                onClick={applyPriceFilter}
+                disabled={minPrice && maxPrice && parseInt(maxPrice) < parseInt(minPrice)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${minPrice && maxPrice && parseInt(maxPrice) < parseInt(minPrice)
+                    ? 'bg-gray-300 cursor-not-allowed text-gray-500'
+                    : 'bg-primary-orange hover:bg-primary-orange/90 text-white'
+                  }`}
+              >
+                Qidirish
+              </button>
+
+              {(appliedMinPrice || appliedMaxPrice) && (
+                <button
+                  onClick={clearPriceFilter}
+                  className="w-6 h-6 bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-700 rounded transition-colors duration-200 flex items-center justify-center"
+                  title="Tozalash"
+                >
+                  <i className="fas fa-times text-xs"></i>
+                </button>
+              )}
+            </div>
+=======
+>>>>>>> ed5ed928d435e2b03e60e7e54b52a6b01790de4f
           </div>
 
         </div>
@@ -766,9 +846,23 @@ const ProductsGrid = ({
 
       {/* Products Grid */}
       {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-          {filteredProducts.map(product => createProductCard(product))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            {filteredProducts.slice(0, displayedProducts).map(product => createProductCard(product))}
+          </div>
+
+          {/* Load More Button */}
+          {filteredProducts.length > displayedProducts && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={() => setDisplayedProducts(prev => prev + 20)}
+                className="px-6 py-3 bg-primary-orange hover:bg-primary-orange/90 text-white rounded-lg font-medium transition-colors duration-200"
+              >
+                Ko'proq
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-16">
           <div className="max-w-md mx-auto">
