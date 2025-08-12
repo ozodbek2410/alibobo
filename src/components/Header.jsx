@@ -127,9 +127,9 @@ const Header = ({
   return (
     <>
       {/* Desktop Header */}
-      <header className="bg-primary-dark shadow-lg sticky top-0 z-50 hidden lg:block">
+      <header className="bg-primary-dark shadow-lg z-50 hidden lg:block">
         <div className="container mx-auto px-6">
-          <div className="flex items-center justify-between py-2 gap-8">
+          <div className="flex items-center py-2 gap-8">
             {/* Left side - Logo */}
             <div className="flex items-center min-w-fit">
               {/* Logo */}
@@ -153,9 +153,9 @@ const Header = ({
               </div>
             </div>
 
-            {/* Left-aligned Search Bar */}
-            <div className="flex-1 max-w-2xl">
-              <form onSubmit={handleSearch} className="w-full">
+            {/* Centered Search Bar */}
+            <div className="flex-1 flex justify-center">
+              <form onSubmit={handleSearch} className="w-full max-w-2xl">
                 <div className="relative">
                   <input
                     type="text"
@@ -201,7 +201,7 @@ const Header = ({
       />
 
       {/* Mobile Header - Logo and Search - Hide when cart is open */}
-      <header className={`bg-primary-dark shadow-lg z-50 lg:hidden transition-transform duration-300 ${isCartOpen ? '-translate-y-full' : 'translate-y-0'}`}>
+      <header className={`bg-primary-dark shadow-lg lg:hidden transition-transform duration-300 ${isCartOpen ? '-translate-y-full' : 'translate-y-0'}`}>
         <div className="container mx-auto px-4 py-2">
           <div className="flex items-center  justify-between gap-3">
             {/* Mobile Logo */}
@@ -247,8 +247,8 @@ const Header = ({
       </header>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-[-1px] left-0 right-0 bg-primary-dark border-t border-gray-600 z-50 lg:hidden shadow-lg">
-        <ul className="flex items-center justify-around">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
+        <ul className="flex items-center justify-around bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-[0_-6px_16px_rgba(0,0,0,0.06)] py-1">
           {/* 1. Akademiya */}
           <li className="flex-1">
             <button 
@@ -263,10 +263,10 @@ const Header = ({
                   behavior: 'smooth' 
                 });
               }}
-              className="flex flex-col items-center px-1 text-gray-300 hover:text-primary-orange transition duration-300 w-full"
+              className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full"
             >
-              <i className="fas fa-graduation-cap text-lg"></i>
-              <span className="text-xs font-medium">Akademiya</span>
+              <i className="fas fa-graduation-cap text-base"></i>
+              <span className="text-[11px] font-medium">Akademiya</span>
             </button>
           </li>
           
@@ -286,10 +286,10 @@ const Header = ({
                   });
                 }
               }}
-              className="flex flex-col items-center px-1 text-gray-300 hover:text-primary-orange transition duration-300 w-full"
+              className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full"
             >
-              <i className="fas fa-box text-lg"></i>
-              <span className="text-xs font-medium">Mahsulotlar</span>
+              <i className="fas fa-box text-base"></i>
+              <span className="text-[11px] font-medium">Mahsulotlar</span>
             </button>
           </li>
           
@@ -303,10 +303,10 @@ const Header = ({
                   onToggleCart();
                 }
               }}
-              className="flex flex-col items-center px-1 text-gray-300 hover:text-primary-orange transition duration-300 w-full"
+              className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full"
             >
-              <i className="fas fa-phone text-lg"></i>
-              <span className="text-xs font-medium">Aloqa</span>
+              <i className="fas fa-phone text-base"></i>
+              <span className="text-[11px] font-medium">Aloqa</span>
             </a>
           </li>
           
@@ -314,12 +314,12 @@ const Header = ({
           <li className="flex-1">
             <button 
               onClick={toggleCart}
-              className="flex flex-col items-center px-1 text-gray-300 hover:text-primary-orange transition duration-300 w-full relative"
+              className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full relative"
             >
-              <i className="fas fa-shopping-cart text-lg"></i>
-              <span className="text-xs font-medium">Savatcha</span>
+              <i className="fas fa-shopping-cart text-base"></i>
+              <span className="text-[11px] font-medium">Savatcha</span>
               {getTotalItems() > 0 && (
-                <span className="absolute -top-1 right-3 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                <span className="absolute -top-1 right-3 bg-red-500 text-white text-[10px] rounded-full h-5 w-5 flex items-center justify-center font-bold">
                   {getTotalItems()}
                 </span>
               )}
@@ -342,10 +342,10 @@ const Header = ({
                   });
                 }
               }}
-              className="flex flex-col items-center px-1 text-gray-300 hover:text-primary-orange transition duration-300 w-full"
+              className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full"
             >
-              <i className="fas fa-users text-lg"></i>
-              <span className="text-xs font-medium">Ustalar</span>
+              <i className="fas fa-users text-base"></i>
+              <span className="text-[11px] font-medium">Ustalar</span>
             </button>
           </li>
         </ul>

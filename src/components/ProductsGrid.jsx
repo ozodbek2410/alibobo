@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import CartSidebar from './CartSidebar';
 import ProductDetail from './ProductDetail';
 
@@ -16,22 +16,18 @@ const ProductsGrid = ({
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentCategory, setCurrentCategory] = useState('all');
-  const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('name');
-  const [priceRange, setPriceRange] = useState('all');
+  const sortBy = 'name';
+  const priceRange = 'all';
   const [quickFilter, setQuickFilter] = useState('all');
-<<<<<<< HEAD
+
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [appliedMinPrice, setAppliedMinPrice] = useState('');
   const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
   const [displayedProducts, setDisplayedProducts] = useState(20);
-  const [showLoadMore, setShowLoadMore] = useState(false);
-=======
->>>>>>> ed5ed928d435e2b03e60e7e54b52a6b01790de4f
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const [refreshInterval, setRefreshInterval] = useState(null);
+
+  
   
   // Notification states
   const [showAddToCartNotification, setShowAddToCartNotification] = useState(false);
@@ -47,6 +43,7 @@ const ProductsGrid = ({
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const [lastHoverTimes, setLastHoverTimes] = useState({});
+  const productsRef = useRef(products);
 
   // Category mapping function - frontend to backend
   const getCategoryApiValue = (frontendCategory) => {
@@ -79,19 +76,17 @@ const ProductsGrid = ({
       loadProducts(true); // Silent refresh
     }, 30000); // 30 seconds
     
-    setRefreshInterval(interval);
-    
     return () => {
       if (interval) {
         clearInterval(interval);
       }
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reload products when category or search changes
   useEffect(() => {
     loadProducts();
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refresh when window gains focus (user returns to tab)
   useEffect(() => {
@@ -104,7 +99,7 @@ const ProductsGrid = ({
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, []);
+  }, []); 
 
   // Scroll event listener to close select dropdown
   useEffect(() => {
@@ -139,36 +134,7 @@ const ProductsGrid = ({
     }
   };
 
-  const removeFromCart = (productId) => {
-    if (onRemoveFromCart) {
-      onRemoveFromCart(productId);
-    }
-  };
-
-  const updateCartQuantity = (productId, newQuantity) => {
-    if (onUpdateQuantity) {
-      onUpdateQuantity(productId, newQuantity);
-    }
-  };
-
-  const clearCart = () => {
-    if (onCheckout) {
-      onCheckout();
-    }
-  };
-
-  const toggleCart = () => {
-    if (onToggleCart) {
-      onToggleCart();
-    }
-  };
-
-  const getTotalItems = () => {
-    if (cart) {
-      return cart.reduce((sum, item) => sum + item.quantity, 0);
-    }
-    return 0;
-  };
+  
 
   // Product detail modal functions
   const openProductDetail = (product) => {
@@ -221,7 +187,6 @@ const ProductsGrid = ({
         
         if (hasChanged || !silent) {
           setProducts(newProducts);
-          setLastUpdated(new Date());
           
           if (hasChanged && silent) {
             console.log(' Mahsulotlar yangilandi! Admin paneldan o\'zgarishlar keldi.');
@@ -230,13 +195,7 @@ const ProductsGrid = ({
           }
         }
         
-        // Kategoriyalarni olish
-        const uniqueCategories = [...new Set(newProducts.map(p => p.category))];
-        setCategories(uniqueCategories);
-        
         if (!silent) {
-          console.log('Unique categories from products:', uniqueCategories);
-          
           // Show individual product categories for debugging
           if (newProducts.length > 0) {
             console.log('First few products with categories:');
@@ -294,14 +253,31 @@ const ProductsGrid = ({
   };
 
   // Manual refresh function
-  const handleManualRefresh = () => {
-    console.log(' Qo\'lda yangilash boshlandi...');
-    loadProducts();
+  
+
+  // Price filter actions
+  const applyPriceFilter = () => {
+    const min = minPrice === '' ? '' : parseInt(minPrice, 10);
+    const max = maxPrice === '' ? '' : parseInt(maxPrice, 10);
+
+    if (min !== '' && max !== '' && max < min) {
+      return; // invalid range, do nothing
+    }
+
+    setAppliedMinPrice(min === '' ? '' : String(min));
+    setAppliedMaxPrice(max === '' ? '' : String(max));
+    setDisplayedProducts(20);
   };
 
-  const filterByCategory = (category) => {
-    setCurrentCategory(category);
+  const clearPriceFilter = () => {
+    setMinPrice('');
+    setMaxPrice('');
+    setAppliedMinPrice('');
+    setAppliedMaxPrice('');
+    setDisplayedProducts(20);
   };
+
+  
 
   const getFilteredProducts = () => {
     let filtered = products;
@@ -336,6 +312,9 @@ const ProductsGrid = ({
             // Admin paneldan belgilangan yangi mahsulotlar
             matches = product.isNew || product.badge === 'Yangi';
             break;
+          default:
+            // Boshqa holatlar uchun hech qanday maxsus filtr qo'llanmaydi
+            matches = false;
         }
         
         if (matches) {
@@ -399,6 +378,16 @@ const ProductsGrid = ({
         }
       });
     }
+
+    // Qo'lda kiritilgan narx oralig'i (min/max) bo'yicha filtrlash
+    if (appliedMinPrice !== '' || appliedMaxPrice !== '') {
+      const minVal = appliedMinPrice === '' ? 0 : parseInt(appliedMinPrice, 10);
+      const maxVal = appliedMaxPrice === '' ? Number.POSITIVE_INFINITY : parseInt(appliedMaxPrice, 10);
+      filtered = filtered.filter(product => {
+        const price = parseInt(product.price?.toString().replace(/[^\d]/g, '') || '0', 10);
+        return price >= minVal && price <= maxVal;
+      });
+    }
     
     return filtered;
   };
@@ -412,26 +401,15 @@ const ProductsGrid = ({
 
 
 
-  const toggleFavorite = (productId, buttonElement) => {
-    const icon = buttonElement.querySelector('i');
-    const isFavorited = icon.classList.contains('fas');
-    
-    if (isFavorited) {
-      icon.classList.remove('fas', 'text-red-500');
-      icon.classList.add('far', 'text-gray-400');
-    } else {
-      icon.classList.remove('far', 'text-gray-400');
-      icon.classList.add('fas', 'text-red-500');
-    }
-  };
+  
 
   const createProductCard = (product) => {
     const discount = product.oldPrice ? calculateDiscount(product.price, product.oldPrice) : 0;
     
     // Helper function to format price safely
     const formatPrice = (price) => {
-      if (!price || isNaN(price)) return "0 so'm";
-      return price.toLocaleString() + " so'm";
+      const numeric = parseInt(price?.toString().replace(/[^\d]/g, '') || '0', 10);
+      return numeric.toLocaleString() + " so'm";
     };
     
     // Get product images (support both new images array and old image field)
@@ -443,26 +421,22 @@ const ProductsGrid = ({
     const currentImageIndex = currentImageIndexes[product._id] || 0;
     const currentImage = productImages.length > 0 ? productImages[currentImageIndex] : null;
     
-    // Handle scroll-based image navigation (keep existing)
-    const handleScroll = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
+    // Wheel-based navigation: only react to horizontal wheel (touchpad) so vertical page scroll remains natural
+    const handleWheel = (e) => {
       if (productImages.length <= 1) return;
-      
-      const delta = e.deltaY;
-      const direction = delta > 0 ? 'next' : 'prev';
-      
+      const absX = Math.abs(e.deltaX || 0);
+      const absY = Math.abs(e.deltaY || 0);
+      if (absX <= absY || absX < 10) return; // ignore vertical or tiny deltas
+
+      const direction = e.deltaX > 0 ? 'next' : 'prev';
       setCurrentImageIndexes(prev => {
         const currentIndex = prev[product._id] || 0;
         let newIndex;
-        
         if (direction === 'next') {
           newIndex = currentIndex >= productImages.length - 1 ? 0 : currentIndex + 1;
         } else {
           newIndex = currentIndex <= 0 ? productImages.length - 1 : currentIndex - 1;
         }
-        
         return { ...prev, [product._id]: newIndex };
       });
     };
@@ -562,8 +536,8 @@ const ProductsGrid = ({
         <div className="relative cursor-pointer" onClick={() => openProductDetail(product)}>
           {/* Image Container with Multiple Navigation Methods */}
           <div 
-            className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-gray-50"
-            onWheel={handleScroll}
+            className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-white overscroll-contain border-b border-gray-200 group rounded-t-xl"
+            onWheel={handleWheel}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
             onTouchStart={handleTouchStart}
@@ -577,40 +551,25 @@ const ProductsGrid = ({
                 className="w-full h-full object-contain transition-opacity duration-300" 
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-100">
+              <div className="w-full h-full flex items-center justify-center bg-white">
                 <i className="fas fa-image text-gray-400 text-3xl"></i>
               </div>
             )}
             
-            {/* Image Dots - Show at bottom */}
+            {/* Full-width segmented indicator (replaces dots) */}
             {productImages.length > 1 && (
-              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+              <div className="absolute bottom-0 left-0 right-0 flex gap-1 px-3 pb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 {productImages.map((_, index) => (
                   <button
                     key={index}
                     onClick={(e) => handleDotClick(product._id, index, e)}
-                    className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                      index === currentImageIndex 
-                        ? 'bg-gray-600' 
-                        : 'bg-gray-300 hover:bg-gray-400'
+                    className={`flex-1 h-0.5 sm:h-1 rounded-full transition-colors duration-200 ${
+                      index === currentImageIndex ? 'bg-primary-orange' : 'bg-gray-300 hover:bg-gray-400'
                     }`}
+                    aria-label={`Image ${index + 1}`}
                   />
                 ))}
               </div>
-            )}
-            
-            {/* Navigation hints for multiple images */}
-            {productImages.length > 1 && (
-              <>
-                {/* Desktop hover hint */}
-                <div className="hidden lg:block absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                  Hover
-                </div>
-                {/* Mobile swipe hint */}
-                <div className="lg:hidden absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                  Swipe
-                </div>
-              </>
             )}
           </div>
 
@@ -768,7 +727,7 @@ const ProductsGrid = ({
                 </svg>
               </div>
             </div>
-<<<<<<< HEAD
+
 
             {/* Price Filter */}
             <span className="text-gray-700 font-medium text-sm lg:text-base">Narx:</span>
@@ -832,8 +791,6 @@ const ProductsGrid = ({
                 </button>
               )}
             </div>
-=======
->>>>>>> ed5ed928d435e2b03e60e7e54b52a6b01790de4f
           </div>
 
         </div>

@@ -42,7 +42,7 @@ const Craftsmen = ({ craftsmenData = [] }) => {
     }
     
     // Return images array or placeholder if empty
-    return images.length > 0 ? images : ['/assets/ustalar/placeholder.jpg'];
+    return images.length > 0 ? images : ['/assets/ustalar/construction1.jpeg'];
   };
 
   // Show craftsman details modal
