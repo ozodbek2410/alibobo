@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import CartSidebar from './CartSidebar';
 import ProductDetail from './ProductDetail';
-import './RangeSlider.css';
 
-const ProductsGrid = ({
-  cart,
-  onAddToCart,
-  isCartOpen,
-  onToggleCart,
-  onRemoveFromCart,
-  onUpdateQuantity,
+const ProductsGrid = ({ 
+  cart, 
+  onAddToCart, 
+  isCartOpen, 
+  onToggleCart, 
+  onRemoveFromCart, 
+  onUpdateQuantity, 
   onCheckout,
   selectedCategory,
-  searchQuery
+  searchQuery 
 }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,34 +21,38 @@ const ProductsGrid = ({
   const [sortBy, setSortBy] = useState('name');
   const [priceRange, setPriceRange] = useState('all');
   const [quickFilter, setQuickFilter] = useState('all');
+<<<<<<< HEAD
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [appliedMinPrice, setAppliedMinPrice] = useState('');
   const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
   const [displayedProducts, setDisplayedProducts] = useState(20);
   const [showLoadMore, setShowLoadMore] = useState(false);
+=======
+>>>>>>> ed5ed928d435e2b03e60e7e54b52a6b01790de4f
   const [lastUpdated, setLastUpdated] = useState(null);
   const [refreshInterval, setRefreshInterval] = useState(null);
-
+  
   // Notification states
   const [showAddToCartNotification, setShowAddToCartNotification] = useState(false);
   const [notificationProduct, setNotificationProduct] = useState('');
   const selectRef = useRef(null);
-
+  
   // Product detail modal states
   const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-
+  
   // Image carousel states for product cards
   const [currentImageIndexes, setCurrentImageIndexes] = useState({});
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
+  const [lastHoverTimes, setLastHoverTimes] = useState({});
 
   // Category mapping function - frontend to backend
   const getCategoryApiValue = (frontendCategory) => {
     const categoryMapping = {
       "g'isht-va-bloklar": "gisht",
-      "asbob-uskunalar": "asbob",
+      "asbob-uskunalar": "asbob", 
       "bo'yoq-va-lak": "boyoq",
       "elektr-mollalari": "elektr",
       "metall-va-armatura": "metall",
@@ -62,22 +65,22 @@ const ProductsGrid = ({
       "gips-va-shpaklovka": "gips",
       "boshqalar": "boshqalar"
     };
-
+    
     return categoryMapping[frontendCategory] || frontendCategory;
   };
 
   // Initial load
   useEffect(() => {
     loadProducts();
-
+    
     // Set up periodic refresh every 30 seconds to sync with admin changes
     const interval = setInterval(() => {
       console.log(' Avtomatik yangilanish: Admin panel o\'zgarishlarini tekshirish...');
       loadProducts(true); // Silent refresh
     }, 30000); // 30 seconds
-
+    
     setRefreshInterval(interval);
-
+    
     return () => {
       if (interval) {
         clearInterval(interval);
@@ -126,7 +129,7 @@ const ProductsGrid = ({
   const addToCart = (product) => {
     if (onAddToCart) {
       onAddToCart(product);
-
+      
       // Show notification
       setNotificationProduct(product.name);
       setShowAddToCartNotification(true);
@@ -183,25 +186,25 @@ const ProductsGrid = ({
       if (!silent) {
         setLoading(true);
       }
-
+      
       // Build query parameters
       const params = new URLSearchParams();
       params.append('limit', '100');
       params.append('sortBy', 'updatedAt'); // Sort by last updated to get latest changes first
       params.append('sortOrder', 'desc');
-
+      
       if (selectedCategory && selectedCategory !== '') {
         params.append('category', getCategoryApiValue(selectedCategory));
       }
-
+      
       if (searchQuery && searchQuery.trim() !== '') {
         params.append('search', searchQuery.trim());
       }
-
+      
       console.log(' Backend dan mahsulotlarni yuklash...', silent ? '(silent)' : '');
       const response = await fetch(`http://localhost:5000/api/products?${params.toString()}`);
       const data = await response.json();
-
+      
       // Debug logging
       if (!silent) {
         console.log('API Request URL:', `http://localhost:5000/api/products?${params.toString()}`);
@@ -209,31 +212,31 @@ const ProductsGrid = ({
         console.log('Products count:', data.products?.length);
         console.log('Selected category:', selectedCategory);
       }
-
+      
       if (response.ok) {
         const newProducts = data.products || [];
-
+        
         // Check if products have changed
         const hasChanged = JSON.stringify(products) !== JSON.stringify(newProducts);
-
+        
         if (hasChanged || !silent) {
           setProducts(newProducts);
           setLastUpdated(new Date());
-
+          
           if (hasChanged && silent) {
             console.log(' Mahsulotlar yangilandi! Admin paneldan o\'zgarishlar keldi.');
             // Show a subtle notification that data was updated
             showUpdateNotification();
           }
         }
-
+        
         // Kategoriyalarni olish
         const uniqueCategories = [...new Set(newProducts.map(p => p.category))];
         setCategories(uniqueCategories);
-
+        
         if (!silent) {
           console.log('Unique categories from products:', uniqueCategories);
-
+          
           // Show individual product categories for debugging
           if (newProducts.length > 0) {
             console.log('First few products with categories:');
@@ -277,9 +280,9 @@ const ProductsGrid = ({
         <span>${message}</span>
       </div>
     `;
-
+    
     document.body.appendChild(notification);
-
+    
     setTimeout(() => {
       notification.style.opacity = '0';
       setTimeout(() => {
@@ -302,17 +305,17 @@ const ProductsGrid = ({
 
   const getFilteredProducts = () => {
     let filtered = products;
-
+    
     // Kategoriya bo'yicha filtrlash
     if (currentCategory !== 'all') {
       filtered = filtered.filter(product => product.category === getCategoryApiValue(currentCategory));
     }
-
+    
     // Tezkor filter bo'yicha filtrlash
     if (quickFilter !== 'all') {
       const matchingProducts = [];
       const otherProducts = [];
-
+      
       filtered.forEach(product => {
         let matches = false;
         switch (quickFilter) {
@@ -324,9 +327,9 @@ const ProductsGrid = ({
             // Chegirmadagi mahsulotlar (eski narx mavjud)
             const currentPrice = parseInt(product.price?.toString().replace(/[^\d]/g, '') || '0');
             const oldPrice = parseInt(product.oldPrice?.toString().replace(/[^\d]/g, '') || '0');
-            matches = (oldPrice > 0 && currentPrice > 0 && oldPrice > currentPrice) ||
-              product.badge === 'Chegirma' ||
-              product.isDiscount;
+            matches = (oldPrice > 0 && currentPrice > 0 && oldPrice > currentPrice) || 
+                     product.badge === 'Chegirma' || 
+                     product.isDiscount;
             console.log(`Chegirma check for ${product.name}: oldPrice=${oldPrice}, currentPrice=${currentPrice}, badge=${product.badge}, matches=${matches}`);
             break;
           case 'yangi':
@@ -334,14 +337,14 @@ const ProductsGrid = ({
             matches = product.isNew || product.badge === 'Yangi';
             break;
         }
-
+        
         if (matches) {
           matchingProducts.push(product);
         } else {
           otherProducts.push(product);
         }
       });
-
+      
       // Avval mos kelganlar, keyin qolganlar
       filtered = [...matchingProducts, ...otherProducts];
     } else {
@@ -349,11 +352,11 @@ const ProductsGrid = ({
       filtered.sort((a, b) => {
         switch (sortBy) {
           case 'price-low':
-            return parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0') -
-              parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0');
+            return parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0') - 
+                   parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0');
           case 'price-high':
-            return parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0') -
-              parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0');
+            return parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0') - 
+                   parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0');
           case 'rating':
             return (b.rating || 0) - (a.rating || 0);
           case 'name':
@@ -362,27 +365,41 @@ const ProductsGrid = ({
         }
       });
     }
-
+    
     // Qidiruv bo'yicha filtrlash
     if (searchTerm.trim()) {
-      filtered = filtered.filter(product =>
+      filtered = filtered.filter(product => 
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
-
-    // Narx oralig'i bo'yicha filtrlash (foydalanuvchi kiritgan qiymatlar)
-    if (appliedMinPrice || appliedMaxPrice) {
+    
+    // Narx oralig'i bo'yicha filtrlash
+    if (priceRange !== 'all') {
       filtered = filtered.filter(product => {
         const price = parseInt(product.price?.toString().replace(/[^\d]/g, '') || '0');
-        const min = appliedMinPrice ? parseInt(appliedMinPrice) : 0;
-        const max = appliedMaxPrice ? parseInt(appliedMaxPrice) : Infinity;
-
-        return price >= min && price <= max;
+        switch (priceRange) {
+          case '100000':
+            return price >= 100000;
+          case '200000':
+            return price >= 200000;
+          case '500000':
+            return price >= 500000;
+          case '1000000':
+            return price >= 1000000;
+          case '0-100000':
+            return price < 100000;
+          case '100000-500000':
+            return price >= 100000 && price < 500000;
+          case '500000-1000000':
+            return price >= 500000 && price < 1000000;
+          default:
+            return true;
+        }
       });
     }
-
+    
     return filtered;
   };
 
@@ -393,26 +410,12 @@ const ProductsGrid = ({
     return Math.round(((old - current) / old) * 100);
   };
 
-  // Apply price filter
-  const applyPriceFilter = () => {
-    setAppliedMinPrice(minPrice);
-    setAppliedMaxPrice(maxPrice);
-  };
-
-  // Clear price filter
-  const clearPriceFilter = () => {
-    setMinPrice('');
-    setMaxPrice('');
-    setAppliedMinPrice('');
-    setAppliedMaxPrice('');
-  };
-
 
 
   const toggleFavorite = (productId, buttonElement) => {
     const icon = buttonElement.querySelector('i');
     const isFavorited = icon.classList.contains('fas');
-
+    
     if (isFavorited) {
       icon.classList.remove('fas', 'text-red-500');
       icon.classList.add('far', 'text-gray-400');
@@ -424,148 +427,190 @@ const ProductsGrid = ({
 
   const createProductCard = (product) => {
     const discount = product.oldPrice ? calculateDiscount(product.price, product.oldPrice) : 0;
-
+    
     // Helper function to format price safely
     const formatPrice = (price) => {
       if (!price || isNaN(price)) return "0 so'm";
       return price.toLocaleString() + " so'm";
     };
-
+    
     // Get product images (support both new images array and old image field)
-    const productImages = product.images && product.images.length > 0
-      ? product.images
+    const productImages = product.images && product.images.length > 0 
+      ? product.images 
       : (product.image ? [product.image] : []);
-
+    
     // Get current image index for this product
     const currentImageIndex = currentImageIndexes[product._id] || 0;
     const currentImage = productImages.length > 0 ? productImages[currentImageIndex] : null;
-
-    // Handle image navigation
-    const handleImageNavigation = (productId, direction, e) => {
-      e.stopPropagation(); // Prevent opening product detail
-
-      const images = product.images && product.images.length > 0
-        ? product.images
-        : (product.image ? [product.image] : []);
-
-      if (images.length <= 1) return;
-
+    
+    // Handle scroll-based image navigation (keep existing)
+    const handleScroll = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (productImages.length <= 1) return;
+      
+      const delta = e.deltaY;
+      const direction = delta > 0 ? 'next' : 'prev';
+      
       setCurrentImageIndexes(prev => {
-        const currentIndex = prev[productId] || 0;
+        const currentIndex = prev[product._id] || 0;
         let newIndex;
-
+        
         if (direction === 'next') {
-          newIndex = currentIndex >= images.length - 1 ? 0 : currentIndex + 1;
+          newIndex = currentIndex >= productImages.length - 1 ? 0 : currentIndex + 1;
         } else {
-          newIndex = currentIndex <= 0 ? images.length - 1 : currentIndex - 1;
+          newIndex = currentIndex <= 0 ? productImages.length - 1 : currentIndex - 1;
         }
-
-        return { ...prev, [productId]: newIndex };
+        
+        return { ...prev, [product._id]: newIndex };
       });
     };
 
+    // Handle hover-based image navigation for desktop (like craftsmen cards)
+    const handleMouseMove = (e) => {
+      if (productImages.length <= 1) return;
+      
+      const currentTime = Date.now();
+      const lastHoverTime = lastHoverTimes[product._id] || 0;
+      const hoverDelay = 800; // 800ms delay between changes
+      
+      if (currentTime - lastHoverTime < hoverDelay) {
+        return; // Too soon, ignore this hover
+      }
+
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const width = rect.width;
+      
+      const currentIndex = currentImageIndexes[product._id] || 0;
+      let newIndex;
+      
+      if (x < width / 2) {
+        // Left side - previous image (don't loop to last image)
+        newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex;
+      } else {
+        // Right side - next image (don't loop to first image)
+        newIndex = currentIndex < productImages.length - 1 ? currentIndex + 1 : currentIndex;
+      }
+      
+      if (newIndex !== currentIndex) {
+        setCurrentImageIndexes(prev => ({ ...prev, [product._id]: newIndex }));
+        setLastHoverTimes(prev => ({ ...prev, [product._id]: currentTime }));
+      }
+    };
+
+    // Handle mouse leave (keep current image, don't reset)
+    const handleMouseLeave = () => {
+      // Keep the current image active when mouse leaves
+      // Do not reset to first image
+      setLastHoverTimes(prev => ({ ...prev, [product._id]: 0 }));
+    };
+
+    // Handle touch events for mobile swipe navigation
+    const handleTouchStart = (e) => {
+      if (productImages.length <= 1) return;
+      setTouchEnd(null); // Reset touch end
+      setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchMove = (e) => {
+      if (productImages.length <= 1) return;
+      setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchEnd = (e) => {
+      if (!touchStart || !touchEnd || productImages.length <= 1) return;
+      
+      const distance = touchStart - touchEnd;
+      const isLeftSwipe = distance > 50;
+      const isRightSwipe = distance < -50;
+      
+      if (isLeftSwipe || isRightSwipe) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        setCurrentImageIndexes(prev => {
+          const currentIndex = prev[product._id] || 0;
+          let newIndex;
+          
+          if (isLeftSwipe) {
+            // Swipe left - next image
+            newIndex = currentIndex >= productImages.length - 1 ? 0 : currentIndex + 1;
+          } else {
+            // Swipe right - previous image
+            newIndex = currentIndex <= 0 ? productImages.length - 1 : currentIndex - 1;
+          }
+          
+          return { ...prev, [product._id]: newIndex };
+        });
+      }
+      
+      // Reset touch states
+      setTouchStart(null);
+      setTouchEnd(null);
+    };
+    
     // Handle dot navigation
     const handleDotClick = (productId, imageIndex, e) => {
       e.stopPropagation(); // Prevent opening product detail
       setCurrentImageIndexes(prev => ({ ...prev, [productId]: imageIndex }));
     };
-
-    // Touch/swipe handlers for mobile
-    const handleTouchStart = (e) => {
-      setTouchEnd(null); // Reset touchEnd
-      setTouchStart(e.targetTouches[0].clientX);
-    };
-
-    const handleTouchMove = (e) => {
-      setTouchEnd(e.targetTouches[0].clientX);
-    };
-
-    const handleTouchEnd = (productId, e) => {
-      if (!touchStart || !touchEnd) return;
-
-      const distance = touchStart - touchEnd;
-      const isLeftSwipe = distance > 50;
-      const isRightSwipe = distance < -50;
-
-      const images = product.images && product.images.length > 0
-        ? product.images
-        : (product.image ? [product.image] : []);
-
-      if (images.length <= 1) return;
-
-      if (isLeftSwipe) {
-        // Swipe left - next image
-        handleImageNavigation(productId, 'next', e);
-      } else if (isRightSwipe) {
-        // Swipe right - previous image
-        handleImageNavigation(productId, 'prev', e);
-      }
-
-      // Reset touch states
-      setTouchStart(null);
-      setTouchEnd(null);
-    };
-
+    
     return (
-      <div key={product._id} className="bg-white rounded-lg lg:rounded-xl overflow-hidden shadow-lg hover:shadow-xl border border-gray-200 hover:border-gray-300 transition-all duration-300 flex flex-col h-full transform hover:scale-[1.02]">
+      <div key={product._id} className="bg-white rounded-lg lg:rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col h-full transform hover:scale-[1.02]">
         <div className="relative cursor-pointer" onClick={() => openProductDetail(product)}>
-          {/* Image Container */}
-          <div className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-white">
+          {/* Image Container with Multiple Navigation Methods */}
+          <div 
+            className="relative w-full h-40 sm:h-48 lg:h-56 overflow-hidden bg-gray-50"
+            onWheel={handleScroll}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             {currentImage ? (
-              <>
-                <img
-                  src={currentImage}
-                  alt={product.name}
-                  className="w-full h-full object-contain transition-opacity duration-300"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextElementSibling.style.display = 'flex';
-                  }}
-                />
-                <div className="w-full h-full flex items-center justify-center bg-white" style={{ display: 'none' }}>
-                  <i className="fas fa-image text-gray-400 text-3xl"></i>
-                </div>
-              </>
+              <img 
+                src={currentImage} 
+                alt={product.name} 
+                className="w-full h-full object-contain transition-opacity duration-300" 
+              />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-white">
+              <div className="w-full h-full flex items-center justify-center bg-gray-100">
                 <i className="fas fa-image text-gray-400 text-3xl"></i>
               </div>
             )}
-
-            {/* Image Navigation Arrows - Only show if multiple images */}
-            {productImages.length > 1 && (
-              <>
-                <button
-                  onClick={(e) => handleImageNavigation(product._id, 'prev', e)}
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-70 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                  style={{ zIndex: 10 }}
-                >
-                  <i className="fas fa-chevron-left text-xs"></i>
-                </button>
-                <button
-                  onClick={(e) => handleImageNavigation(product._id, 'next', e)}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-70 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                  style={{ zIndex: 10 }}
-                >
-                  <i className="fas fa-chevron-right text-xs"></i>
-                </button>
-              </>
-            )}
-
-            {/* Image Dots - Show at bottom instead of counter */}
+            
+            {/* Image Dots - Show at bottom */}
             {productImages.length > 1 && (
               <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
                 {productImages.map((_, index) => (
                   <button
                     key={index}
                     onClick={(e) => handleDotClick(product._id, index, e)}
-                    className={`w-2 h-2 rounded-full transition-all duration-200 ${index === currentImageIndex
-                      ? 'bg-gray-600'
-                      : 'bg-gray-300 hover:bg-gray-400'
-                      }`}
+                    className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                      index === currentImageIndex 
+                        ? 'bg-gray-600' 
+                        : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
                   />
                 ))}
               </div>
+            )}
+            
+            {/* Navigation hints for multiple images */}
+            {productImages.length > 1 && (
+              <>
+                {/* Desktop hover hint */}
+                <div className="hidden lg:block absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                  Hover
+                </div>
+                {/* Mobile swipe hint */}
+                <div className="lg:hidden absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                  Swipe
+                </div>
+              </>
             )}
           </div>
 
@@ -580,21 +625,21 @@ const ProductsGrid = ({
               -{Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}%
             </span>
           )}
-
+          
           {/* Chegirma badge'i (prioritet yuqori) */}
           {(product.oldPrice && product.oldPrice > product.price && !product.badge) && (
             <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-red-600 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
               Chegirma
             </span>
           )}
-
+          
           {/* Mashhur badge'i (faqat chegirma yo'q bo'lsa) */}
           {(product.rating >= 4.5 && !product.badge && !(product.oldPrice && product.oldPrice > product.price)) && (
             <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-primary-orange text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
               Mashhur
             </span>
           )}
-
+          
           {/* Yangi badge'i (faqat boshqa badge'lar yo'q bo'lsa) */}
           {(product.isNew && !product.badge && !(product.oldPrice && product.oldPrice > product.price) && !(product.rating >= 4.5)) && (
             <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-green-500 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
@@ -602,70 +647,62 @@ const ProductsGrid = ({
             </span>
           )}
         </div>
-
-        <div className="p-4 lg:p-5 flex flex-col flex-grow bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 border-t border-gray-200/50 relative overflow-hidden">
-          {/* Subtle background pattern */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-50"></div>
-          <div className="relative z-10 flex flex-col h-full">
-            {/* Top Content - Name and Description */}
-            <div className="flex-grow">
-              {/* Product Name Section */}
-              <div className={`cursor-pointer ${product.description ? 'mb-2' : 'mb-4'}`} onClick={() => openProductDetail(product)}>
-                <h3 className="font-semibold text-gray-800 text-sm sm:text-base lg:text-lg line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem] hover:text-primary-orange transition-colors duration-200 leading-snug">{product.name || 'Noma\'lum mahsulot'}</h3>
-              </div>
-
-              {/* Product Description - Only show if exists */}
-              {product.description && (
-                <div className="mb-4 p-2 bg-blue-50 rounded-md border-l-3 border-blue-200">
-                  <p className="text-gray-600 text-xs sm:text-sm line-clamp-2 leading-relaxed">
-                    {product.description}
-                  </p>
-                </div>
-              )}
+        
+        <div className="p-3 lg:p-4 flex flex-col flex-grow bg-white">
+          {/* Product Name Section */}
+          <div className={`cursor-pointer ${product.description ? 'mb-2' : 'mb-4'}`} onClick={() => openProductDetail(product)}>
+            <h3 className="font-semibold text-gray-800 text-sm sm:text-base lg:text-lg line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem] hover:text-primary-orange transition-colors duration-200 leading-snug">{product.name || 'Noma\'lum mahsulot'}</h3>
+          </div>
+          
+          {/* Product Description - Only show if exists */}
+          {product.description && (
+            <div className="mb-4 p-2 bg-blue-50 rounded-md border-l-3 border-blue-200">
+              <p className="text-gray-600 text-xs sm:text-sm line-clamp-2 leading-relaxed">
+                {product.description}
+              </p>
             </div>
-
-            {/* Bottom Content - Price and Button */}
-            <div className="mt-auto">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex flex-col">
-                  <span className="font-bold text-gray-900 text-sm sm:text-base lg:text-lg">
-                    {formatPrice(product.price)}
-                  </span>
-                  {product.oldPrice && product.oldPrice > product.price && (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-gray-500 line-through text-xs sm:text-sm">
-                        {formatPrice(product.oldPrice)}
-                      </span>
-                      <span className="text-red-500 text-xs sm:text-sm font-medium">
-                        -{discount}%
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Stock info */}
-                {product.stock !== undefined && (
-                  <div className="text-right">
-                    <p className="text-xs sm:text-sm text-blue-600 font-medium">
-                      {product.stock > 0 ? `${product.stock} ${product.unit || 'dona'}` : 'Tugagan'}
-                    </p>
-                    {product.stock > 0 && product.stock < 10 && (
-                      <p className="text-xs text-red-500 font-medium">Kam qoldi!</p>
-                    )}
+          )}
+          
+          <div className="mt-auto">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-col">
+                <span className="font-bold text-gray-900 text-sm sm:text-base lg:text-lg">
+                  {formatPrice(product.price)}
+                </span>
+                {product.oldPrice && product.oldPrice > product.price && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-500 line-through text-xs sm:text-sm">
+                      {formatPrice(product.oldPrice)}
+                    </span>
+                    <span className="text-red-500 text-xs sm:text-sm font-medium">
+                      -{discount}%
+                    </span>
                   </div>
                 )}
               </div>
-
-              {/* Action Button - Always at bottom */}
-              <button
-                onClick={() => addToCart(product)}
-                className="w-full bg-primary-orange text-white py-2 lg:py-2.5 px-3 lg:px-4 rounded-lg hover:bg-opacity-90 transition duration-300 font-semibold flex items-center justify-center gap-2 text-sm lg:text-base"
-              >
-                <i className="fas fa-shopping-cart text-xs lg:text-sm"></i>
-                <span className="hidden sm:inline">Buyurtma berish</span>
-                <span className="sm:hidden">Buyurtma</span>
-              </button>
+              
+              {/* Stock info */}
+              {product.stock !== undefined && (
+                <div className="text-right">
+                  <p className="text-xs sm:text-sm text-blue-600 font-medium">
+                    {product.stock > 0 ? `${product.stock} ${product.unit || 'dona'}` : 'Tugagan'}
+                  </p>
+                  {product.stock > 0 && product.stock < 10 && (
+                    <p className="text-xs text-red-500 font-medium">Kam qoldi!</p>
+                  )}
+                </div>
+              )}
             </div>
+            
+            {/* Action Button - Always at bottom */}
+            <button
+              onClick={() => addToCart(product)}
+              className="w-full bg-primary-orange text-white py-2 lg:py-2.5 px-3 lg:px-4 rounded-lg hover:bg-opacity-90 transition duration-300 font-semibold flex items-center justify-center gap-2 text-sm lg:text-base"
+            >
+              <i className="fas fa-shopping-cart text-xs lg:text-sm"></i>
+              <span className="hidden sm:inline">Buyurtma berish</span>
+              <span className="sm:hidden">Buyurtma</span>
+            </button>
           </div>
         </div>
       </div>
@@ -678,7 +715,7 @@ const ProductsGrid = ({
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {[...Array(8)].map((_, index) => (
             <div key={index} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm animate-pulse">
-              <div className="h-56 bg-white"></div>
+              <div className="h-56 bg-gray-200"></div>
               <div className="p-4">
                 <div className="h-4 bg-gray-200 rounded mb-2"></div>
                 <div className="h-3 bg-gray-200 rounded mb-2"></div>
@@ -686,9 +723,9 @@ const ProductsGrid = ({
                 <div className="h-6 bg-gray-200 rounded"></div>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+                  ))}
+                </div>
+              </div>
     );
   }
 
@@ -707,11 +744,11 @@ const ProductsGrid = ({
           </div>
         </div>
       )}
-
+      
       {/* Badge Filter */}
       <div className="mb-6 lg:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3 lg:gap-4">
+          <div className="flex items-center gap-3 lg:gap-4">
             <span className="text-gray-700 font-medium text-sm lg:text-base">Saralash:</span>
             <div className="relative">
               <select
@@ -731,6 +768,7 @@ const ProductsGrid = ({
                 </svg>
               </div>
             </div>
+<<<<<<< HEAD
 
             {/* Price Filter */}
             <span className="text-gray-700 font-medium text-sm lg:text-base">Narx:</span>
@@ -794,13 +832,15 @@ const ProductsGrid = ({
                 </button>
               )}
             </div>
+=======
+>>>>>>> ed5ed928d435e2b03e60e7e54b52a6b01790de4f
           </div>
 
         </div>
       </div>
+      
 
-
-
+   
 
 
 
@@ -830,13 +870,13 @@ const ProductsGrid = ({
               <i className="fas fa-search text-4xl text-gray-400"></i>
             </div>
             <h3 className="text-2xl font-bold text-gray-700 mb-3">
-              {searchTerm ? 'Hech narsa topilmadi' :
-                currentCategory === 'all' ? 'Mahsulotlar yo\'q' : `${currentCategory} kategoriyasida mahsulot yo'q`}
+              {searchTerm ? 'Hech narsa topilmadi' : 
+               currentCategory === 'all' ? 'Mahsulotlar yo\'q' : `${currentCategory} kategoriyasida mahsulot yo'q`}
             </h3>
             <p className="text-gray-500 mb-6">
-              {searchTerm ?
+              {searchTerm ? 
                 `"${searchTerm}" so'rovi bo'yicha hech qanday mahsulot topilmadi. Boshqa kalit so'zlar bilan qidiring.` :
-                currentCategory === 'all' ?
+                currentCategory === 'all' ? 
                   'Hozircha mahsulotlar qo\'shilmagan. Keyinroq qayta urinib ko\'ring.' :
                   'Bu kategoriyada mahsulotlar mavjud emas. Boshqa kategoriyalarni ko\'rib chiqing.'
               }
@@ -864,7 +904,7 @@ const ProductsGrid = ({
           </div>
         </div>
       )}
-
+      
       {/* Cart Sidebar */}
       <CartSidebar
         isOpen={isCartOpen}
@@ -874,7 +914,7 @@ const ProductsGrid = ({
         onUpdateQuantity={onUpdateQuantity}
         onCheckout={onCheckout}
       />
-
+      
       {/* Product Detail Modal */}
       <ProductDetail
         product={selectedProduct}

@@ -129,7 +129,7 @@ const Header = ({
       {/* Desktop Header */}
       <header className="bg-primary-dark shadow-lg sticky top-0 z-50 hidden lg:block">
         <div className="container mx-auto px-6">
-          <div className="flex items-center justify-between py-3">
+          <div className="flex items-center justify-between py-2 gap-8">
             {/* Left side - Logo */}
             <div className="flex items-center min-w-fit">
               {/* Logo */}
@@ -143,46 +143,46 @@ const Header = ({
                 <img 
                   src="/logo.png" 
                   alt="Logo" 
-                  className="w-16 h-16 object-cover rounded-lg"
+                  className="w-12 h-12 object-cover rounded-lg"
                 />
                 <img 
                   src="/alibobo.png" 
                   alt="Alibobo" 
-                  className="h-16 w-32 object-cover"
+                  className="h-14 w-36 object-cover"
                 />
               </div>
             </div>
 
-            {/* Center - Search Bar */}
-            <div className="flex-1 flex justify-center px-8">
-              <form onSubmit={handleSearch} className="w-full max-w-2xl">
+            {/* Left-aligned Search Bar */}
+            <div className="flex-1 max-w-2xl">
+              <form onSubmit={handleSearch} className="w-full">
                 <div className="relative">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Mahsulotlar va turkumlar izlash"
-                    className="w-full px-5 py-2.5 pr-12 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300"
+                    className="w-full px-4 py-2 pr-10 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300"
                   />
                   <button 
                     type="submit"
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-orange transition duration-300"
                   >
-                    <i className="fas fa-search text-lg"></i>
+                    <i className="fas fa-search text-base"></i>
                   </button>
                 </div>
               </form>
             </div>
 
             {/* Right side - Cart Button */}
-            <div className="flex items-center min-w-fit">
+            <div className="flex items-center min-w-fit ml-auto">
               <button
                 onClick={toggleCart}
-                className="relative bg-transparent hover:bg-gray-700 hover:bg-opacity-20 text-primary-orange px-4 py-2.5 rounded-lg transition duration-300"
+                className="relative bg-transparent hover:bg-gray-700 hover:bg-opacity-20 text-primary-orange px-3 py-2 rounded-lg transition duration-300"
               >
-                <i className="fas fa-shopping-cart text-2xl"></i>
+                <i className="fas fa-shopping-cart text-xl"></i>
                 {getTotalItems() > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold">
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                     {getTotalItems()}
                   </span>
                 )}
@@ -200,10 +200,10 @@ const Header = ({
         setIsModalOpen={setIsCategoryModalOpen}
       />
 
-      {/* Mobile Header - Logo and Search */}
-      <header className="bg-primary-dark shadow-lg sticky top-0 z-50 lg:hidden">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-3">
+      {/* Mobile Header - Logo and Search - Hide when cart is open */}
+      <header className={`bg-primary-dark shadow-lg z-50 lg:hidden transition-transform duration-300 ${isCartOpen ? '-translate-y-full' : 'translate-y-0'}`}>
+        <div className="container mx-auto px-4 py-2">
+          <div className="flex items-center  justify-between gap-3">
             {/* Mobile Logo */}
             <div 
               className="flex items-center space-x-2 cursor-pointer select-none min-w-fit"
@@ -215,30 +215,30 @@ const Header = ({
               <img 
                 src="/logo.png" 
                 alt="Logo" 
-                className="w-10 h-10 object-cover rounded-lg"
+                className="w-8 h-8 object-cover rounded-lg"
               />
               <img 
                 src="/alibobo.png" 
-                alt="Alibobo" 
-                className="h-10 w-20 object-cover"
+                alt="Alibobo"
+                className="h-8 w-24 object-cover"
               />
             </div>
 
             {/* Mobile Search */}
-            <form onSubmit={handleSearch} className="flex-1">
+            <form onSubmit={handleSearch} className="flex-none w-36 ">
               <div className="relative">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Mahsulotlar izlash"
-                  className="w-full px-4 py-2 pr-10 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300"
+                  placeholder="Qidiruv"
+                  className="w-full px-3 py-1.5 pr-8 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300 text-sm"
                 />
                 <button 
                   type="submit"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-orange transition duration-300"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-orange transition duration-300"
                 >
-                  <i className="fas fa-search text-sm"></i>
+                  <i className="fas fa-search text-xs"></i>
                 </button>
               </div>
             </form>
@@ -247,56 +247,37 @@ const Header = ({
       </header>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 lg:hidden">
-        <ul className="flex items-center justify-around py-1">
-          {/* 1. Bosh sahifa */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-primary-dark border-t border-gray-600 z-50 lg:hidden shadow-lg">
+        <ul className="flex items-center justify-around">
+          {/* 1. Akademiya */}
           <li className="flex-1">
             <button 
               onClick={() => {
+                // Close cart if open
+                if (isCartOpen) {
+                  onToggleCart();
+                }
                 // Scroll to top and show both products and craftsmen
                 window.scrollTo({ 
                   top: 0, 
                   behavior: 'smooth' 
                 });
               }}
-              className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full"
+              className="flex flex-col items-center px-1 text-gray-300 hover:text-primary-orange transition duration-300 w-full"
             >
-              <i className="fas fa-home text-2xl mb-1"></i>
-              <span className="text-xs font-medium">Bosh sahifa</span>
+              <i className="fas fa-graduation-cap text-lg"></i>
+              <span className="text-xs font-medium">Akademiya</span>
             </button>
           </li>
           
-          {/* 2. Katalog */}
-          <li className="flex-1">
-            <button 
-              onClick={() => setIsCategoryModalOpen(true)}
-              className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full"
-            >
-              <i className="fas fa-layer-group text-2xl mb-1"></i>
-              <span className="text-xs font-medium">Katalog</span>
-            </button>
-          </li>
-          
-          {/* 3. Savatcha (O'rtada) */}
-          <li className="flex-1">
-            <button 
-              onClick={toggleCart}
-              className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full relative"
-            >
-              <i className="fas fa-shopping-cart text-2xl mb-1"></i>
-              <span className="text-xs font-medium">Savatcha</span>
-              {getTotalItems() > 0 && (
-                <span className="absolute -top-1 right-4 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                  {getTotalItems()}
-                </span>
-              )}
-            </button>
-          </li>
-          
-          {/* 4. Mahsulotlar */}
+          {/* 2. Mahsulotlar */}
           <li className="flex-1">
             <button 
               onClick={() => {
+                // Close cart if open
+                if (isCartOpen) {
+                  onToggleCart();
+                }
                 const productsSection = document.getElementById('products');
                 if (productsSection) {
                   productsSection.scrollIntoView({ 
@@ -305,10 +286,43 @@ const Header = ({
                   });
                 }
               }}
-              className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full"
+              className="flex flex-col items-center px-1 text-gray-300 hover:text-primary-orange transition duration-300 w-full"
             >
-              <i className="fas fa-box text-2xl mb-1"></i>
+              <i className="fas fa-box text-lg"></i>
               <span className="text-xs font-medium">Mahsulotlar</span>
+            </button>
+          </li>
+          
+          {/* 3. Aloqa */}
+          <li className="flex-1">
+            <a 
+              href="tel:+998948494956"
+              onClick={() => {
+                // Close cart if open
+                if (isCartOpen) {
+                  onToggleCart();
+                }
+              }}
+              className="flex flex-col items-center px-1 text-gray-300 hover:text-primary-orange transition duration-300 w-full"
+            >
+              <i className="fas fa-phone text-lg"></i>
+              <span className="text-xs font-medium">Aloqa</span>
+            </a>
+          </li>
+          
+          {/* 4. Savatcha */}
+          <li className="flex-1">
+            <button 
+              onClick={toggleCart}
+              className="flex flex-col items-center px-1 text-gray-300 hover:text-primary-orange transition duration-300 w-full relative"
+            >
+              <i className="fas fa-shopping-cart text-lg"></i>
+              <span className="text-xs font-medium">Savatcha</span>
+              {getTotalItems() > 0 && (
+                <span className="absolute -top-1 right-3 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                  {getTotalItems()}
+                </span>
+              )}
             </button>
           </li>
           
@@ -316,6 +330,10 @@ const Header = ({
           <li className="flex-1">
             <button 
               onClick={() => {
+                // Close cart if open
+                if (isCartOpen) {
+                  onToggleCart();
+                }
                 const craftsmenSection = document.getElementById('craftsmen');
                 if (craftsmenSection) {
                   craftsmenSection.scrollIntoView({ 
@@ -324,9 +342,9 @@ const Header = ({
                   });
                 }
               }}
-              className="flex flex-col items-center py-2 px-2 text-gray-500 hover:text-primary-orange transition duration-300 w-full"
+              className="flex flex-col items-center px-1 text-gray-300 hover:text-primary-orange transition duration-300 w-full"
             >
-              <i className="fas fa-users text-2xl mb-1"></i>
+              <i className="fas fa-users text-lg"></i>
               <span className="text-xs font-medium">Ustalar</span>
             </button>
           </li>
