@@ -8,7 +8,7 @@ import { useParallelFetch } from '../hooks/useOptimizedFetch';
 
 const MainPage = ({ onSuccessfulLogin }) => {
   const [craftsmenData, setCraftsmenData] = useState([]);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
 
   // Cart states - centralized here
   const [cart, setCart] = useState([]);
@@ -19,7 +19,7 @@ const MainPage = ({ onSuccessfulLogin }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Parallel data loading for initial page load
-  const { data: parallelData, loading: parallelLoading } = useParallelFetch([
+  const { data: parallelData } = useParallelFetch([
     'http://localhost:5000/api/craftsmen?limit=100&status=active',
     'http://localhost:5000/api/products?limit=20&page=1'
   ]);
@@ -29,16 +29,15 @@ const MainPage = ({ onSuccessfulLogin }) => {
     const craftsmenUrl = 'http://localhost:5000/api/craftsmen?limit=100&status=active';
     if (parallelData[craftsmenUrl]) {
       const craftsmenResponse = parallelData[craftsmenUrl];
-      console.log('🚀 Parallel fetch: Craftsmen loaded', craftsmenResponse.craftsmen?.length || 0);
+      // console.log('🚀 Parallel fetch: Craftsmen loaded', craftsmenResponse.craftsmen?.length || 0);
       setCraftsmenData(craftsmenResponse.craftsmen || []);
-      setInitialLoadComplete(true);
     }
   }, [parallelData]);
 
   // Optimized callback for ProductsGrid
   const handleInitialProductsLoaded = useCallback(() => {
     // Products are already loaded via parallel fetch, no need for additional call
-    console.log('✅ Products loaded via parallel fetch');
+    // console.log('✅ Products loaded via parallel fetch');
   }, []);
 
   // Memoized cart functions for performance

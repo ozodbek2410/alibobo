@@ -1,11 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const Craftsman = require('../models/Craftsman');
+const { createCacheMiddleware } = require('../utils/cache');
+
+// Create cache middleware for craftsmen (5 minutes TTL)
+const craftsmenCacheMiddleware = createCacheMiddleware(
+  require('../utils/cache').productCache, // Reuse product cache for now
+  (req) => `craftsmen:${JSON.stringify(req.query)}`,
+  300000 // 5 minutes
+);
 
 // GET all craftsmen
-router.get('/', async (req, res) => {
+router.get('/', craftsmenCacheMiddleware, async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', specialty = '', sortBy = 'joinDate', sortOrder = 'desc' } = req.query;
+    const { page = 1, limit = 10, search = '', specialty = '', status = '', sortBy = 'joinDate', sortOrder = 'desc' } = req.query;
     
     const query = {};
     
@@ -20,16 +28,22 @@ router.get('/', async (req, res) => {
       query.specialty = specialty;
     }
     
+    if (status) {
+      query.status = status;
+    }
+    
     const sortOptions = {};
     sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
     
-    const craftsmen = await Craftsman.find(query)
-      .sort(sortOptions)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .exec();
-    
-    const count = await Craftsman.countDocuments(query);
+    // Use parallel queries for better performance
+    const [craftsmen, count] = await Promise.all([
+      Craftsman.find(query)
+        .sort(sortOptions)
+        .limit(limit * 1)
+        .skip((page - 1) * limit)
+        .lean(), // Use lean() for better performance
+      Craftsman.countDocuments(query)
+    ]);
     
     res.json({
       craftsmen,

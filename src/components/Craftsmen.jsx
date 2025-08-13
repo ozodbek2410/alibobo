@@ -1,16 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { CraftsmenGridSkeleton } from './LoadingSkeleton';
 
 const Craftsmen = ({ craftsmenData = [], loading = false }) => {
-  // Debug: Check if data is being received
-  console.log('🔍 Craftsmen component received data:', craftsmenData);
-  console.log('📊 Total craftsmen:', craftsmenData.length);
-  console.log('⏳ Loading state:', loading);
-  
   // Filter only active craftsmen for the main page
   const activeCraftsmen = craftsmenData.filter(craftsman => craftsman.status === 'active');
-  console.log('✅ Active craftsmen:', activeCraftsmen.length);
-  console.log('👷 Active craftsmen data:', activeCraftsmen);
   
   // Category filter and search state
   const [selectedSpecialty, setSelectedSpecialty] = useState('');

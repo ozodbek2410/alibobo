@@ -1,28 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
 const path = require('path');
 
-// Performance monitoring
-const performanceLogger = (req, res, next) => {
-  const start = Date.now();
-  const originalSend = res.send;
-  
-  res.send = function(data) {
-    const duration = Date.now() - start;
-    const size = Buffer.byteLength(JSON.stringify(data), 'utf8');
-    
-    console.log(`🌐 ${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - ${(size/1024).toFixed(2)}KB`);
-    
-    if (duration > 1000) {
-      console.warn(`🐌 Slow request detected: ${req.method} ${req.path} (${duration}ms)`);
-    }
-    
-    return originalSend.call(this, data);
-  };
-  
-  next();
-};
+
 // Load environment variables
 require('dotenv').config({ path: './config.env' });
 
@@ -43,10 +23,11 @@ console.log('PORT:', process.env.PORT);
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(performanceLogger); // Add performance monitoring
 app.use(express.json({ limit: '10mb' })); // Reduced from 50mb for better performance
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Enable ETag for caching
+app.set('etag', 'strong');
 
 // MongoDB connection
 const connectDB = async () => {
@@ -91,9 +72,18 @@ const connectDB = async () => {
   }
 };
 
+// Performance middleware
+const performanceMiddleware = require('./middleware/performance');
+app.use(performanceMiddleware.compression);
+app.use(performanceMiddleware.helmet);
+app.use(performanceMiddleware.staticCache);
+app.use(performanceMiddleware.etag);
+app.use(performanceMiddleware.cors);
+app.use(performanceMiddleware.performanceMonitor);
+
 // Routes
 app.use('/api/craftsmen', require('./routes/craftsmen'));
-app.use('/api/products', require('./routes/products'));
+app.use('/api/products', require('./routes/products')); // Use full products route with all CRUD operations
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/statistics', require('./routes/statistics'));

@@ -3,6 +3,7 @@ import AdminNotificationBell from './AdminNotificationBell';
 import AdminNotificationModals from './AdminNotificationModals';
 import LoadingCard from './LoadingCard';
 import useNotifications from '../hooks/useNotifications';
+import ProductVariants from './admin/ProductVariants';
 
 const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifications }) => {
   // Notification system - matching index.html exactly
@@ -49,7 +50,9 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     stock: '',
     unit: 'dona',
     images: [], // Changed from single image to images array
-    badge: ''
+    badge: '',
+    hasVariants: false,
+    variants: []
   });
   const [selectedImages, setSelectedImages] = useState([]); // Changed from selectedImage to selectedImages
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -246,7 +249,9 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       stock: '',
       unit: 'dona',
       images: [], // Changed from single image to images array
-      badge: ''
+      badge: '',
+      hasVariants: false,
+      variants: []
     });
     setSelectedImages([]); // Changed from selectedImage to selectedImages
     setIsModalOpen(true);
@@ -273,7 +278,9 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       stock: product.stock ? product.stock.toString() : '',
       unit: product.unit || 'dona',
       images: product.images || (product.image ? [product.image] : []), // Support both old and new format
-      badge: product.badge || ''
+      badge: product.badge || '',
+      hasVariants: product.hasVariants || false,
+      variants: product.variants || []
     });
     setSelectedImages([]); // Changed from selectedImage to selectedImages
     setIsModalOpen(true);
@@ -304,7 +311,9 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       stock: '',
       unit: 'dona',
       images: [], // Changed from single image to images array
-      badge: ''
+      badge: '',
+      hasVariants: false,
+      variants: []
     });
     setSelectedImages([]); // Changed from selectedImage to selectedImages
   };
@@ -507,6 +516,8 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
         image: allImages[0], // First image for backward compatibility
         images: allImages, // All images array
         badge: formData.badge,
+        hasVariants: formData.hasVariants,
+        variants: formData.variants || [],
         rating: 0,
         reviews: 0,
         status: 'active'
@@ -1064,6 +1075,35 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent resize-none"
                   placeholder="Mahsulot haqida batafsil ma'lumot"
                 />
+              </div>
+
+              {/* Variant System Toggle */}
+              <div className="space-y-3">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="hasVariants"
+                    checked={formData.hasVariants}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      hasVariants: e.target.checked,
+                      variants: e.target.checked ? prev.variants : []
+                    }))}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="hasVariants" className="ml-2 block text-sm font-medium text-gray-700">
+                    Bu mahsulotda variantlar bor (rang, o'lcham, xotira va h.k.)
+                  </label>
+                </div>
+                
+                {formData.hasVariants && (
+                  <div className="mt-4">
+                    <ProductVariants
+                      variants={formData.variants}
+                      onVariantsChange={(variants) => setFormData(prev => ({ ...prev, variants }))}
+                    />
+                  </div>
+                )}
               </div>
               
               <div className="space-y-3">

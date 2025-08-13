@@ -19,6 +19,39 @@ const productSchema = new mongoose.Schema({
     min: 0,
     default: null
   },
+  // Variant system - Uzum Market style
+  variants: [{
+    name: {
+      type: String,
+      required: true // e.g., "Rang", "Xotira", "O'lcham"
+    },
+    options: [{
+      value: {
+        type: String,
+        required: true // e.g., "Qora", "128GB", "L"
+      },
+      price: {
+        type: Number,
+        default: 0 // Additional price for this variant
+      },
+      stock: {
+        type: Number,
+        default: 0
+      },
+      image: {
+        type: String,
+        default: '' // Specific image for this variant
+      },
+      sku: {
+        type: String,
+        default: '' // Unique identifier for this variant
+      }
+    }]
+  }],
+  hasVariants: {
+    type: Boolean,
+    default: false
+  },
   rating: {
     type: Number,
     min: 0,
@@ -84,6 +117,10 @@ const productSchema = new mongoose.Schema({
 });
 
 // Indexes for better performance
+productSchema.index({ category: 1, updatedAt: -1 }); // Most common query pattern
+productSchema.index({ price: 1 }); // Price range filtering
+productSchema.index({ rating: -1 }); // Rating sorting
+productSchema.index({ isActive: 1 }); // Active products filter
 productSchema.index({ status: 1 });
 productSchema.index({ category: 1 });
 productSchema.index({ createdAt: 1 });

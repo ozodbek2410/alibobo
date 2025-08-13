@@ -22,8 +22,7 @@ const Catalog = ({ onCategorySelect, onClose, selectedCategory }) => {
     { name: "Boshqalar", value: "boshqalar" }
   ];
 
-  const [loading] = useState(false);
-  const [error] = useState(null);
+
 
   const handleCategoryClick = (categoryValue) => {
     onCategorySelect(categoryValue);

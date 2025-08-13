@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo, useDeferredValue, useTransition } from 'react';
 import { useOptimizedFetch } from '../hooks/useOptimizedFetch';
 import CartSidebar from './CartSidebar';
 import ProductDetail from './ProductDetail';
+import VirtualizedProductGrid from './VirtualizedProductGrid';
+import { useOptimizedFilters } from '../hooks/useOptimizedFilters';
+import { SearchIcon, TimesIcon, PlusIcon, MinusIcon, HeartIcon, ShareIcon, ShoppingCartIcon } from './Icons';
 
 const ProductsGrid = ({ 
   cart, 
@@ -22,6 +25,11 @@ const ProductsGrid = ({
   const sortBy = 'name';
   const priceRange = 'all';
   const [quickFilter, setQuickFilter] = useState('all');
+  const [isPending, startTransition] = useTransition();
+  
+  // Use deferred values for non-urgent updates
+  const deferredQuickFilter = useDeferredValue(quickFilter);
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   // Modal (bottom sheet) for filtering by price and rating
   const [isPriceRatingSheetOpen, setIsPriceRatingSheetOpen] = useState(false);
   const [sheetMinPrice, setSheetMinPrice] = useState('');
@@ -35,7 +43,6 @@ const ProductsGrid = ({
   const [displayedProducts, setDisplayedProducts] = useState(20);
   // page state not required; arrival order controls display
   const [hasMore, setHasMore] = useState(true);
-  const [isPrefetching, setIsPrefetching] = useState(false);
 
   
   
@@ -99,13 +106,11 @@ const ProductsGrid = ({
   const { 
     data: apiResponse, 
     loading: apiLoading, 
-    error: apiError, 
-    refetch,
-    lastFetch 
+    refetch
   } = useOptimizedFetch(apiUrl, {
-    debounceMs: 500, // 500ms debounce for search
-    throttleMs: 2000, // 2s throttle for rapid changes
-    cacheTime: 3 * 60 * 1000, // 3 minutes cache
+    debounceMs: 300, // 300ms debounce for search (reduced from 500ms)
+    throttleMs: 1000, // 1s throttle for rapid changes (reduced from 2s)
+    cacheTime: 5 * 60 * 1000, // 5 minutes cache (increased from 3 minutes)
     refetchOnFocus: true, // Smart focus refetch (only if data is stale)
     enabled: true
   });
@@ -154,6 +159,40 @@ const ProductsGrid = ({
     setDisplayedProducts(20);
   }, [quickFilter, appliedMinPrice, appliedMaxPrice, searchTerm, currentCategory]);
 
+  // Используем оптимизированные фильтры (должно быть в начале, до условного рендеринга)
+  const {
+    filters,
+    filteredProducts,
+    updateFilter,
+    isPending: isFilterPending
+  } = useOptimizedFilters(products, {
+    search: searchQuery || '',
+    category: selectedCategory || '',
+    minPrice: appliedMinPrice,
+    maxPrice: appliedMaxPrice,
+    sortBy: quickFilter === 'all' ? 'updatedAt' : quickFilter
+  });
+
+  // Обработчики для виртуализированной сетки
+  const handleToggleFavorite = useCallback((productId) => {
+    // TODO: Implement favorites functionality
+    console.log('Toggle favorite:', productId);
+  }, []);
+
+  const handleShare = useCallback((product) => {
+    if (navigator.share) {
+      navigator.share({
+        title: product.name,
+        text: `Посмотрите этот товар: ${product.name}`,
+        url: window.location.href
+      });
+    } else {
+      // Fallback для браузеров без Web Share API
+      navigator.clipboard.writeText(window.location.href);
+      alert('Ссылка скопирована в буфер обмена');
+    }
+  }, []);
+
   // Use centralized addToCart function
   const addToCart = (product) => {
     if (onAddToCart) {
@@ -181,36 +220,7 @@ const ProductsGrid = ({
     setSelectedProduct(null);
   };
 
-  // Legacy loadProducts function - now uses optimized fetch for manual calls
-  const loadProducts = useCallback(async (silent = false, nextPage = 1, append = false) => {
-    console.log('⚠️ Legacy loadProducts called - using refetch instead');
-    return refetch(silent);
-  }, [refetch]);
 
- 
-
-  // Show error notification
-  const showErrorNotification = (message) => {
-    const notification = document.createElement('div');
-    notification.className = 'fixed top-4 right-4 md:top-24 md:right-6 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-300';
-    notification.innerHTML = `
-      <div class="flex items-center space-x-2">
-        <i class="fas fa-exclamation-triangle"></i>
-        <span>${message}</span>
-      </div>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-      notification.style.opacity = '0';
-      setTimeout(() => {
-        if (document.body.contains(notification)) {
-          document.body.removeChild(notification);
-        }
-      }, 300);
-    }, 5000);
-  };
 
   // Manual refresh function
   
@@ -276,8 +286,8 @@ const ProductsGrid = ({
       filtered = filtered.filter(product => product.category === getCategoryApiValue(currentCategory));
     }
     
-    // Tezkor filter bo'yicha filtrlash
-    if (quickFilter !== 'all') {
+    // Tezkor filter bo'yicha filtrlash (using deferred value)
+    if (deferredQuickFilter !== 'all') {
       const matchingProducts = [];
       const otherProducts = [];
       
@@ -539,11 +549,15 @@ const ProductsGrid = ({
                 src={currentImage} 
                 alt={product.name} 
                 loading="lazy"
+                decoding="async"
+                fetchPriority="high"
                 className="w-full h-full object-contain transition-opacity duration-300" 
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-white">
-                <i className="fas fa-image text-gray-400 text-3xl"></i>
+                <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                </svg>
               </div>
             )}
             
@@ -597,6 +611,40 @@ const ProductsGrid = ({
             <h3 className="font-semibold text-gray-800 text-sm sm:text-base lg:text-lg line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem] hover:text-primary-orange transition-colors duration-200 leading-snug">{product.name || 'Noma\'lum mahsulot'}</h3>
           </div>
           
+          {/* Variant Preview - Show if product has variants */}
+          {product.hasVariants && product.variants && product.variants.length > 0 && (
+            <div className="mb-3 space-y-2">
+              {product.variants.slice(0, 2).map((variant, variantIndex) => (
+                <div key={variantIndex} className="flex items-center gap-1">
+                  <span className="text-xs text-gray-600 font-medium">{variant.name}:</span>
+                  <div className="flex gap-1 flex-wrap">
+                    {variant.options.slice(0, 3).map((option, optionIndex) => (
+                      <span 
+                        key={optionIndex}
+                        className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full border"
+                      >
+                        {option.value}
+                        {option.price > 0 && (
+                          <span className="text-green-600 ml-1">+{option.price.toLocaleString()}</span>
+                        )}
+                      </span>
+                    ))}
+                    {variant.options.length > 3 && (
+                      <span className="text-xs text-gray-500 px-1">
+                        +{variant.options.length - 3} ta
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {product.variants.length > 2 && (
+                <div className="text-xs text-blue-600 font-medium">
+                  +{product.variants.length - 2} ta variant turi
+                </div>
+              )}
+            </div>
+          )}
+          
           {/* Product Description - Only show if exists */}
           {product.description && (
             <div className="mb-4 p-2 bg-blue-50 rounded-md border-l-3 border-blue-200">
@@ -642,7 +690,7 @@ const ProductsGrid = ({
               onClick={() => addToCart(product)}
               className="w-full bg-primary-orange text-white py-2 lg:py-2.5 px-3 lg:px-4 rounded-lg hover:bg-opacity-90 transition duration-300 font-semibold flex items-center justify-center gap-2 text-sm lg:text-base"
             >
-              <i className="fas fa-shopping-cart text-xs lg:text-sm"></i>
+              <ShoppingCartIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Buyurtma berish</span>
               <span className="sm:hidden">Buyurtma</span>
             </button>
@@ -672,7 +720,7 @@ const ProductsGrid = ({
     );
   }
 
-  const filteredProducts = getFilteredProducts();
+
 
   return (
     <div className="container mx-auto px-4 lg:px-6 py-6 lg:py-8">
@@ -682,7 +730,9 @@ const ProductsGrid = ({
       {showAddToCartNotification && (
         <div className="fixed top-20 right-4 md:top-24 md:right-6 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 max-w-xs md:max-w-sm">
           <div className="flex items-center gap-2">
-            <i className="fas fa-check-circle"></i>
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
             <span className="font-medium text-sm md:text-base">{notificationProduct} savatga qo'shildi!</span>
           </div>
         </div>
@@ -716,7 +766,7 @@ const ProductsGrid = ({
                     className="absolute -right-9 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-700 rounded flex items-center justify-center"
                     title="Filtrni yopish"
                   >
-                    <i className="fas fa-times text-xs"></i>
+                    <TimesIcon className="w-3 h-3" />
                   </button>
                 )}
             </div>
@@ -780,7 +830,7 @@ const ProductsGrid = ({
                   className="w-6 h-6 bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-700 rounded transition-colors duration-200 flex items-center justify-center"
                   title="Tozalash"
                 >
-                  <i className="fas fa-times text-xs"></i>
+                  <TimesIcon className="w-3 h-3" />
                 </button>
               )}
             </div>
@@ -791,7 +841,9 @@ const ProductsGrid = ({
               className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 text-sm font-medium hover:bg-gray-50 sm:hidden"
               title="Narx bo'yicha filter"
             >
-              <i className="fas fa-sliders-h"></i>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+              </svg>
               <span>Narx filtri</span>
             </button>
           </div>
@@ -807,19 +859,26 @@ const ProductsGrid = ({
       {/* Products Grid */}
       {filteredProducts.length > 0 ? (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-            {filteredProducts.slice(0, displayedProducts).map(product => createProductCard(product))}
-          </div>
+          {/* Виртуализированная сетка товаров для лучшей производительности */}
+          <VirtualizedProductGrid
+            products={filteredProducts}
+            onAddToCart={addToCart}
+            onToggleFavorite={handleToggleFavorite}
+            onShare={handleShare}
+            containerHeight={typeof window !== 'undefined' ? Math.min(800, window.innerHeight - 200) : 600}
+            itemWidth={280}
+            itemHeight={400}
+          />
 
           {/* Load More Button */}
           {(hasMore || displayedProducts < products.length) && (
             <div className="flex justify-center mt-8">
               <button
                 onClick={() => setDisplayedProducts(prev => Math.min(prev + 20, products.length))}
-                disabled={displayedProducts >= products.length && isPrefetching}
+                disabled={displayedProducts >= products.length}
                 className="px-6 py-3 bg-primary-orange hover:bg-primary-orange/90 text-white rounded-lg font-medium transition-colors duration-200"
               >
-                {displayedProducts < products.length ? "Ko'proq" : (isPrefetching ? 'Yuklanmoqda...' : "Ko'proq")}
+                {displayedProducts < products.length ? "Ko'proq" : "Ko'proq"}
               </button>
             </div>
           )}
@@ -828,7 +887,7 @@ const ProductsGrid = ({
         <div className="text-center py-16">
           <div className="max-w-md mx-auto">
             <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-32 h-32 flex items-center justify-center mx-auto mb-6">
-              <i className="fas fa-search text-4xl text-gray-400"></i>
+              <SearchIcon className="w-16 h-16 text-gray-400" />
             </div>
             <h3 className="text-2xl font-bold text-gray-700 mb-3">
               {searchTerm ? 'Hech narsa topilmadi' : 
@@ -848,7 +907,7 @@ const ProductsGrid = ({
                   onClick={() => setSearchTerm('')}
                   className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
                 >
-                  <i className="fas fa-times"></i>
+                  <TimesIcon className="w-4 h-4" />
                   Qidiruvni tozalash
                 </button>
               )}
@@ -857,7 +916,9 @@ const ProductsGrid = ({
                   onClick={() => setCurrentCategory('all')}
                   className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
                 >
-                  <i className="fas fa-globe"></i>
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z" clipRule="evenodd" />
+                  </svg>
                   Barcha mahsulotlar
                 </button>
               )}
@@ -893,7 +954,7 @@ const ProductsGrid = ({
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-semibold text-gray-800">Narx filtri</h3>
               <button onClick={closePriceRatingSheet} className="text-gray-500 hover:text-gray-700">
-                <i className="fas fa-times"></i>
+                <TimesIcon className="w-4 h-4" />
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">

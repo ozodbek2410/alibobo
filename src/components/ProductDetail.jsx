@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { getCategoryDisplayName } from '../utils/categoryMapping';
+import ProductVariantSelector from './ProductVariantSelector';
 
 const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
+  
+  // Variant system states
+  const [selectedVariants, setSelectedVariants] = useState({});
+  const [variantPrice, setVariantPrice] = useState(product?.price || 0);
+  const [variantStock, setVariantStock] = useState(product?.stock || 0);
+  const [variantImage, setVariantImage] = useState(product?.image || '');
 
   // Get product images - support both old and new format
   const productImages = product?.images && product.images.length > 0 
@@ -172,8 +179,13 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <span className="text-gray-600 font-medium text-xs sm:text-sm">Narxi:</span>
                     <span className="text-lg sm:text-xl lg:text-2xl font-bold text-primary-orange">
-                      {formatPrice(product.price)}
+                      {formatPrice(product.hasVariants ? variantPrice : product.price)}
                     </span>
+                    {product.hasVariants && variantPrice !== product.price && (
+                      <span className="text-sm text-gray-500 line-through">
+                        {formatPrice(product.price)}
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <span className="text-gray-600 font-medium text-xs sm:text-sm">Holati:</span>
@@ -195,8 +207,24 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                 </div>
               )}
 
-              {/* Colors */}
-              {product.colors && product.colors.length > 0 && (
+              {/* Product Variants - New Uzum Market Style */}
+              {product.hasVariants && product.variants && product.variants.length > 0 && (
+                <div className="space-y-4">
+                  <ProductVariantSelector
+                    product={product}
+                    selectedVariants={selectedVariants}
+                    onVariantChange={(variantData) => {
+                      setSelectedVariants(variantData.selectedVariants);
+                      setVariantPrice(variantData.price);
+                      setVariantStock(variantData.stock);
+                      setVariantImage(variantData.image);
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Legacy Colors - Show only if no variants */}
+              {!product.hasVariants && product.colors && product.colors.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="font-medium text-gray-900 text-sm">Rang: {selectedColor}</h4>
                   <div className="flex gap-1 sm:gap-2 flex-wrap">
@@ -217,8 +245,8 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                 </div>
               )}
 
-              {/* Sizes */}
-              {product.sizes && product.sizes.length > 0 && (
+              {/* Legacy Sizes - Show only if no variants */}
+              {!product.hasVariants && product.sizes && product.sizes.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="font-medium text-gray-900 text-sm">O'lcham:</h4>
                   <div className="flex gap-1 sm:gap-2 flex-wrap">

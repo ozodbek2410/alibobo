@@ -135,11 +135,17 @@ const Header = ({
                 <img 
                   src="/logo.png" 
                   alt="Logo" 
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
                   className="w-12 h-12 object-cover rounded-lg"
                 />
                 <img 
                   src="/alibobo.png" 
-                  alt="Alibobo" 
+                  alt="Alibobo"
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high" 
                   className="h-14 w-36 object-cover"
                 />
               </div>
@@ -207,11 +213,17 @@ const Header = ({
               <img 
                 src="/logo.png" 
                 alt="Logo" 
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
                 className="w-8 h-8 object-cover rounded-lg"
               />
               <img 
                 src="/alibobo.png" 
                 alt="Alibobo"
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
                 className="h-8 w-24 object-cover"
               />
             </div>

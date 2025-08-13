@@ -154,9 +154,21 @@ router.post('/', async (req, res) => {
   try {
     console.log('📝 POST /api/products - Kelgan ma\'lumotlar:', req.body);
     
-    const { name, category, price, oldPrice, stock, image, images, description, brand, unit, status, badge } = req.body;
+    const { 
+      name, category, price, oldPrice, stock, image, images, description, 
+      brand, unit, status, badge, hasVariants, variants 
+    } = req.body;
     
-    console.log('🔍 Ajratilgan ma\'lumotlar:', { name, category, price, oldPrice, stock, image, images, description, brand, unit, status, badge });
+    console.log('🔍 Ajratilgan ma\'lumotlar:', { 
+      name, category, price, oldPrice, stock, image, images, description, 
+      brand, unit, status, badge, hasVariants, variants 
+    });
+    
+    // Debug variant data specifically
+    if (hasVariants && variants) {
+      console.log('🎯 Variant ma\'lumotlari:', JSON.stringify(variants, null, 2));
+      console.log('🎯 Variant soni:', variants.length);
+    }
     
     const product = new Product({
       name,
@@ -170,13 +182,18 @@ router.post('/', async (req, res) => {
       brand: brand || '',
       unit: unit || 'dona',
       status: status || 'active',
-      badge: badge || ''
+      badge: badge || '',
+      hasVariants: hasVariants || false,
+      variants: variants || []
     });
     
     console.log('💾 Saqlanayotgan mahsulot:', product);
     
     const newProduct = await product.save();
     console.log('✅ Mahsulot muvaffaqiyatli saqlandi:', newProduct._id);
+    
+    // Clear cache when new product is added
+    productsCache.clear();
     
     res.status(201).json(newProduct);
   } catch (error) {
@@ -189,6 +206,16 @@ router.post('/', async (req, res) => {
 // PUT update product
 router.put('/:id', async (req, res) => {
   try {
+    console.log('📝 PUT /api/products/:id - Kelgan ma\'lumotlar:', req.body);
+    
+    const { hasVariants, variants } = req.body;
+    
+    // Debug variant data specifically for updates
+    if (hasVariants && variants) {
+      console.log('🎯 Yangilanayotgan variant ma\'lumotlari:', JSON.stringify(variants, null, 2));
+      console.log('🎯 Yangilanayotgan variant soni:', variants.length);
+    }
+    
     const oldProduct = await Product.findById(req.params.id);
     if (!oldProduct) {
       return res.status(404).json({ message: 'Mahsulot topilmadi' });
@@ -199,6 +226,9 @@ router.put('/:id', async (req, res) => {
       req.body,
       { new: true }
     );
+    
+    // Clear cache when product is updated
+    productsCache.clear();
     
     // Create notification for craftsman product edit
     if (product.craftsman && product.craftsman.name) {
