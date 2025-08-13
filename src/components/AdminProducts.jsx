@@ -93,8 +93,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
   const badgeOptions = [
     { value: '', label: "Badge yo'q" },
     { value: 'Mashhur', label: 'Mashhur' },
-    { value: 'Yangi', label: 'Yangi' },
-    { value: 'Chegirma', label: 'Chegirma' }
+    { value: 'Yangi', label: 'Yangi' }
   ];
 
   const unitOptions = [
@@ -901,42 +900,51 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       {/* Add/Edit Modal */}
       {isModalOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay overflow-hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay overflow-hidden p-4"
           onClick={closeModal}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b">
-              <h3 className="text-xl font-semibold text-gray-900">
-                {selectedProduct ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot qo\'shish'}
-              </h3>
+            <div className="sticky top-0 bg-white p-6 border-b border-gray-200 rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-semibold text-gray-900">
+                  {selectedProduct ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot qo\'shish'}
+                </h3>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <i className="fas fa-times text-xl"></i>
+                </button>
+              </div>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Mahsulot nomi *
                   </label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent"
+                    placeholder="Mahsulot nomini kiriting"
                     required
                   />
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Kategoriya *
                   </label>
                   <select
                     value={formData.category}
                     onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent"
                     required
                   >
                     <option value="">Kategoriya tanlang</option>
@@ -948,51 +956,54 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                   </select>
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Narx (so'm) *
                   </label>
                   <input
                     type="number"
                     value={formData.price}
                     onChange={e => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent"
+                    placeholder="0"
                     min="0"
                     step="0.01"
                     required
                   />
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Eski narx (so'm)
                   </label>
                   <input
                     type="number"
                     value={formData.oldPrice}
                     onChange={e => setFormData(prev => ({ ...prev, oldPrice: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent"
+                    placeholder="0"
                     min="0"
                     step="0.01"
                   />
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Zaxira *
                   </label>
                   <input
                     type="number"
                     value={formData.stock}
                     onChange={e => setFormData(prev => ({ ...prev, stock: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent"
+                    placeholder="0"
                     min="0"
                     required
                   />
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     O'lchov birligi
                   </label>
                   <select
@@ -1004,25 +1015,35 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                         setFormData(prev => ({ ...prev, unit: e.target.value }));
                       }
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent"
                   >
                     {unitOptions.map(option => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
                     ))}
+                    <option value="boshqa">Boshqa</option>
                   </select>
+                  {(formData.unit === '' || !unitOptions.find(opt => opt.value === formData.unit)) && (
+                    <input
+                      type="text"
+                      value={formData.unit}
+                      onChange={e => setFormData(prev => ({ ...prev, unit: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent mt-2"
+                      placeholder="Masalan: qop, quti, to'plam"
+                    />
+                  )}
                 </div>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Badge
-                </label>
+              <div className="space-y-2">
+                   <label className="block text-sm font-medium text-gray-700">
+                   Badge (Chegirma badge yo'q)
+                 </label>
                 <select
                   value={formData.badge}
                   onChange={e => setFormData(prev => ({ ...prev, badge: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent w-auto inline-block max-w-full"
                 >
                   {badgeOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -1032,20 +1053,21 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                 </select>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
                   Tavsif
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  rows="3"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                  rows="4"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent resize-none"
+                  placeholder="Mahsulot haqida batafsil ma'lumot"
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700">
                   Rasmlar (maksimal 8ta)
                 </label>
                 <input
@@ -1053,28 +1075,28 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                   accept="image/*"
                   multiple
                   onChange={handleImagesUpload}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-orange file:text-white hover:file:bg-opacity-90"
                 />
                 
                 {/* Existing images */}
                 {formData.images.length > 0 && (
-                  <div className="mt-3">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Mavjud rasmlar:</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-700">Mavjud rasmlar:</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {formData.images.map((image, index) => (
                         <div key={`existing-${index}`} className="relative group">
                           <img 
                             src={image} 
                             alt={`Existing ${index + 1}`} 
-                            className="w-full h-24 object-cover rounded-lg border border-gray-300" 
+                            className="w-full h-32 object-cover rounded-lg border-2 border-gray-300" 
                           />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg flex items-center justify-center">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-1">
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2">
                               <button
                                 type="button"
                                 onClick={() => moveImageUp(index, false)}
                                 disabled={index === 0}
-                                className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Yuqoriga ko'chirish"
                               >
                                 <i className="fas fa-chevron-up"></i>
@@ -1083,7 +1105,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                                 type="button"
                                 onClick={() => moveImageDown(index, false)}
                                 disabled={index === formData.images.length - 1}
-                                className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Pastga ko'chirish"
                               >
                                 <i className="fas fa-chevron-down"></i>
@@ -1091,14 +1113,14 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                               <button
                                 type="button"
                                 onClick={() => removeExistingImage(index)}
-                                className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                                className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
                                 title="Rasmni o'chirish"
                               >
                                 <i className="fas fa-times"></i>
                               </button>
                             </div>
                           </div>
-                          <div className="absolute -top-2 -left-2 bg-primary-orange text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                          <div className="absolute -top-2 -left-2 bg-primary-orange text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
                             {index + 1}
                           </div>
                         </div>
@@ -1109,23 +1131,23 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                 
                 {/* New selected images */}
                 {selectedImages.length > 0 && (
-                  <div className="mt-3">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Yangi rasmlar:</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-700">Yangi rasmlar:</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {selectedImages.map((image, index) => (
                         <div key={`selected-${index}`} className="relative group">
                           <img 
                             src={image} 
                             alt={`Selected ${index + 1}`} 
-                            className="w-full h-24 object-cover rounded-lg border border-gray-300" 
+                            className="w-full h-32 object-cover rounded-lg border-2 border-green-300" 
                           />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg flex items-center justify-center">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-1">
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2">
                               <button
                                 type="button"
                                 onClick={() => moveImageUp(index, true)}
                                 disabled={index === 0}
-                                className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Yuqoriga ko'chirish"
                               >
                                 <i className="fas fa-chevron-up"></i>
@@ -1134,7 +1156,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                                 type="button"
                                 onClick={() => moveImageDown(index, true)}
                                 disabled={index === selectedImages.length - 1}
-                                className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Pastga ko'chirish"
                               >
                                 <i className="fas fa-chevron-down"></i>
@@ -1142,14 +1164,14 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                               <button
                                 type="button"
                                 onClick={() => removeSelectedImage(index)}
-                                className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                                className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
                                 title="Rasmni o'chirish"
                               >
                                 <i className="fas fa-times"></i>
                               </button>
                             </div>
                           </div>
-                          <div className="absolute -top-2 -left-2 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                          <div className="absolute -top-2 -left-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
                             {formData.images.length + index + 1}
                           </div>
                         </div>
@@ -1159,30 +1181,37 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                 )}
                 
                 {/* Image count info */}
-                <div className="mt-2 text-sm text-gray-600">
-                  Jami rasmlar: {formData.images.length + selectedImages.length}/8
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Jami rasmlar: {formData.images.length + selectedImages.length}/8</span>
+                    {(formData.images.length + selectedImages.length) >= 8 && (
+                      <span className="text-amber-600 font-medium">Maksimal rasm soni</span>
+                    )}
+                  </div>
                 </div>
               </div>
               
-              <div className="flex items-center justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200"
-                >
-                  Bekor qilish
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-opacity-90 transition duration-200 disabled:opacity-50"
-                >
-                  {isSubmitting ? (
-                    <span><i className="fas fa-spinner fa-spin mr-2"></i>Saqlanmoqda...</span>
-                  ) : (
-                    <span>{selectedProduct ? 'Yangilash' : 'Qo\'shish'}</span>
-                  )}
-                </button>
+              <div className="sticky bottom-0 bg-white pt-6 border-t border-gray-200">
+                <div className="flex items-center justify-end space-x-4">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200 font-medium"
+                  >
+                    Bekor qilish
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-6 py-3 bg-primary-orange text-white rounded-lg hover:bg-opacity-90 transition duration-200 disabled:opacity-50 font-medium min-w-[120px]"
+                  >
+                    {isSubmitting ? (
+                      <span><i className="fas fa-spinner fa-spin mr-2"></i>Saqlanmoqda...</span>
+                    ) : (
+                      <span>{selectedProduct ? 'Yangilash' : 'Qo\'shish'}</span>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1192,94 +1221,154 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       {/* View Modal */}
       {isViewModalOpen && selectedProduct && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay overflow-hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay overflow-hidden p-4"
           onClick={() => setIsViewModalOpen(false)}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b">
+            <div className="sticky top-0 bg-white p-6 border-b border-gray-200 rounded-t-lg">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900">Mahsulot ma'lumotlari</h3>
+                <h3 className="text-2xl font-semibold text-gray-900">Mahsulot ma'lumotlari</h3>
                 <button
                   onClick={() => setIsViewModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <i className="fas fa-times text-xl"></i>
                 </button>
               </div>
             </div>
             
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Mahsulot nomi</label>
-                  <p className="text-gray-900">{selectedProduct.name}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Kategoriya</label>
-                  <p className="text-gray-900">{selectedProduct.category}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Narx</label>
-                  <p className="text-gray-900">{formatCurrency(selectedProduct.price)}</p>
-                </div>
-                
-                {selectedProduct.oldPrice && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Eski narx</label>
-                    <p className="text-gray-900 line-through">{formatCurrency(selectedProduct.oldPrice)}</p>
+            <div className="p-6 space-y-6">
+              {/* Product Images */}
+              {((selectedProduct.images && selectedProduct.images.length > 0) || selectedProduct.image) && (
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700">Mahsulot rasmlari</label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {selectedProduct.images && selectedProduct.images.length > 0 ? (
+                      selectedProduct.images.map((image, index) => (
+                        <div key={index} className="relative group">
+                          <img 
+                            src={image} 
+                            alt={`${selectedProduct.name} - ${index + 1}`}
+                            className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 hover:border-primary-orange transition-colors cursor-pointer"
+                          />
+                          <div className="absolute -top-2 -left-2 bg-primary-orange text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                            {index + 1}
+                          </div>
+                        </div>
+                      ))
+                    ) : selectedProduct.image && (
+                      <div className="relative group">
+                        <img 
+                          src={selectedProduct.image} 
+                          alt={selectedProduct.name}
+                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 hover:border-primary-orange transition-colors cursor-pointer"
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Zaxira</label>
-                  <p className="text-gray-900">{selectedProduct.stock} {selectedProduct.unit}</p>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
-                  <span className={`px-2 py-1 text-xs rounded-full ${selectedProduct.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {selectedProduct.status === 'active' ? 'Faol' : 'Nofaol'}
-                  </span>
+              )}
+
+              {/* Product Information Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">Mahsulot nomi</label>
+                    <p className="text-lg font-semibold text-gray-900">{selectedProduct.name}</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">Kategoriya</label>
+                    <p className="text-gray-900 capitalize">{selectedProduct.category}</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">Narx</label>
+                    <div className="flex items-center space-x-3">
+                      <p className="text-xl font-bold text-primary-dark">{formatCurrency(selectedProduct.price)}</p>
+                      {selectedProduct.oldPrice && selectedProduct.oldPrice > selectedProduct.price && (
+                        <div className="flex items-center space-x-2">
+                          <p className="text-sm text-gray-400 line-through decoration-red-500 decoration-2">{formatCurrency(selectedProduct.oldPrice)}</p>
+                          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                            -{Math.round(((selectedProduct.oldPrice - selectedProduct.price) / selectedProduct.oldPrice) * 100)}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">Zaxira</label>
+                    <div className="flex items-center justify-between">
+                      <p className="text-gray-900 font-medium">{selectedProduct.stock} {selectedProduct.unit}</p>
+                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${getStockStatus(selectedProduct.stock).class}`}>
+                        {getStockStatus(selectedProduct.stock).text}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">O'lchov birligi</label>
+                    <p className="text-gray-900">{selectedProduct.unit}</p>
+                  </div>
+
+                  {selectedProduct.badge && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <label className="block text-sm font-medium text-gray-500 mb-2">Badge</label>
+                      <span className="bg-primary-orange text-white text-sm px-3 py-1 rounded-full font-medium">
+                        {selectedProduct.badge}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               
               {selectedProduct.description && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Tavsif</label>
-                  <p className="text-gray-900">{selectedProduct.description}</p>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <label className="block text-sm font-medium text-gray-500 mb-2">Tavsif</label>
+                  <p className="text-gray-900 leading-relaxed">{selectedProduct.description}</p>
                 </div>
               )}
-              
-              {selectedProduct.badge && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Badge</label>
-                  <span className="bg-primary-orange text-white text-xs px-2 py-1 rounded-full">
-                    {selectedProduct.badge}
-                  </span>
+
+              {/* Additional Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-blue-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-blue-600">{selectedProduct.stock}</div>
+                  <div className="text-sm text-blue-600 font-medium">Zaxirada</div>
                 </div>
-              )}
+                <div className="bg-green-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-600">{formatCurrency(selectedProduct.price)}</div>
+                  <div className="text-sm text-green-600 font-medium">Joriy narx</div>
+                </div>
+                <div className="bg-purple-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-purple-600 capitalize">{selectedProduct.category}</div>
+                  <div className="text-sm text-purple-600 font-medium">Kategoriya</div>
+                </div>
+              </div>
               
-              <div className="flex items-center justify-end space-x-3 pt-4">
-                <button 
-                  onClick={() => setIsViewModalOpen(false)}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200"
-                >
-                  Yopish
-                </button>
-                <button 
-                  onClick={() => {
-                    setIsViewModalOpen(false);
-                    openEditModal(selectedProduct);
-                  }}
-                  className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-opacity-90 transition duration-200"
-                >
-                  Tahrirlash
-                </button>
+              <div className="sticky bottom-0 bg-white pt-6 border-t border-gray-200">
+                <div className="flex items-center justify-end space-x-4">
+                  <button 
+                    onClick={() => setIsViewModalOpen(false)}
+                    className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200 font-medium"
+                  >
+                    Yopish
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setIsViewModalOpen(false);
+                      openEditModal(selectedProduct);
+                    }}
+                    className="px-6 py-3 bg-primary-orange text-white rounded-lg hover:bg-opacity-90 transition duration-200 font-medium"
+                  >
+                    <i className="fas fa-edit mr-2"></i>Tahrirlash
+                  </button>
+                </div>
               </div>
             </div>
           </div>

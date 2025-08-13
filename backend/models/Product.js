@@ -19,6 +19,12 @@ const productSchema = new mongoose.Schema({
     min: 0,
     default: null
   },
+  rating: {
+    type: Number,
+    min: 0,
+    max: 5,
+    default: 0
+  },
   stock: {
     type: Number,
     required: true,

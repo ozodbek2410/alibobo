@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import { useOptimizedFetch } from '../hooks/useOptimizedFetch';
 import CartSidebar from './CartSidebar';
 import ProductDetail from './ProductDetail';
 
@@ -11,7 +12,8 @@ const ProductsGrid = ({
   onUpdateQuantity, 
   onCheckout,
   selectedCategory,
-  searchQuery 
+  searchQuery,
+  onInitialProductsLoaded
 }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,12 +22,20 @@ const ProductsGrid = ({
   const sortBy = 'name';
   const priceRange = 'all';
   const [quickFilter, setQuickFilter] = useState('all');
+  // Modal (bottom sheet) for filtering by price and rating
+  const [isPriceRatingSheetOpen, setIsPriceRatingSheetOpen] = useState(false);
+  const [sheetMinPrice, setSheetMinPrice] = useState('');
+  const [sheetMaxPrice, setSheetMaxPrice] = useState('');
 
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [appliedMinPrice, setAppliedMinPrice] = useState('');
   const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
+  // const [appliedMinRating, setAppliedMinRating] = useState('');
   const [displayedProducts, setDisplayedProducts] = useState(20);
+  // page state not required; arrival order controls display
+  const [hasMore, setHasMore] = useState(true);
+  const [isPrefetching, setIsPrefetching] = useState(false);
 
   
   
@@ -43,7 +53,7 @@ const ProductsGrid = ({
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const [lastHoverTimes, setLastHoverTimes] = useState({});
-  const productsRef = useRef(products);
+  // const productsRef = useRef(products);
 
   // Category mapping function - frontend to backend
   const getCategoryApiValue = (frontendCategory) => {
@@ -66,40 +76,64 @@ const ProductsGrid = ({
     return categoryMapping[frontendCategory] || frontendCategory;
   };
 
-  // Initial load
+  // Build API URL with parameters
+  const apiUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    params.append('limit', '20');
+    params.append('page', '1');
+    params.append('sortBy', 'updatedAt');
+    params.append('sortOrder', 'desc');
+    
+    if (selectedCategory && selectedCategory !== '') {
+      params.append('category', getCategoryApiValue(selectedCategory));
+    }
+    
+    if (searchQuery && searchQuery.trim() !== '') {
+      params.append('search', searchQuery.trim());
+    }
+    
+    return `http://localhost:5000/api/products?${params.toString()}`;
+  }, [selectedCategory, searchQuery]);
+
+  // Use optimized fetch hook with smart caching and debouncing
+  const { 
+    data: apiResponse, 
+    loading: apiLoading, 
+    error: apiError, 
+    refetch,
+    lastFetch 
+  } = useOptimizedFetch(apiUrl, {
+    debounceMs: 500, // 500ms debounce for search
+    throttleMs: 2000, // 2s throttle for rapid changes
+    cacheTime: 3 * 60 * 1000, // 3 minutes cache
+    refetchOnFocus: true, // Smart focus refetch (only if data is stale)
+    enabled: true
+  });
+
+  // Update products when API response changes
   useEffect(() => {
-    loadProducts();
-    
-    // Set up periodic refresh every 30 seconds to sync with admin changes
-    const interval = setInterval(() => {
-      console.log(' Avtomatik yangilanish: Admin panel o\'zgarishlarini tekshirish...');
-      loadProducts(true); // Silent refresh
-    }, 30000); // 30 seconds
-    
-    return () => {
-      if (interval) {
-        clearInterval(interval);
+    if (apiResponse?.products) {
+      console.log('📦 Products updated from optimized fetch:', apiResponse.products.length);
+      setProducts(apiResponse.products);
+      setDisplayedProducts(Math.min(apiResponse.products.length, 20));
+      
+      // Call initial products loaded callback
+      if (typeof onInitialProductsLoaded === 'function') {
+        onInitialProductsLoaded();
       }
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }
+  }, [apiResponse, onInitialProductsLoaded]);
 
-  // Reload products when category or search changes
+  // Update loading state
   useEffect(() => {
-    loadProducts();
-  }, [selectedCategory, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+    setLoading(apiLoading);
+  }, [apiLoading]);
 
-  // Refresh when window gains focus (user returns to tab)
+  // Reset displayed products when filters change (optimized fetch handles the API calls)
   useEffect(() => {
-    const handleFocus = () => {
-      console.log(' Sahifa fokusga qaytdi: Ma\'lumotlarni yangilash...');
-      loadProducts(true);
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []); 
+    setDisplayedProducts(20);
+    setHasMore(true);
+  }, [selectedCategory, searchQuery]);
 
   // Scroll event listener to close select dropdown
   useEffect(() => {
@@ -147,87 +181,13 @@ const ProductsGrid = ({
     setSelectedProduct(null);
   };
 
-  const loadProducts = async (silent = false) => {
-    try {
-      if (!silent) {
-        setLoading(true);
-      }
-      
-      // Build query parameters
-      const params = new URLSearchParams();
-      params.append('limit', '100');
-      params.append('sortBy', 'updatedAt'); // Sort by last updated to get latest changes first
-      params.append('sortOrder', 'desc');
-      
-      if (selectedCategory && selectedCategory !== '') {
-        params.append('category', getCategoryApiValue(selectedCategory));
-      }
-      
-      if (searchQuery && searchQuery.trim() !== '') {
-        params.append('search', searchQuery.trim());
-      }
-      
-      console.log(' Backend dan mahsulotlarni yuklash...', silent ? '(silent)' : '');
-      const response = await fetch(`http://localhost:5000/api/products?${params.toString()}`);
-      const data = await response.json();
-      
-      // Debug logging
-      if (!silent) {
-        console.log('API Request URL:', `http://localhost:5000/api/products?${params.toString()}`);
-        console.log('API Response:', data);
-        console.log('Products count:', data.products?.length);
-        console.log('Selected category:', selectedCategory);
-      }
-      
-      if (response.ok) {
-        const newProducts = data.products || [];
-        
-        // Check if products have changed
-        const hasChanged = JSON.stringify(products) !== JSON.stringify(newProducts);
-        
-        if (hasChanged || !silent) {
-          setProducts(newProducts);
-          
-          if (hasChanged && silent) {
-            console.log(' Mahsulotlar yangilandi! Admin paneldan o\'zgarishlar keldi.');
-            // Show a subtle notification that data was updated
-            showUpdateNotification();
-          }
-        }
-        
-        if (!silent) {
-          // Show individual product categories for debugging
-          if (newProducts.length > 0) {
-            console.log('First few products with categories:');
-            newProducts.slice(0, 5).forEach((product, index) => {
-              console.log(`Product ${index + 1}: "${product.name}" - Category: "${getCategoryApiValue(product.category)}"`);
-            });
-          }
-        }
-      } else {
-        console.error('Mahsulotlar yuklanmadi:', data.message);
-        if (!silent) {
-          // Show error notification
-          showErrorNotification('Ma\'lumotlarni yuklashda xatolik yuz berdi');
-        }
-      }
-    } catch (error) {
-      console.error('Mahsulotlar yuklashda xatolik:', error);
-      if (!silent) {
-        showErrorNotification('Server bilan bog\'lanishda xatolik');
-      }
-    } finally {
-      if (!silent) {
-        setLoading(false);
-      }
-    }
-  };
+  // Legacy loadProducts function - now uses optimized fetch for manual calls
+  const loadProducts = useCallback(async (silent = false, nextPage = 1, append = false) => {
+    console.log('⚠️ Legacy loadProducts called - using refetch instead');
+    return refetch(silent);
+  }, [refetch]);
 
-  // Show update notification when data changes
-  const showUpdateNotification = () => {
-    // Notification disabled - no longer needed
-    return;
-  };
+ 
 
   // Show error notification
   const showErrorNotification = (message) => {
@@ -277,6 +237,35 @@ const ProductsGrid = ({
     setDisplayedProducts(20);
   };
 
+  // Open bottom sheet for Narx/Baho filtering
+  const openPriceRatingSheet = () => {
+    setSheetMinPrice(appliedMinPrice || minPrice || '');
+    setSheetMaxPrice(appliedMaxPrice || maxPrice || '');
+    setIsPriceRatingSheetOpen(true);
+  };
+
+  const closePriceRatingSheet = () => setIsPriceRatingSheetOpen(false);
+
+  const applyPriceRatingFromSheet = () => {
+    // Apply min/max price from sheet
+    const min = sheetMinPrice === '' ? '' : String(parseInt(sheetMinPrice, 10));
+    const max = sheetMaxPrice === '' ? '' : String(parseInt(sheetMaxPrice, 10));
+    if (min !== '' && max !== '' && parseInt(max, 10) < parseInt(min, 10)) {
+      // swap to keep valid range
+      setAppliedMinPrice(max);
+      setAppliedMaxPrice(min);
+      setMinPrice(max);
+      setMaxPrice(min);
+    } else {
+      setAppliedMinPrice(min);
+      setAppliedMaxPrice(max);
+      setMinPrice(min);
+      setMaxPrice(max);
+    }
+    setDisplayedProducts(20);
+    setIsPriceRatingSheetOpen(false);
+  };
+
   
 
   const getFilteredProducts = () => {
@@ -300,13 +289,11 @@ const ProductsGrid = ({
             matches = product.isPopular || product.badge === 'Mashhur';
             break;
           case 'chegirma':
-            // Chegirmadagi mahsulotlar (eski narx mavjud)
+            // Chegirmadagi mahsulotlar: faqat eski va yangi narxga asoslanadi
             const currentPrice = parseInt(product.price?.toString().replace(/[^\d]/g, '') || '0');
             const oldPrice = parseInt(product.oldPrice?.toString().replace(/[^\d]/g, '') || '0');
-            matches = (oldPrice > 0 && currentPrice > 0 && oldPrice > currentPrice) || 
-                     product.badge === 'Chegirma' || 
-                     product.isDiscount;
-            console.log(`Chegirma check for ${product.name}: oldPrice=${oldPrice}, currentPrice=${currentPrice}, badge=${product.badge}, matches=${matches}`);
+            matches = (oldPrice > 0 && currentPrice > 0 && oldPrice > currentPrice);
+            console.log(`Chegirma check for ${product.name}: oldPrice=${oldPrice}, currentPrice=${currentPrice}, matches=${matches}`);
             break;
           case 'yangi':
             // Admin paneldan belgilangan yangi mahsulotlar
@@ -388,6 +375,9 @@ const ProductsGrid = ({
         return price >= minVal && price <= maxVal;
       });
     }
+
+    // Baho (rating) bo'yicha filtrlash
+    // Rating filter removed for mobile simplicity
     
     return filtered;
   };
@@ -548,6 +538,7 @@ const ProductsGrid = ({
               <img 
                 src={currentImage} 
                 alt={product.name} 
+                loading="lazy"
                 className="w-full h-full object-contain transition-opacity duration-300" 
               />
             ) : (
@@ -558,12 +549,12 @@ const ProductsGrid = ({
             
             {/* Full-width segmented indicator (replaces dots) */}
             {productImages.length > 1 && (
-              <div className="absolute bottom-0 left-0 right-0 flex gap-1 px-3 pb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="absolute bottom-0 left-0 right-0 flex gap-1 px-4 pb-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 {productImages.map((_, index) => (
                   <button
                     key={index}
                     onClick={(e) => handleDotClick(product._id, index, e)}
-                    className={`flex-1 h-0.5 sm:h-1 rounded-full transition-colors duration-200 ${
+                    className={`flex-1 h-[0.5px] sm:h-[3px] rounded-full transition-colors duration-200 ${
                       index === currentImageIndex ? 'bg-primary-orange' : 'bg-gray-300 hover:bg-gray-400'
                     }`}
                     aria-label={`Image ${index + 1}`}
@@ -573,8 +564,8 @@ const ProductsGrid = ({
             )}
           </div>
 
-          {/* Badges */}
-          {product.badge && (
+          {/* Badges (Chegirma badge UI emas, faqat matnli badge'lar) */}
+          {product.badge && product.badge !== 'Chegirma' && (
             <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-primary-orange text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
               {product.badge}
             </span>
@@ -582,13 +573,6 @@ const ProductsGrid = ({
           {product.oldPrice && product.oldPrice > product.price && (
             <span className="absolute top-2 right-2 lg:top-3 lg:right-3 bg-red-500 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
               -{Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}%
-            </span>
-          )}
-          
-          {/* Chegirma badge'i (prioritet yuqori) */}
-          {(product.oldPrice && product.oldPrice > product.price && !product.badge) && (
-            <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-red-600 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
-              Chegirma
             </span>
           )}
           
@@ -668,7 +652,7 @@ const ProductsGrid = ({
     );
   };
 
-  if (loading) {
+  if (loading && products.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
@@ -709,7 +693,7 @@ const ProductsGrid = ({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3 lg:gap-4">
             <span className="text-gray-700 font-medium text-sm lg:text-base">Saralash:</span>
-            <div className="relative">
+              <div className="relative">
               <select
                 ref={selectRef}
                 value={quickFilter}
@@ -726,12 +710,21 @@ const ProductsGrid = ({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
+                {(appliedMinPrice || appliedMaxPrice) && (
+                  <button
+                    onClick={clearPriceFilter}
+                    className="absolute -right-9 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-700 rounded flex items-center justify-center"
+                    title="Filtrni yopish"
+                  >
+                    <i className="fas fa-times text-xs"></i>
+                  </button>
+                )}
             </div>
 
 
-            {/* Price Filter */}
-            <span className="text-gray-700 font-medium text-sm lg:text-base">Narx:</span>
-            <div className="flex items-center gap-2">
+            {/* Price Filter (hidden on mobile) */}
+            <span className="hidden sm:inline text-gray-700 font-medium text-sm lg:text-base">Narx:</span>
+            <div className="hidden sm:flex items-center gap-2">
               <input
                 type="number"
                 min="0"
@@ -791,6 +784,16 @@ const ProductsGrid = ({
                 </button>
               )}
             </div>
+
+            {/* Narx filter bottom-sheet trigger */}
+            <button
+              onClick={openPriceRatingSheet}
+              className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 text-sm font-medium hover:bg-gray-50 sm:hidden"
+              title="Narx bo'yicha filter"
+            >
+              <i className="fas fa-sliders-h"></i>
+              <span>Narx filtri</span>
+            </button>
           </div>
 
         </div>
@@ -809,13 +812,14 @@ const ProductsGrid = ({
           </div>
 
           {/* Load More Button */}
-          {filteredProducts.length > displayedProducts && (
+          {(hasMore || displayedProducts < products.length) && (
             <div className="flex justify-center mt-8">
               <button
-                onClick={() => setDisplayedProducts(prev => prev + 20)}
+                onClick={() => setDisplayedProducts(prev => Math.min(prev + 20, products.length))}
+                disabled={displayedProducts >= products.length && isPrefetching}
                 className="px-6 py-3 bg-primary-orange hover:bg-primary-orange/90 text-white rounded-lg font-medium transition-colors duration-200"
               >
-                Ko'proq
+                {displayedProducts < products.length ? "Ko'proq" : (isPrefetching ? 'Yuklanmoqda...' : "Ko'proq")}
               </button>
             </div>
           )}
@@ -879,6 +883,63 @@ const ProductsGrid = ({
         onClose={closeProductDetail}
         onAddToCart={addToCart}
       />
+
+      {/* Bottom Sheet: Narx Filter (mobile) */}
+      {isPriceRatingSheetOpen && (
+        <div className="fixed inset-0 z-[60]">
+          <div className="absolute inset-0 bg-black/40" onClick={closePriceRatingSheet}></div>
+          <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-2xl p-4 pt-3 max-h-[80vh] overflow-y-auto transition-transform duration-300">
+            <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-3"></div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-semibold text-gray-800">Narx filtri</h3>
+              <button onClick={closePriceRatingSheet} className="text-gray-500 hover:text-gray-700">
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Minimal narx (so'm)</label>
+                <input
+                  type="number"
+                  min="0"
+                  inputMode="numeric"
+                  value={sheetMinPrice}
+                  onChange={(e) => setSheetMinPrice(e.target.value.replace(/[^\d]/g, ''))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-primary-orange"
+                  placeholder="100000"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Maksimal narx (so'm)</label>
+                <input
+                  type="number"
+                  min="0"
+                  inputMode="numeric"
+                  value={sheetMaxPrice}
+                  onChange={(e) => setSheetMaxPrice(e.target.value.replace(/[^\d]/g, ''))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-primary-orange"
+                  placeholder="5000000"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={closePriceRatingSheet}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg font-medium"
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={applyPriceRatingFromSheet}
+                className="flex-1 bg-primary-orange text-white py-2 rounded-lg font-semibold hover:bg-opacity-90"
+              >
+                Qo'llash
+              </button>
+            </div>
+            <div style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px))' }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

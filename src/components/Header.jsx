@@ -108,15 +108,7 @@ const Header = ({
     }
   };
 
-  const showProducts = () => {
-    const productsSection = document.getElementById('products');
-    if (productsSection) {
-      productsSection.scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'start'
-      });
-    }
-  };
+  // Removed unused showProducts function
 
   const toggleCart = () => {
     if (onToggleCart) {
@@ -247,8 +239,8 @@ const Header = ({
       </header>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
-        <ul className="flex items-center justify-around bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-[0_-6px_16px_rgba(0,0,0,0.06)] py-1">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px))' }}>
+        <ul className="flex items-center justify-around bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-[0_-6px_16px_rgba(0,0,0,0.06)] py-2">
           {/* 1. Akademiya */}
           <li className="flex-1">
             <button 
@@ -265,8 +257,8 @@ const Header = ({
               }}
               className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full"
             >
-              <i className="fas fa-graduation-cap text-base"></i>
-              <span className="text-[11px] font-medium">Akademiya</span>
+              <i className="fas fa-graduation-cap text-[18px]"></i>
+              <span className="text-[11px] sm:text-xs font-medium">Akademiya</span>
             </button>
           </li>
           
@@ -288,8 +280,8 @@ const Header = ({
               }}
               className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full"
             >
-              <i className="fas fa-box text-base"></i>
-              <span className="text-[11px] font-medium">Mahsulotlar</span>
+              <i className="fas fa-box text-[18px]"></i>
+              <span className="text-[11px] sm:text-xs font-medium">Mahsulotlar</span>
             </button>
           </li>
           
@@ -305,8 +297,8 @@ const Header = ({
               }}
               className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full"
             >
-              <i className="fas fa-phone text-base"></i>
-              <span className="text-[11px] font-medium">Aloqa</span>
+              <i className="fas fa-phone text-[18px]"></i>
+              <span className="text-[11px] sm:text-xs font-medium">Aloqa</span>
             </a>
           </li>
           
@@ -316,8 +308,8 @@ const Header = ({
               onClick={toggleCart}
               className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full relative"
             >
-              <i className="fas fa-shopping-cart text-base"></i>
-              <span className="text-[11px] font-medium">Savatcha</span>
+              <i className="fas fa-shopping-cart text-[18px]"></i>
+              <span className="text-[11px] sm:text-xs font-medium">Savatcha</span>
               {getTotalItems() > 0 && (
                 <span className="absolute -top-1 right-3 bg-red-500 text-white text-[10px] rounded-full h-5 w-5 flex items-center justify-center font-bold">
                   {getTotalItems()}
@@ -344,8 +336,8 @@ const Header = ({
               }}
               className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full"
             >
-              <i className="fas fa-users text-base"></i>
-              <span className="text-[11px] font-medium">Ustalar</span>
+              <i className="fas fa-users text-[18px]"></i>
+              <span className="text-[11px] sm:text-xs font-medium">Ustalar</span>
             </button>
           </li>
         </ul>

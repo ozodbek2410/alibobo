@@ -257,7 +257,11 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                       const value = parseInt(e.target.value) || 1;
                       setQuantity(Math.max(1, value));
                     }}
-                    className="w-16 sm:w-20 h-8 sm:h-10 text-center border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange text-sm sm:text-base font-medium"
+                    inputMode="numeric"
+                    step="1"
+                    aria-label="Miqdor"
+                    placeholder="1"
+                    className="w-24 sm:w-28 h-8 sm:h-10 text-center border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange text-sm sm:text-base font-medium"
                   />
                   <button
                     onClick={() => setQuantity(quantity + 1)}
@@ -267,6 +271,7 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                   </button>
                 </div>
               </div>
+              
 
               {/* Product Information */}
               <div className="space-y-3 border-t border-gray-200 pt-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 shadow-sm">

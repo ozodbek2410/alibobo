@@ -3,51 +3,136 @@ const router = express.Router();
 const Product = require('../models/Product');
 const Notification = require('../models/Notification');
 
-// GET all products
+// In-memory cache for products
+let productsCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Helper function to check if cache is valid
+const isCacheValid = (cacheEntry) => {
+  return cacheEntry && (Date.now() - cacheEntry.timestamp < CACHE_TTL);
+};
+
+// GET all products - OPTIMIZED
 router.get('/', async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', category = '', sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+    const startTime = Date.now();
+    
+    // Parse and validate parameters
+    const page = Math.max(parseInt(req.query.page || '1', 10), 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10), 1), 50);
+    const { search = '', category = '', sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+    
+    // Create cache key
+    const cacheKey = `${page}-${limit}-${search}-${category}-${sortBy}-${sortOrder}`;
+    const cachedData = productsCache.get(cacheKey);
+    
+    // Return cached data if valid
+    if (isCacheValid(cachedData)) {
+      console.log('✅ Returning cached products data');
+      // Set cache headers to help frontend caching
+      res.set({
+        'Cache-Control': 'public, max-age=300', // 5 minutes
+        'X-Cache': 'HIT',
+        'Content-Type': 'application/json'
+      });
+      return res.json({
+        ...cachedData.data,
+        cached: true,
+        queryTime: 0
+      });
+    }
     
     console.log('🔍 Backend search request:', { page, limit, search, category, sortBy, sortOrder });
     
+    // Build optimized query
     const query = {};
     
-    if (search) {
+    if (search && search.trim()) {
+      // Use indexed fields for better performance
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { category: { $regex: search, $options: 'i' } },
-        { brand: { $regex: search, $options: 'i' } }
+        { name: { $regex: search.trim(), $options: 'i' } },
+        { category: { $regex: search.trim(), $options: 'i' } },
+        { brand: { $regex: search.trim(), $options: 'i' } }
       ];
-      console.log('🔍 Search query:', query);
     }
     
-    if (category) {
-      query.category = category;
-      console.log('🔍 Category filter:', category);
+    if (category && category.trim()) {
+      query.category = category.trim();
     }
     
     const sortOptions = {};
     sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
     
-    const products = await Product.find(query)
-      .sort(sortOptions)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .exec();
+    // Execute queries in parallel for better performance
+    const [products, totalCount] = await Promise.all([
+      Product.find(query)
+        .select('name price oldPrice category stock unit badge image images description createdAt updatedAt')
+        .sort(sortOptions)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean()
+        .exec(),
+      Product.countDocuments(query)
+    ]);
     
-    const count = await Product.countDocuments(query);
+    // Optimize products for list view - DRASTICALLY reduce payload
+    const optimizedProducts = products.map(product => ({
+      _id: product._id,
+      name: product.name,
+      price: product.price,
+      oldPrice: product.oldPrice,
+      category: product.category,
+      stock: product.stock,
+      unit: product.unit,
+      badge: product.badge,
+      // Only send first image as string (not array) to reduce payload
+      image: product.images?.[0] || product.image || '',
+      // Remove images array for list view - only send on detail view
+      // images: [], // Commented out to reduce payload
+      // Truncate description significantly
+      description: product.description?.substring(0, 50) || '',
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt
+    }));
     
-    console.log('✅ Backend response:', { productsCount: products.length, totalCount: count });
-    
-    res.json({
-      products,
-      totalPages: Math.ceil(count / limit),
+    const responseData = {
+      products: optimizedProducts,
+      totalPages: Math.ceil(totalCount / limit),
       currentPage: page,
-      totalCount: count
+      totalCount,
+      queryTime: Date.now() - startTime,
+      cached: false
+    };
+    
+    // Cache the response
+    productsCache.set(cacheKey, {
+      data: responseData,
+      timestamp: Date.now()
     });
+    
+    // Clean old cache entries (simple cleanup)
+    if (productsCache.size > 100) {
+      const oldestKey = productsCache.keys().next().value;
+      productsCache.delete(oldestKey);
+    }
+    
+    // Set cache headers for fresh data
+    res.set({
+      'Cache-Control': 'public, max-age=300', // 5 minutes
+      'X-Cache': 'MISS',
+      'Content-Type': 'application/json'
+    });
+
+    const payloadSize = JSON.stringify(responseData).length;
+    console.log(`✅ Backend response: ${products.length} products in ${Date.now() - startTime}ms, payload: ${(payloadSize/1024).toFixed(2)}KB`);
+    
+    res.json(responseData);
   } catch (error) {
     console.error('❌ Backend error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      message: error.message,
+      error: process.env.NODE_ENV === 'development' ? error.stack : 'Internal server error'
+    });
   }
 });
 

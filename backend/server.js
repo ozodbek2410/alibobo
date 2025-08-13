@@ -2,18 +2,40 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+
+// Performance monitoring
+const performanceLogger = (req, res, next) => {
+  const start = Date.now();
+  const originalSend = res.send;
+  
+  res.send = function(data) {
+    const duration = Date.now() - start;
+    const size = Buffer.byteLength(JSON.stringify(data), 'utf8');
+    
+    console.log(`🌐 ${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - ${(size/1024).toFixed(2)}KB`);
+    
+    if (duration > 1000) {
+      console.warn(`🐌 Slow request detected: ${req.method} ${req.path} (${duration}ms)`);
+    }
+    
+    return originalSend.call(this, data);
+  };
+  
+  next();
+};
 // Load environment variables
 require('dotenv').config({ path: './config.env' });
 
 // Fallback environment variables
 if (!process.env.MONGODB_URI) {
-  process.env.MONGODB_URI = 'mongodb+srv://ozodbek:KrjxfbC5XGZibWjl@cluster0.dlopces.mongodb.net/alibobo?retryWrites=true&w=majority&appName=Cluster0';
+  process.env.MONGODB_URI = 'mongodb+srv://ozodbek:NQNAa4JQIbG0vcV5@cluster0.dlopces.mongodb.net/alibobo?retryWrites=true&w=majority&appName=Cluster0';
 }
 if (!process.env.PORT) {
   process.env.PORT = '5000';
 }
 
 // Debug: environment variables
+console.log(' Environment variables:');
 console.log('🔍 Environment variables:');
 console.log('MONGODB_URI:', process.env.MONGODB_URI);
 console.log('PORT:', process.env.PORT);
@@ -22,8 +44,9 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '50mb' })); // Increase limit for base64 images
-app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Increase limit for base64 images
+app.use(performanceLogger); // Add performance monitoring
+app.use(express.json({ limit: '10mb' })); // Reduced from 50mb for better performance
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // MongoDB connection
 const connectDB = async () => {
@@ -32,8 +55,15 @@ const connectDB = async () => {
     console.log('🔗 MongoDB URI:', process.env.MONGODB_URI ? 'Mavjud' : 'Yo\'q');
     
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000, // 10 soniya timeout
-      socketTimeoutMS: 45000, // 45 soniya socket timeout
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      // Connection pooling for better performance
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      maxIdleTimeMS: 30000,
+      // Remove unsupported option: bufferMaxEntries
+      // Enable compression
+      compressors: ['zlib']
     });
     
     console.log('✅ MongoDB ga muvaffaqiyatli ulandi');

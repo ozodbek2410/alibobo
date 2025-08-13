@@ -337,7 +337,7 @@ const CartSidebar = ({ isOpen, onClose, cart, onRemoveFromCart, onUpdateQuantity
 
         {/* Cart Footer */}
         {cart.length > 0 && (
-          <div className="border-t p-4 space-y-4 bg-white">
+          <div className="border-t p-4 pt-3 pb-4 space-y-3 bg-white mb-12 sm:mb-0">
             <div className="flex justify-between items-center">
               <span className="font-semibold text-primary-dark">Jami:</span>
               <span className="text-2xl font-bold text-primary-orange">

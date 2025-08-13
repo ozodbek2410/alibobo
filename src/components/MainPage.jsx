@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Header from './Header';
 import ProductsGrid from './ProductsGrid';
 import Craftsmen from './Craftsmen';
 import Services from './Services';
 import Footer from './Footer';
+import { useParallelFetch } from '../hooks/useOptimizedFetch';
 
 const MainPage = ({ onSuccessfulLogin }) => {
   const [craftsmenData, setCraftsmenData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // Cart states - centralized here
   const [cart, setCart] = useState([]);
@@ -17,30 +18,31 @@ const MainPage = ({ onSuccessfulLogin }) => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Parallel data loading for initial page load
+  const { data: parallelData, loading: parallelLoading } = useParallelFetch([
+    'http://localhost:5000/api/craftsmen?limit=100&status=active',
+    'http://localhost:5000/api/products?limit=20&page=1'
+  ]);
+
+  // Update craftsmen data when parallel fetch completes
   useEffect(() => {
-    loadCraftsmen();
+    const craftsmenUrl = 'http://localhost:5000/api/craftsmen?limit=100&status=active';
+    if (parallelData[craftsmenUrl]) {
+      const craftsmenResponse = parallelData[craftsmenUrl];
+      console.log('🚀 Parallel fetch: Craftsmen loaded', craftsmenResponse.craftsmen?.length || 0);
+      setCraftsmenData(craftsmenResponse.craftsmen || []);
+      setInitialLoadComplete(true);
+    }
+  }, [parallelData]);
+
+  // Optimized callback for ProductsGrid
+  const handleInitialProductsLoaded = useCallback(() => {
+    // Products are already loaded via parallel fetch, no need for additional call
+    console.log('✅ Products loaded via parallel fetch');
   }, []);
 
-  const loadCraftsmen = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('http://localhost:5000/api/craftsmen?limit=100');
-      const data = await response.json();
-      
-      if (response.ok) {
-        setCraftsmenData(data.craftsmen || []);
-      } else {
-        console.error('Ustalar yuklanmadi:', data.message);
-      }
-    } catch (error) {
-      console.error('Ustalar yuklashda xatolik:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Cart functions - centralized here
-  const addToCart = (product) => {
+  // Memoized cart functions for performance
+  const addToCart = useCallback((product) => {
     const existingItem = cart.find(item => item.id === product.id || item._id === product._id);
     
     if (existingItem) {
@@ -57,46 +59,46 @@ const MainPage = ({ onSuccessfulLogin }) => {
       };
       setCart([...cart, productToAdd]);
     }
-  };
+  }, [cart]);
 
-  const removeFromCart = (productId) => {
-    setCart(cart.filter(item => item.id !== productId && item._id !== productId));
-  };
+  const removeFromCart = useCallback((productId) => {
+    setCart(prev => prev.filter(item => item.id !== productId && item._id !== productId));
+  }, []);
 
-  const updateCartQuantity = (productId, newQuantity) => {
+  const updateCartQuantity = useCallback((productId, newQuantity) => {
     if (newQuantity <= 0) {
       removeFromCart(productId);
     } else {
-      setCart(cart.map(item => 
+      setCart(prev => prev.map(item => 
         (item.id === productId || item._id === productId)
           ? { ...item, quantity: newQuantity }
           : item
       ));
     }
-  };
+  }, [removeFromCart]);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCart([]);
-  };
+  }, []);
 
-  const toggleCart = () => {
-    setIsCartOpen(!isCartOpen);
-  };
+  const toggleCart = useCallback(() => {
+    setIsCartOpen(prev => !prev);
+  }, []);
 
-  const getTotalItems = () => {
+  const getTotalItems = useCallback(() => {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
-  };
+  }, [cart]);
 
-  // Catalog functions
-  const handleCategorySelect = (category) => {
+  // Memoized catalog functions
+  const handleCategorySelect = useCallback((category) => {
     setSelectedCategory(category);
-    console.log('Selected category in MainPage:', category);
-  };
+    console.log('📂 Selected category in MainPage:', category);
+  }, []);
 
-  const handleSearch = (query) => {
+  const handleSearch = useCallback((query) => {
     setSearchQuery(query);
-    console.log('Search query in MainPage:', query);
-  };
+    console.log('🔍 Search query in MainPage:', query);
+  }, []);
 
   return (
     <>
@@ -123,6 +125,7 @@ const MainPage = ({ onSuccessfulLogin }) => {
           onCheckout={clearCart}
           selectedCategory={selectedCategory}
           searchQuery={searchQuery}
+          onInitialProductsLoaded={handleInitialProductsLoaded}
         />
       </div>
       <div id="craftsmen">

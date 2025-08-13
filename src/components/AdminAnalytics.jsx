@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
 import AdminNotificationBell from './AdminNotificationBell';
 
@@ -59,9 +59,7 @@ const AdminAnalytics = ({ onMobileToggle, notifications, setNotifications }) => 
     return new Intl.NumberFormat('uz-UZ').format(amount) + " so'm";
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('uz-UZ');
-  };
+  // removed unused formatDate
 
   const showNotification = (message, type = 'info') => {
     const notification = document.createElement('div');
@@ -210,7 +208,6 @@ const AdminAnalytics = ({ onMobileToggle, notifications, setNotifications }) => 
 
   const createCharts = () => {
     createSalesChart();
-    updateOrdersStatusReport();
   };
 
   const createSalesChart = () => {
@@ -354,7 +351,7 @@ const AdminAnalytics = ({ onMobileToggle, notifications, setNotifications }) => 
     };
   }, []);
 
-  const summaryData = updateSummaryCards();
+  // removed unused summaryData
   const ordersStatus = updateOrdersStatusReport();
   const monthlyStats = updateMonthlyData(selectedMonth);
 

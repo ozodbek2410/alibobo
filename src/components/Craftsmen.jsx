@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { CraftsmenGridSkeleton } from './LoadingSkeleton';
 
-const Craftsmen = ({ craftsmenData = [] }) => {
+const Craftsmen = ({ craftsmenData = [], loading = false }) => {
   // Debug: Check if data is being received
   console.log('🔍 Craftsmen component received data:', craftsmenData);
   console.log('📊 Total craftsmen:', craftsmenData.length);
+  console.log('⏳ Loading state:', loading);
   
   // Filter only active craftsmen for the main page
   const activeCraftsmen = craftsmenData.filter(craftsman => craftsman.status === 'active');
   console.log('✅ Active craftsmen:', activeCraftsmen.length);
   console.log('👷 Active craftsmen data:', activeCraftsmen);
   
+  // Category filter and search state
+  const [selectedSpecialty, setSelectedSpecialty] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCraftsman, setSelectedCraftsman] = useState(null);
@@ -217,6 +223,28 @@ const Craftsmen = ({ craftsmenData = [] }) => {
     );
   };
 
+  // Build specialties list from active craftsmen and derive filtered list
+  const specialties = Array.from(
+    new Set(activeCraftsmen.map(c => c.specialty).filter(Boolean))
+  ).sort();
+
+  const displayedCraftsmen = (() => {
+    let list = selectedSpecialty
+      ? activeCraftsmen.filter(c => c.specialty === selectedSpecialty)
+      : activeCraftsmen;
+    const q = (searchTerm || '').toLowerCase().trim();
+    if (q) {
+      list = list.filter(c => {
+        const name = (c.name || '').toLowerCase();
+        const spec = (c.specialty || '').toLowerCase();
+        const desc = (c.description || '').toLowerCase();
+        const phone = (c.phone || '').toLowerCase();
+        return name.includes(q) || spec.includes(q) || desc.includes(q) || phone.includes(q);
+      });
+    }
+    return list;
+  })();
+
   return (
     <>
       {/* Header - Mobile Responsive */}
@@ -229,8 +257,60 @@ const Craftsmen = ({ craftsmenData = [] }) => {
 
       {/* Main Content - Mobile Responsive Grid */}
       <main className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-20 lg:pb-12">
+        {/* Search input with clear (x) */}
+        <div className="mb-4">
+          <div className="relative max-w-xl mx-auto">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Ustalar bo'yicha qidirish (ism, mutaxassislik, telefon)"
+              className="w-full px-4 py-2 pr-10 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300 text-sm sm:text-base"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-700 rounded flex items-center justify-center"
+                aria-label="Qidiruvni yopish"
+              >
+                <i className="fas fa-times text-sm"></i>
+              </button>
+            )}
+          </div>
+        </div>
+        {/* Specialties under the title */}
+        {specialties.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
+              <button
+                onClick={() => setSelectedSpecialty('')}
+                className={`px-3 py-1.5 rounded-full text-sm border transition-colors whitespace-nowrap ${
+                  selectedSpecialty === ''
+                    ? 'bg-orange-500 text-white border-orange-500 shadow'
+                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                Barchasi
+              </button>
+              {specialties.map((spec) => (
+                <button
+                  key={spec}
+                  onClick={() => setSelectedSpecialty(spec)}
+                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors whitespace-nowrap ${
+                    selectedSpecialty === spec
+                      ? 'bg-orange-500 text-white border-orange-500 shadow'
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                  }`}
+                  title={spec}
+                >
+                  {spec}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 xl:gap-8">
-          {activeCraftsmen.map((craftsman, index) => {
+          {displayedCraftsmen.map((craftsman, index) => {
             const images = getCraftsmanImages(craftsman);
             
             return (
@@ -272,14 +352,25 @@ const Craftsmen = ({ craftsmenData = [] }) => {
           })}
         </div>
 
-        {activeCraftsmen.length === 0 && (
+        {/* Empty State - Only show if not loading and no data */}
+        {displayedCraftsmen.length === 0 && !loading && (
           <div className="text-center py-12">
             <svg className="w-16 sm:w-24 h-16 sm:h-24 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">Ustalar topilmadi</h3>
-            <p className="text-sm sm:text-base text-gray-500">Hozirda faol ustalar mavjud emas</p>
+            <p className="text-sm sm:text-base text-gray-500">
+              {selectedSpecialty || searchTerm 
+                ? 'Tanlangan filtrlar bo\'yicha ustalar topilmadi' 
+                : 'Hozircha ustalar ma\'lumotlari mavjud emas'
+              }
+            </p>
           </div>
+        )}
+
+        {/* Loading State - Show skeleton while data is being fetched */}
+        {loading && displayedCraftsmen.length === 0 && (
+          <CraftsmenGridSkeleton count={6} />
         )}
       </main>
 

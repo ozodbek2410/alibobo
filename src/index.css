@@ -323,3 +323,21 @@ code {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-500;
 }
+
+/* Admin Panel Grid Layouts */
+.desktop-grid {
+  @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+}
+
+.product-card {
+  @apply transition-all duration-300;
+}
+
+.product-card:hover {
+  @apply transform -translate-y-1;
+}
+
+/* Modal body scroll lock */
+body.modal-open {
+  @apply overflow-hidden;
+}
