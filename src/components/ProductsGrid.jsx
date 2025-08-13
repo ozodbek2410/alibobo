@@ -95,7 +95,7 @@ const ProductsGrid = ({
     return `http://localhost:5000/api/products?${params.toString()}`;
   }, [selectedCategory, searchQuery]);
 
-  // Use optimized fetch hook with smart caching and debouncing
+  // Use optimized fetch hook with faster settings for better UX
   const { 
     data: apiResponse, 
     loading: apiLoading, 
@@ -103,31 +103,41 @@ const ProductsGrid = ({
     refetch,
     lastFetch 
   } = useOptimizedFetch(apiUrl, {
-    debounceMs: 500, // 500ms debounce for search
-    throttleMs: 2000, // 2s throttle for rapid changes
-    cacheTime: 3 * 60 * 1000, // 3 minutes cache
-    refetchOnFocus: true, // Smart focus refetch (only if data is stale)
+    debounceMs: 200, // Reduced debounce for faster response
+    throttleMs: 1000, // Reduced throttle for faster updates
+    cacheTime: 2 * 60 * 1000, // Reduced cache time for fresher data
+    refetchOnFocus: false, // Disable focus refetch to prevent unnecessary calls
     enabled: true
   });
 
-  // Update products when API response changes
+  // Update products when API response changes - fixed for correct API structure
   useEffect(() => {
-    if (apiResponse?.products) {
-      console.log('📦 Products updated from optimized fetch:', apiResponse.products.length);
-      setProducts(apiResponse.products);
-      setDisplayedProducts(Math.min(apiResponse.products.length, 20));
-      
-      // Call initial products loaded callback
-      if (typeof onInitialProductsLoaded === 'function') {
-        onInitialProductsLoaded();
+    if (apiResponse) {
+      // API returns: { products: [...], totalPages: X, currentPage: Y, totalCount: Z }
+      if (apiResponse.products && Array.isArray(apiResponse.products)) {
+        setProducts(apiResponse.products);
+        setDisplayedProducts(Math.min(apiResponse.products.length, 20));
+        setLoading(false);
+        
+        // Call initial products loaded callback
+        if (typeof onInitialProductsLoaded === 'function') {
+          onInitialProductsLoaded();
+        }
+      } else {
+        setProducts([]);
+        setLoading(false);
       }
     }
   }, [apiResponse, onInitialProductsLoaded]);
 
-  // Update loading state
+  // Update loading state - only show loading when no products exist
   useEffect(() => {
-    setLoading(apiLoading);
-  }, [apiLoading]);
+    if (products.length > 0) {
+      setLoading(false); // Never show loading when products exist
+    } else {
+      setLoading(apiLoading);
+    }
+  }, [apiLoading, products.length]);
 
   // Reset displayed products when filters change (optimized fetch handles the API calls)
   useEffect(() => {
@@ -269,6 +279,10 @@ const ProductsGrid = ({
   
 
   const getFilteredProducts = () => {
+    if (products.length === 0) {
+      return [];
+    }
+    
     let filtered = products;
     
     // Kategoriya bo'yicha filtrlash
@@ -293,7 +307,6 @@ const ProductsGrid = ({
             const currentPrice = parseInt(product.price?.toString().replace(/[^\d]/g, '') || '0');
             const oldPrice = parseInt(product.oldPrice?.toString().replace(/[^\d]/g, '') || '0');
             matches = (oldPrice > 0 && currentPrice > 0 && oldPrice > currentPrice);
-            console.log(`Chegirma check for ${product.name}: oldPrice=${oldPrice}, currentPrice=${currentPrice}, matches=${matches}`);
             break;
           case 'yangi':
             // Admin paneldan belgilangan yangi mahsulotlar
@@ -652,6 +665,7 @@ const ProductsGrid = ({
     );
   };
 
+  // Show loading skeleton only when truly loading and no products
   if (loading && products.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">

@@ -29,7 +29,6 @@ const MainPage = ({ onSuccessfulLogin }) => {
     const craftsmenUrl = 'http://localhost:5000/api/craftsmen?limit=100&status=active';
     if (parallelData[craftsmenUrl]) {
       const craftsmenResponse = parallelData[craftsmenUrl];
-      console.log('🚀 Parallel fetch: Craftsmen loaded', craftsmenResponse.craftsmen?.length || 0);
       setCraftsmenData(craftsmenResponse.craftsmen || []);
       setInitialLoadComplete(true);
     }
@@ -38,7 +37,6 @@ const MainPage = ({ onSuccessfulLogin }) => {
   // Optimized callback for ProductsGrid
   const handleInitialProductsLoaded = useCallback(() => {
     // Products are already loaded via parallel fetch, no need for additional call
-    console.log('✅ Products loaded via parallel fetch');
   }, []);
 
   // Memoized cart functions for performance

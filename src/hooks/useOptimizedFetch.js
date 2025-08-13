@@ -45,14 +45,13 @@ export const useOptimizedFetch = (url, options = {}) => {
   const isMountedRef = useRef(true);
   const lastUrlRef = useRef(url);
 
-  // Performance tracking
+  // Performance tracking (disabled for production)
   const trackPerformance = useCallback((operation, startTime, endTime, cached = false) => {
-    const duration = endTime - startTime;
-    console.log(`⏱️ ${operation}: ${duration.toFixed(2)}ms ${cached ? '(cached)' : '(fresh)'}`);
-    
-    if (duration > 1000 && !cached) {
-      console.warn(`🐌 Slow API call detected: ${operation} (${duration.toFixed(2)}ms)`);
-    }
+    // Disabled to prevent console spam
+    // const duration = endTime - startTime;
+    // if (duration > 2000 && !cached) {
+    //   console.warn(`🐌 Slow API call: ${operation} (${duration.toFixed(2)}ms)`);
+    // }
   }, []);
 
   // Check if cache is valid
@@ -83,7 +82,6 @@ export const useOptimizedFetch = (url, options = {}) => {
 
     // Check if request is already pending
     if (pendingRequests.has(cacheKey)) {
-      console.log(`🔄 Request already pending for ${fetchUrl}, waiting...`);
       try {
         const result = await pendingRequests.get(cacheKey);
         return result;
@@ -108,8 +106,6 @@ export const useOptimizedFetch = (url, options = {}) => {
     // Create promise for deduplication
     const fetchPromise = (async () => {
       try {
-        console.log(`🌐 Fetching data from: ${fetchUrl}`);
-        
         const response = await fetch(fetchUrl, {
           signal: abortControllerRef.current.signal,
           headers: {
@@ -213,10 +209,7 @@ export const useOptimizedFetch = (url, options = {}) => {
       
       // Only refetch if it's been more than 30 seconds since last fetch
       if (timeSinceLastFetch > 30000) {
-        console.log('🔄 Window focus detected, refetching data...');
         debouncedFetch(url, true);
-      } else {
-        console.log('⏭️ Skipping focus refetch, data is fresh');
       }
     };
 
@@ -229,7 +222,6 @@ export const useOptimizedFetch = (url, options = {}) => {
     if (!refetchInterval) return;
 
     const interval = setInterval(() => {
-      console.log('🔄 Interval refetch triggered');
       debouncedFetch(url, true);
     }, refetchInterval);
 
@@ -280,8 +272,6 @@ export const useParallelFetch = (urls, options = {}) => {
 
       const results = await Promise.all(promises);
       const endTime = performance.now();
-
-      console.log(`⚡ Parallel fetch completed in ${(endTime - startTime).toFixed(2)}ms`);
 
       const newData = {};
       const newErrors = {};

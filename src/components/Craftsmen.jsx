@@ -2,15 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { CraftsmenGridSkeleton } from './LoadingSkeleton';
 
 const Craftsmen = ({ craftsmenData = [], loading = false }) => {
-  // Debug: Check if data is being received
-  console.log('🔍 Craftsmen component received data:', craftsmenData);
-  console.log('📊 Total craftsmen:', craftsmenData.length);
-  console.log('⏳ Loading state:', loading);
-  
   // Filter only active craftsmen for the main page
   const activeCraftsmen = craftsmenData.filter(craftsman => craftsman.status === 'active');
-  console.log('✅ Active craftsmen:', activeCraftsmen.length);
-  console.log('👷 Active craftsmen data:', activeCraftsmen);
   
   // Category filter and search state
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
@@ -47,8 +40,8 @@ const Craftsmen = ({ craftsmenData = [], loading = false }) => {
       images.push(...craftsman.portfolio);
     }
     
-    // Return images array or placeholder if empty
-    return images.length > 0 ? images : ['/assets/ustalar/construction1.jpeg'];
+    // Return images array or use local placeholder
+    return images.length > 0 ? images : ['/assets/ustalar/placeholder.svg'];
   };
 
   // Show craftsman details modal

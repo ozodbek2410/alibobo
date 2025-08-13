@@ -192,19 +192,24 @@ code {
 
 /* Craftsmen Card Animations */
 .craftsman-card {
-  @apply transform transition-all duration-300 ease-in-out;
+  transform: translateZ(0);
+  transition: all 0.3s ease-in-out;
 }
 
 .craftsman-card:hover {
-  @apply scale-105 shadow-xl;
+  transform: scale(1.05);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
 .image-carousel {
-  @apply relative overflow-hidden rounded-t-xl;
+  position: relative;
+  overflow: hidden;
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
 }
 
 .image-carousel img {
-  @apply transition-opacity duration-500 ease-in-out;
+  transition: opacity 0.5s ease-in-out;
 }
 
 /* Modal Animations */

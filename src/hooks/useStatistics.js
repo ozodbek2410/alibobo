@@ -10,7 +10,6 @@ const useStatistics = (autoRefresh = true, refreshInterval = 300000) => { // 5 m
   // Fetch dashboard statistics
   const fetchDashboardStats = useCallback(async () => {
     try {
-      console.log('📊 Fetching dashboard statistics...');
       const response = await fetch('/api/statistics/dashboard');
 
       if (!response.ok) {
@@ -18,7 +17,6 @@ const useStatistics = (autoRefresh = true, refreshInterval = 300000) => { // 5 m
       }
 
       const data = await response.json();
-      console.log('✅ Dashboard statistics received:', data);
 
       setStatistics(data);
       setLastUpdated(new Date());
@@ -35,7 +33,6 @@ const useStatistics = (autoRefresh = true, refreshInterval = 300000) => { // 5 m
   // Fetch edit statistics
   const fetchEditStats = useCallback(async (days = 30) => {
     try {
-      console.log(`📝 Fetching edit statistics for ${days} days...`);
       const response = await fetch(`/api/statistics/edits?days=${days}`);
 
       if (!response.ok) {
@@ -43,7 +40,6 @@ const useStatistics = (autoRefresh = true, refreshInterval = 300000) => { // 5 m
       }
 
       const data = await response.json();
-      console.log('✅ Edit statistics received:', data);
 
       setEditStats(data);
       setError(null);
@@ -75,7 +71,6 @@ const useStatistics = (autoRefresh = true, refreshInterval = 300000) => { // 5 m
 
   // Refresh statistics manually
   const refreshStats = useCallback(async () => {
-    console.log('🔄 Manually refreshing statistics...');
     await fetchAllStats();
   }, [fetchAllStats]);
 
@@ -93,15 +88,11 @@ const useStatistics = (autoRefresh = true, refreshInterval = 300000) => { // 5 m
   useEffect(() => {
     if (!autoRefresh || refreshInterval <= 0) return;
 
-    console.log(`⏰ Setting up auto-refresh every ${refreshInterval / 1000} seconds`);
-
     const interval = setInterval(() => {
-      console.log('🔄 Auto-refreshing statistics...');
       fetchAllStats();
     }, refreshInterval);
 
     return () => {
-      console.log('🛑 Clearing auto-refresh interval');
       clearInterval(interval);
     };
   }, [autoRefresh, refreshInterval, fetchAllStats]);

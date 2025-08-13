@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import AdminStatsCards from './AdminStatsCards';
 import AdminRecentActivities from './AdminRecentActivities';
 import AdminNotificationBell from './AdminNotificationBell';
@@ -38,47 +38,47 @@ const AdminDashboard = ({ onMobileToggle, onNavigate }) => {
   } = useStatistics(true, 300000); // Auto-refresh every 5 minutes
 
   // Fetch data for activities (separate from statistics)
-  useEffect(() => {
-    const fetchActivitiesData = async () => {
-      setActivitiesLoading(true);
-      try {
-        // Fetch craftsmen for activities
-        const craftsmenResponse = await fetch('/api/craftsmen');
-        if (craftsmenResponse.ok) {
-          const craftsmenResult = await craftsmenResponse.json();
-          setCraftsmenData(craftsmenResult.craftsmen || []);
-        }
-
-        // Fetch products for activities
-        const productsResponse = await fetch('/api/products');
-        if (productsResponse.ok) {
-          const productsResult = await productsResponse.json();
-          setProductsData(productsResult.products || []);
-        }
-
-        // Fetch orders for activities
-        const ordersResponse = await fetch('/api/orders');
-        if (ordersResponse.ok) {
-          const ordersResult = await ordersResponse.json();
-          setOrdersData(ordersResult.orders || []);
-        }
-      } catch (error) {
-        console.error('Ma\'lumotlarni yuklashda xatolik:', error);
-        notifyError('Xatolik', 'Ma\'lumotlarni yuklashda xatolik yuz berdi');
-      } finally {
-        setActivitiesLoading(false);
+  const fetchActivitiesData = useCallback(async () => {
+    setActivitiesLoading(true);
+    try {
+      // Fetch craftsmen for activities
+      const craftsmenResponse = await fetch('/api/craftsmen');
+      if (craftsmenResponse.ok) {
+        const craftsmenResult = await craftsmenResponse.json();
+        setCraftsmenData(craftsmenResult.craftsmen || []);
       }
-    };
 
+      // Fetch products for activities
+      const productsResponse = await fetch('/api/products');
+      if (productsResponse.ok) {
+        const productsResult = await productsResponse.json();
+        setProductsData(productsResult.products || []);
+      }
+
+      // Fetch orders for activities
+      const ordersResponse = await fetch('/api/orders');
+      if (ordersResponse.ok) {
+        const ordersResult = await ordersResponse.json();
+        setOrdersData(ordersResult.orders || []);
+      }
+    } catch (error) {
+      console.error('Ma\'lumotlarni yuklashda xatolik:', error);
+      console.error('Xatolik: Ma\'lumotlarni yuklashda xatolik yuz berdi');
+    } finally {
+      setActivitiesLoading(false);
+    }
+  }, []); // Empty dependency array
+
+  useEffect(() => {
     fetchActivitiesData();
-  }, [notifyError]);
+  }, [fetchActivitiesData]);
 
   // Handle statistics errors
   useEffect(() => {
     if (statsError) {
-      notifyError('Statistika xatoligi', statsError);
+      console.error('Statistika xatoligi:', statsError);
     }
-  }, [statsError, notifyError]);
+  }, [statsError]);
 
   // Handle navigation from activities
   const handleNavigateFromActivity = (section, searchTerm) => {

@@ -14,11 +14,11 @@
   "scripts": {
     "start": "cross-env DISABLE_ESLINT_PLUGIN=true ESLINT_NO_DEV_ERRORS=true concurrently \"npm run client\" \"npm run server\"",
     "client": "cross-env DISABLE_ESLINT_PLUGIN=true ESLINT_NO_DEV_ERRORS=true react-scripts start",
-    "server": "cd backend && npm start",
+    "server": "cd backend_new && npm start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "dev": "cross-env DISABLE_ESLINT_PLUGIN=true ESLINT_NO_DEV_ERRORS=true concurrently \"npm run client\" \"cd backend && npm run dev\""
+    "dev": "cross-env DISABLE_ESLINT_PLUGIN=true ESLINT_NO_DEV_ERRORS=true concurrently \"npm run client\" \"cd backend_new && npm run dev\""
   },
   "eslintConfig": {
     "extends": [
