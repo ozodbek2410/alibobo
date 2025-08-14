@@ -29,7 +29,7 @@ const CartSidebar = ({ isOpen, onClose, cart, onRemoveFromCart, onUpdateQuantity
     }, 0);
   };
 
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
 
   // Add validation functions
   const validateForm = () => {

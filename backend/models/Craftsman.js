@@ -75,4 +75,4 @@ craftsmanSchema.index({ createdAt: 1 });
 craftsmanSchema.index({ updatedAt: 1 });
 craftsmanSchema.index({ createdAt: 1, updatedAt: 1 }, { name: 'edit_tracking' });
 
-module.exports = mongoose.model('Craftsman', craftsmanSchema); 
+module.exports = mongoose.model('Craftsman', craftsmanSchema);

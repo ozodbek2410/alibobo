@@ -2,6 +2,11 @@
 
 // Admin panel canonical categories
 export const ADMIN_CATEGORIES = [
+  "Xoz-Mag",
+  "Yevro-Remont",
+  "Elektrika",
+  "Dekorativ-Mahsulotlar",
+  "Santexnika",
   "G'isht va bloklar",
   "Asbob-uskunalar", 
   "Bo'yoq va lak",
@@ -9,7 +14,6 @@ export const ADMIN_CATEGORIES = [
   "Metall va armatura",
   "Yog'och va mebel",
   "Tom materiallar",
-  "Santexnika",
   "Issiqlik va konditsioner",
   "Dekor va bezatish",
   "Temir-beton",
@@ -20,6 +24,10 @@ export const ADMIN_CATEGORIES = [
 // Mapping from database/API values to admin panel display names
 export const CATEGORY_MAPPING = {
   // Full category names
+  "xoz-mag": "Xoz-Mag",
+  "yevro-remont": "Yevro-Remont",
+  "elektrika": "Elektrika",
+  "dekorativ-mahsulotlar": "Dekorativ-Mahsulotlar",
   "g'isht-va-bloklar": "G'isht va bloklar",
   "asbob-uskunalar": "Asbob-uskunalar", 
   "bo'yoq-va-lak": "Bo'yoq va lak",
@@ -35,6 +43,12 @@ export const CATEGORY_MAPPING = {
   "boshqalar": "Boshqalar",
   
   // Short/variant category names
+  "xoz": "Xoz-Mag",
+  "mag": "Xoz-Mag",
+  "yevro": "Yevro-Remont",
+  "remont": "Yevro-Remont",
+  "dekorativ": "Dekorativ-Mahsulotlar",
+  "mahsulotlar": "Dekorativ-Mahsulotlar",
   "gisht": "G'isht va bloklar",
   "g'isht": "G'isht va bloklar",
   "blok": "G'isht va bloklar",

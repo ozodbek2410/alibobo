@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import Header from './Header';
 import ProductsGrid from './ProductsGrid';
@@ -8,7 +9,7 @@ import { useParallelFetch } from '../hooks/useOptimizedFetch';
 
 const MainPage = ({ onSuccessfulLogin }) => {
   const [craftsmenData, setCraftsmenData] = useState([]);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
 
   // Cart states - centralized here
   const [cart, setCart] = useState([]);
@@ -19,7 +20,7 @@ const MainPage = ({ onSuccessfulLogin }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Parallel data loading for initial page load
-  const { data: parallelData, loading: parallelLoading } = useParallelFetch([
+  const { data: parallelData } = useParallelFetch([
     'http://localhost:5000/api/craftsmen?limit=100&status=active',
     'http://localhost:5000/api/products?limit=20&page=1'
   ]);
@@ -30,7 +31,6 @@ const MainPage = ({ onSuccessfulLogin }) => {
     if (parallelData[craftsmenUrl]) {
       const craftsmenResponse = parallelData[craftsmenUrl];
       setCraftsmenData(craftsmenResponse.craftsmen || []);
-      setInitialLoadComplete(true);
     }
   }, [parallelData]);
 

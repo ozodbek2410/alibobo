@@ -1,16 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { getCategoryDisplayName } from '../utils/categoryMapping';
+import ProductVariantSelector from './ProductVariantSelector';
 
 const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
+  
+  // Variant system states
+  const [selectedVariants, setSelectedVariants] = useState({});
+  const [variantPrice, setVariantPrice] = useState(product?.price || 0);
+  const [variantStock, setVariantStock] = useState(product?.stock || 0);
+  const [variantImage, setVariantImage] = useState(product?.image || '');
 
   // Get product images - support both old and new format
-  const productImages = product?.images && product.images.length > 0 
+  const baseImages = product?.images && product.images.length > 0 
     ? product.images 
     : (product?.image ? [product.image] : ['/assets/default-product.png']);
+  
+  // Add variant image to images if it's not already included
+  const productImages = React.useMemo(() => {
+    if (variantImage && variantImage !== product?.image && !baseImages.includes(variantImage)) {
+      return [variantImage, ...baseImages];
+    }
+    return baseImages;
+  }, [baseImages, variantImage, product?.image]);
 
   // Reset state when product changes
   useEffect(() => {
@@ -19,8 +34,55 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
       setQuantity(1);
       setSelectedColor(product.colors?.[0] || '');
       setSelectedSize(product.sizes?.[0] || '');
+      setVariantPrice(product.price);
+      setVariantStock(product.stock);
+      setVariantImage(product.image);
+      
+      // Auto-select first variant options
+      if (product.hasVariants && product.variants && product.variants.length > 0) {
+        const autoSelectedVariants = {};
+        let autoPrice = product.price;
+        let autoStock = product.stock;
+        let autoImage = product.image;
+        
+        product.variants.forEach(variant => {
+          if (variant.options && variant.options.length > 0) {
+            // Select first available option (not out of stock)
+            const firstAvailableOption = variant.options.find(option => option.stock > 0) || variant.options[0];
+            autoSelectedVariants[variant.name] = firstAvailableOption.value;
+            
+            // Update price, stock, and image based on first variant
+            if (firstAvailableOption.price && firstAvailableOption.price > 0) {
+              autoPrice = firstAvailableOption.price;
+            }
+            if (firstAvailableOption.stock !== undefined) {
+              autoStock = Math.min(autoStock, firstAvailableOption.stock);
+            }
+            if (firstAvailableOption.image) {
+              autoImage = firstAvailableOption.image;
+            }
+          }
+        });
+        
+        setSelectedVariants(autoSelectedVariants);
+        setVariantPrice(autoPrice);
+        setVariantStock(autoStock);
+        setVariantImage(autoImage);
+      } else {
+        setSelectedVariants({});
+      }
     }
   }, [product]);
+
+  // Update main image when variant image changes
+  useEffect(() => {
+    if (variantImage && variantImage !== product?.image && productImages.includes(variantImage)) {
+      const imageIndex = productImages.findIndex(img => img === variantImage);
+      if (imageIndex !== -1) {
+        setSelectedImageIndex(imageIndex);
+      }
+    }
+  }, [variantImage, productImages, product?.image]);
 
   // Prevent background scroll when modal is open
   useEffect(() => {
@@ -52,12 +114,32 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
 
   const discount = product.oldPrice ? calculateDiscount(product.price, product.oldPrice) : 0;
 
+  // Check if all variants are selected
+  const allVariantsSelected = !product.hasVariants || 
+    !product.variants || 
+    product.variants.length === 0 || 
+    product.variants.every(variant => selectedVariants[variant.name]);
+
   const handleAddToCart = () => {
+    // Don't add to cart if variants are required but not all selected
+    if (product.hasVariants && !allVariantsSelected) {
+      return;
+    }
+
     const productToAdd = {
       ...product,
       selectedColor,
       selectedSize,
-      quantity
+      quantity,
+      // Add variant information
+      selectedVariants: product.hasVariants ? selectedVariants : {},
+      finalPrice: product.hasVariants ? variantPrice : product.price,
+      finalStock: product.hasVariants ? variantStock : (product.stock || product.quantity),
+      finalImage: product.hasVariants ? variantImage : product.image,
+      // Create a unique identifier for cart items with variants
+      cartId: product.hasVariants 
+        ? `${product.id || product._id}-${Object.values(selectedVariants).join('-')}`
+        : (product.id || product._id)
     };
     onAddToCart(productToAdd);
   };
@@ -78,13 +160,13 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start md:items-center justify-center p-1 sm:p-2 md:p-4 overflow-y-auto">
       <div className="bg-white rounded-lg md:rounded-xl max-w-6xl w-full max-h-[99vh] sm:max-h-[98vh] md:max-h-[90vh] overflow-y-auto mt-1 sm:mt-2 md:mt-0 shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-2 sm:p-3 md:p-4 flex items-center justify-between z-10 shadow-sm">
-          <h2 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-gray-800 line-clamp-2 md:line-clamp-1 pr-2">{product.name}</h2>
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-3 md:p-4 flex items-center justify-between z-10 shadow-sm">
+          <h2 className="text-sm md:text-base lg:text-lg font-medium text-gray-800 line-clamp-2 md:line-clamp-1 pr-2">{product.name}</h2>
           <button
             onClick={onClose}
-            className="p-1 sm:p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 flex-shrink-0"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 flex-shrink-0"
           >
-            <i className="fas fa-times text-gray-500 text-sm md:text-lg"></i>
+            <i className="fas fa-times text-gray-500 text-lg"></i>
           </button>
         </div>
 
@@ -160,25 +242,25 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
             {/* Product Info */}
             <div className="space-y-4 sm:space-y-5">
               {/* Price */}
-              <div className="space-y-2 sm:space-y-3 bg-gradient-to-r from-orange-50 to-red-50 p-3 sm:p-4 rounded-lg shadow-sm border border-orange-100">
-                <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+              <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg shadow-sm border border-orange-200">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
                   {discount > 0 && (
-                    <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs font-medium">
+                    <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium">
                       -{discount}% Chegirma
                     </span>
                   )}
                 </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Narxi:</span>
-                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-primary-orange">
-                      {formatPrice(product.price)}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-700 font-medium text-sm">Narxi:</span>
+                    <span className="text-xl font-bold text-primary-orange">
+                      {formatPrice(product.hasVariants ? variantPrice : product.price)}
                     </span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Holati:</span>
-                    <span className="text-green-600 font-medium flex items-center gap-1 text-xs sm:text-sm">
-                      <i className="fas fa-check-circle text-xs"></i>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-700 font-medium text-sm">Holati:</span>
+                    <span className="text-green-600 font-medium flex items-center gap-1 text-sm">
+                      <i className="fas fa-check-circle text-sm"></i>
                       Mavjud
                     </span>
                   </div>
@@ -188,15 +270,31 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
               {/* Description */}
               {product.description && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-gray-900 text-sm sm:text-base">Tavsif</h4>
-                  <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                  <h4 className="font-medium text-gray-800 text-sm">Tavsif</h4>
+                  <p className="text-gray-600 text-sm leading-relaxed">
                     {product.description}
                   </p>
                 </div>
               )}
 
-              {/* Colors */}
-              {product.colors && product.colors.length > 0 && (
+              {/* Product Variants - New Uzum Market Style */}
+              {product.hasVariants && product.variants && product.variants.length > 0 && (
+                <div className="space-y-4">
+                  <ProductVariantSelector
+                    product={product}
+                    selectedVariants={selectedVariants}
+                    onVariantChange={(variantData) => {
+                      setSelectedVariants(variantData.selectedVariants);
+                      setVariantPrice(variantData.price);
+                      setVariantStock(variantData.stock);
+                      setVariantImage(variantData.image);
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Legacy Colors - Show only if no variants */}
+              {!product.hasVariants && product.colors && product.colors.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="font-medium text-gray-900 text-sm">Rang: {selectedColor}</h4>
                   <div className="flex gap-1 sm:gap-2 flex-wrap">
@@ -217,8 +315,8 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                 </div>
               )}
 
-              {/* Sizes */}
-              {product.sizes && product.sizes.length > 0 && (
+              {/* Legacy Sizes - Show only if no variants */}
+              {!product.hasVariants && product.sizes && product.sizes.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="font-medium text-gray-900 text-sm">O'lcham:</h4>
                   <div className="flex gap-1 sm:gap-2 flex-wrap">
@@ -241,13 +339,13 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
 
               {/* Quantity */}
               <div className="space-y-2">
-                <h4 className="font-medium text-gray-900 text-sm">Miqdor:</h4>
+                <h4 className="font-medium text-gray-800 text-sm">Miqdor:</h4>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors duration-200"
+                    className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors duration-200"
                   >
-                    <i className="fas fa-minus text-gray-600 text-xs sm:text-sm"></i>
+                    <i className="fas fa-minus text-gray-600 text-sm"></i>
                   </button>
                   <input
                     type="number"
@@ -261,32 +359,52 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                     step="1"
                     aria-label="Miqdor"
                     placeholder="1"
-                    className="w-24 sm:w-28 h-8 sm:h-10 text-center border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange text-sm sm:text-base font-medium"
+                    className="w-20 h-10 text-center border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange text-sm font-medium"
                   />
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors duration-200"
+                    className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors duration-200"
                   >
-                    <i className="fas fa-plus text-gray-600 text-xs sm:text-sm"></i>
+                    <i className="fas fa-plus text-gray-600 text-sm"></i>
                   </button>
                 </div>
               </div>
               
 
               {/* Product Information */}
-              <div className="space-y-3 border-t border-gray-200 pt-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 shadow-sm">
-                <h4 className="font-semibold text-gray-900 text-sm sm:text-base flex items-center gap-2">
-                  <i className="fas fa-info-circle text-blue-500 text-xs sm:text-sm"></i>
+              <div className="space-y-3 border-t border-gray-200 pt-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg p-3 shadow-sm">
+                <h4 className="font-medium text-gray-800 text-sm flex items-center gap-2">
+                  <i className="fas fa-info-circle text-primary-orange text-sm"></i>
                   Mahsulot ma'lumotlari
                 </h4>
-                <div className="space-y-2 text-xs sm:text-sm bg-white rounded-lg p-3 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 p-2 border-l-4 border-blue-400 hover:border-blue-500 transition-all duration-200">
-                    <span className="text-blue-600 font-semibold sm:w-20 flex-shrink-0">Kategoriya:</span>
-                    <span className="font-bold text-blue-800 text-xs sm:text-sm">{getCategoryDisplayName(product.category)}</span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 p-2 border-l-4 border-blue-400 hover:border-blue-500 transition-all duration-200">
-                    <span className="text-blue-600 font-semibold sm:w-20 flex-shrink-0">Miqdor:</span>
-                    <span className="font-bold text-blue-800 text-xs sm:text-sm">{product.quantity || product.stock || '100'} dona</span>
+                <div className="bg-white rounded-lg p-3 shadow-sm">
+                  {/* Single row layout for mobile */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between p-2 border-l-4 border-primary-orange bg-orange-50 rounded-r">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-700 font-medium text-sm">Kategoriya:</span>
+                        <span className="text-gray-900 font-medium text-sm">{getCategoryDisplayName(product.category)}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Show selected variant stock information */}
+                    {product.hasVariants && product.variants && product.variants.length > 0 ? (
+                      <div className="flex items-center justify-between p-2 border-l-4 border-primary-orange bg-orange-50 rounded-r">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-700 font-medium text-sm">Miqdor:</span>
+                          <span className="text-gray-900 font-medium text-sm">
+                            {variantStock > 0 ? `${variantStock} ta mavjud` : 'Tugagan'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between p-2 border-l-4 border-primary-orange bg-orange-50 rounded-r">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-700 font-medium text-sm">Miqdor:</span>
+                          <span className="text-gray-900 font-medium text-sm">{product.quantity || product.stock || '100'} ta mavjud</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -313,10 +431,15 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
               {/* Add to Cart Button */}
               <button
                 onClick={handleAddToCart}
-                className="w-full bg-primary-orange text-white py-2 sm:py-3 px-4 sm:px-6 rounded-lg hover:bg-opacity-90 transition-all duration-200 font-semibold text-sm sm:text-base lg:text-lg flex items-center justify-center gap-2"
+                disabled={!allVariantsSelected}
+                className={`w-full py-3 px-6 rounded-lg transition-all duration-200 font-medium text-base flex items-center justify-center gap-2 shadow-md ${
+                  allVariantsSelected
+                    ? 'bg-primary-orange text-white hover:bg-opacity-90'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
               >
-                <i className="fas fa-shopping-cart text-xs sm:text-sm"></i>
-                Savatga qo'shish
+                <i className="fas fa-shopping-cart text-sm"></i>
+                {allVariantsSelected ? 'Savatga qo\'shish' : 'Variantlarni tanlang'}
               </button>
             </div>
           </div>

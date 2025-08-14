@@ -10,10 +10,10 @@ const CategoryNavigation = ({ onCategorySelect, selectedCategory, isModalOpen, s
   // Categories from admin panel - Main categories only
   const categories = [
     { name: "Santexnika", value: "santexnika", icon: "fas fa-faucet", hasProducts: true },
-    { name: "Yevro remont", value: "yevro-remont", icon: "fas fa-home", hasProducts: true },
+    { name: "Yevro-Remont", value: "yevro-remont", icon: "fas fa-home", hasProducts: true },
     { name: "Elektrika", value: "elektrika", icon: "fas fa-bolt", hasProducts: true },
-    { name: "Xoz mag", value: "xoz-mag", icon: "fas fa-shopping-basket", hasProducts: true },
-    { name: "Dekorativ mahsulotlar", value: "dekorativ-mahsulotlar", icon: "fas fa-palette", hasProducts: true }
+    { name: "Xoz-Mag", value: "xoz-mag", icon: "fas fa-shopping-basket", hasProducts: true },
+    { name: "Dekorativ-Mahsulotlar", value: "dekorativ-mahsulotlar", icon: "fas fa-palette", hasProducts: true }
   ];
 
   // Show first 7 categories with products in the horizontal bar
@@ -93,8 +93,8 @@ const CategoryNavigation = ({ onCategorySelect, selectedCategory, isModalOpen, s
 
       {/* Category Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-800">Barcha kategoriyalar</h2>
@@ -124,19 +124,19 @@ const CategoryNavigation = ({ onCategorySelect, selectedCategory, isModalOpen, s
               </div>
 
               {/* Categories Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                 {categories.map((category, index) => (
                   <button
                     key={index}
                     onClick={() => handleCategoryClick(category.value)}
-                    className={`flex items-center space-x-3 p-4 rounded-lg text-left transition-all duration-200 ${
+                    className={`flex items-center space-x-3 p-3 sm:p-4 rounded-lg text-left transition-all duration-200 ${
                       selectedCategory === category.value 
                         ? 'bg-primary-orange text-white shadow-md' 
                         : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-primary-orange'
                     }`}
                   >
-                    <i className={`${category.icon} text-lg`}></i>
-                    <span className="font-medium">{category.name}</span>
+                    <i className={`${category.icon} text-base sm:text-lg`}></i>
+                    <span className="font-medium text-sm sm:text-base">{category.name}</span>
                   </button>
                 ))}
               </div>

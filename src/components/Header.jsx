@@ -135,11 +135,17 @@ const Header = ({
                 <img 
                   src="/logo.png" 
                   alt="Logo" 
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
                   className="w-12 h-12 object-cover rounded-lg"
                 />
                 <img 
                   src="/alibobo.png" 
-                  alt="Alibobo" 
+                  alt="Alibobo"
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high" 
                   className="h-14 w-36 object-cover"
                 />
               </div>
@@ -207,11 +213,17 @@ const Header = ({
               <img 
                 src="/logo.png" 
                 alt="Logo" 
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
                 className="w-8 h-8 object-cover rounded-lg"
               />
               <img 
                 src="/alibobo.png" 
                 alt="Alibobo"
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
                 className="h-8 w-24 object-cover"
               />
             </div>
@@ -262,7 +274,7 @@ const Header = ({
             </button>
           </li>
           
-          {/* 2. Mahsulotlar */}
+          {/* 2. Kategoriyalar */}
           <li className="flex-1">
             <button 
               onClick={() => {
@@ -270,18 +282,12 @@ const Header = ({
                 if (isCartOpen) {
                   onToggleCart();
                 }
-                const productsSection = document.getElementById('products');
-                if (productsSection) {
-                  productsSection.scrollIntoView({ 
-                    behavior: 'smooth',
-                    block: 'start'
-                  });
-                }
+                setIsCategoryModalOpen(true);
               }}
               className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full"
             >
-              <i className="fas fa-box text-[18px]"></i>
-              <span className="text-[11px] sm:text-xs font-medium">Mahsulotlar</span>
+              <i className="fas fa-th-large text-[18px]"></i>
+              <span className="text-[11px] sm:text-xs font-medium">Kategoriya</span>
             </button>
           </li>
           

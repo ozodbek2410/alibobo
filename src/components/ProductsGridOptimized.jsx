@@ -46,6 +46,11 @@ const ProductsGrid = memo(({
   // Category mapping function
   const getCategoryApiValue = useCallback((frontendCategory) => {
     const categoryMapping = {
+      "xoz-mag": "xoz-mag",
+      "yevro-remont": "yevro-remont",
+      "elektrika": "elektrika",
+      "dekorativ-mahsulotlar": "dekorativ-mahsulotlar",
+      "santexnika": "santexnika",
       "g'isht-va-bloklar": "gisht",
       "asbob-uskunalar": "asbob", 
       "bo'yoq-va-lak": "boyoq",
@@ -53,7 +58,6 @@ const ProductsGrid = memo(({
       "metall-va-armatura": "metall",
       "yog'och-va-mebel": "yog'och",
       "tom-materiallar": "tom",
-      "santexnika": "santexnika",
       "issiqlik-va-konditsioner": "issiqlik",
       "dekor-va-bezatish": "dekor",
       "temir-beton": "temir",

@@ -67,4 +67,4 @@ orderSchema.index({ createdAt: 1, updatedAt: 1 }, { name: 'edit_tracking' });
 orderSchema.index({ createdAt: 1, totalAmount: 1 }, { name: 'revenue_calculations' });
 orderSchema.index({ customerName: 'text', customerPhone: 'text' });
 
-module.exports = mongoose.model('Order', orderSchema); 
+module.exports = mongoose.model('Order', orderSchema);

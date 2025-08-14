@@ -1,13 +1,14 @@
 import { useState, useCallback, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import MainPage from './components/MainPage';
+import './App.css';
+
+const MainPage = lazy(() => import('./components/MainPage'));
 const AdminSidebar = lazy(() => import('./components/AdminSidebar'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 const AdminCraftsmen = lazy(() => import('./components/AdminCraftsmen'));
 const AdminProducts = lazy(() => import('./components/AdminProducts'));
 const AdminOrders = lazy(() => import('./components/AdminOrders'));
 const AdminAnalytics = lazy(() => import('./components/AdminAnalytics'));
-import './App.css';
 
 function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -59,7 +60,9 @@ function App() {
     >
       <Routes>
         <Route path="/" element={
-          <MainPage onSuccessfulLogin={handleSuccessfulLogin} />
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-lg">Yuklanmoqda...</div></div>}>
+            <MainPage onSuccessfulLogin={handleSuccessfulLogin} />
+          </Suspense>
         } />
         <Route path="/admin" element={
           <ProtectedRoute>

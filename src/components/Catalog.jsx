@@ -4,10 +4,10 @@ const Catalog = ({ onCategorySelect, onClose, selectedCategory }) => {
   // Static categories from admin panel - Main categories first, matching CategoryNavigation.jsx format and order
   const categories = [
     { name: "Santexnika", value: "santexnika" },
-    { name: "Yevro remont", value: "yevro-remont" },
+    { name: "Yevro-Remont", value: "yevro-remont" },
     { name: "Elektrika", value: "elektrika" },
-    { name: "Xoz mag", value: "xoz-mag" },
-    { name: "Dekorativ mahsulotlar", value: "dekorativ-mahsulotlar" },
+    { name: "Xoz-Mag", value: "xoz-mag" },
+    { name: "Dekorativ-Mahsulotlar", value: "dekorativ-mahsulotlar" },
     { name: "G'isht va bloklar", value: "g'isht-va-bloklar" },
     { name: "Asbob-uskunalar", value: "asbob-uskunalar" },
     { name: "Bo'yoq va lak", value: "bo'yoq-va-lak" },
@@ -22,8 +22,7 @@ const Catalog = ({ onCategorySelect, onClose, selectedCategory }) => {
     { name: "Boshqalar", value: "boshqalar" }
   ];
 
-  const [loading] = useState(false);
-  const [error] = useState(null);
+
 
   const handleCategoryClick = (categoryValue) => {
     onCategorySelect(categoryValue);
@@ -51,7 +50,68 @@ const Catalog = ({ onCategorySelect, onClose, selectedCategory }) => {
 
         {/* Categories List */}
         <div className="overflow-y-auto max-h-[60vh]">
-          <div className="p-4 space-y-2">
+          {/* Mobile: Horizontal scrollable layout */}
+          <div className="block sm:hidden p-4">
+            {/* All Products Option */}
+            <div className="mb-4">
+              <button
+                onClick={handleAllProductsClick}
+                className={`w-full text-center p-3 rounded-lg transition duration-300 flex items-center justify-center space-x-2 ${
+                  selectedCategory === '' 
+                    ? 'bg-primary-orange text-white' 
+                    : 'hover:bg-gray-100 text-gray-700'
+                }`}
+              >
+                <i className="fas fa-th-large text-lg"></i>
+                <span className="font-medium">Barcha mahsulotlar</span>
+              </button>
+            </div>
+
+            {/* Horizontal scrollable categories */}
+            <div className="overflow-x-auto">
+              <div className="flex space-x-3 pb-2" style={{ minWidth: 'max-content' }}>
+                {categories.slice(0, 5).map((category, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleCategoryClick(category.value)}
+                    className={`flex-shrink-0 px-4 py-2 rounded-lg transition duration-300 whitespace-nowrap ${
+                      selectedCategory === category.value 
+                        ? 'bg-primary-orange text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span className="font-medium text-sm">{category.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Show remaining categories if any */}
+            {categories.length > 5 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-sm text-gray-600 font-medium">Boshqa kategoriyalar:</p>
+                <div className="grid grid-cols-1 gap-2">
+                  {categories.slice(5).map((category, index) => (
+                    <button
+                      key={index + 5}
+                      onClick={() => handleCategoryClick(category.value)}
+                      className={`w-full text-left p-3 rounded-lg transition duration-300 flex items-center space-x-3 ${
+                        selectedCategory === category.value 
+                          ? 'bg-primary-orange text-white' 
+                          : 'hover:bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      <i className="fas fa-tag text-lg"></i>
+                      <span className="font-medium">{category.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: Vertical layout */}
+          <div className="hidden sm:block p-4 space-y-2">
             {/* All Products Option */}
             <button
               onClick={handleAllProductsClick}

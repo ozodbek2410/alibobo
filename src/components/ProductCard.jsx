@@ -1,171 +1,193 @@
-import React, { memo, useState, useCallback } from 'react';
+import React, { memo, useCallback } from 'react';
 
 const ProductCard = memo(({ 
   product, 
   onAddToCart, 
-  onOpenDetail,
+  onProductClick,
   currentImageIndex = 0,
-  onImageChange 
+  onImageIndexChange,
+  lastHoverTime = 0,
+  onHoverTimeChange
 }) => {
-  const [imageError, setImageError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Handle image loading
-  const handleImageLoad = useCallback(() => {
-    setIsLoading(false);
+  const formatPrice = useCallback((price) => {
+    const numeric = parseInt(price?.toString().replace(/[^\d]/g, '') || '0', 10);
+    return numeric.toLocaleString() + " so'm";
   }, []);
 
-  const handleImageError = useCallback(() => {
-    setImageError(true);
-    setIsLoading(false);
+  const calculateDiscount = useCallback((currentPrice, oldPrice) => {
+    const current = parseInt(currentPrice?.toString().replace(/[^\d]/g, '') || '0');
+    const old = parseInt(oldPrice?.toString().replace(/[^\d]/g, '') || '0');
+    if (!old || !current || isNaN(old) || isNaN(current)) return 0;
+    return Math.round(((old - current) / old) * 100);
   }, []);
 
-  // Handle add to cart
   const handleAddToCart = useCallback((e) => {
     e.stopPropagation();
     onAddToCart(product);
-  }, [product, onAddToCart]);
+  }, [onAddToCart, product]);
 
-  // Handle product detail
-  const handleOpenDetail = useCallback(() => {
-    onOpenDetail(product);
-  }, [product, onOpenDetail]);
+  const handleProductClick = useCallback(() => {
+    onProductClick(product);
+  }, [onProductClick, product]);
 
-  // Get current image
-  const getCurrentImage = useCallback(() => {
-    const images = product.images || [];
-    if (images.length > 0) {
-      return images[currentImageIndex] || images[0];
+  // Get product images
+  const productImages = product.images && product.images.length > 0 
+    ? product.images 
+    : (product.image ? [product.image] : []);
+  
+  const currentImage = productImages.length > 0 ? productImages[currentImageIndex] : null;
+  const discount = product.oldPrice ? calculateDiscount(product.price, product.oldPrice) : 0;
+
+  // Handle hover-based image navigation
+  const handleMouseMove = useCallback((e) => {
+    if (productImages.length <= 1) return;
+    
+    const currentTime = Date.now();
+    const hoverDelay = 800; // 800ms delay between changes
+    
+    if (currentTime - lastHoverTime < hoverDelay) {
+      return; // Too soon, ignore this hover
     }
-    return product.image || '/assets/mahsulotlar/default-product.jpg';
-  }, [product.images, product.image, currentImageIndex]);
 
-  // Handle image navigation
-  const handlePrevImage = useCallback((e) => {
-    e.stopPropagation();
-    const images = product.images || [];
-    if (images.length > 1) {
-      const newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : images.length - 1;
-      onImageChange(product._id, newIndex);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+    
+    let newIndex;
+    
+    if (x < width / 2) {
+      // Left side - previous image
+      newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : currentImageIndex;
+    } else {
+      // Right side - next image
+      newIndex = currentImageIndex < productImages.length - 1 ? currentImageIndex + 1 : currentImageIndex;
     }
-  }, [product._id, product.images, currentImageIndex, onImageChange]);
-
-  const handleNextImage = useCallback((e) => {
-    e.stopPropagation();
-    const images = product.images || [];
-    if (images.length > 1) {
-      const newIndex = currentImageIndex < images.length - 1 ? currentImageIndex + 1 : 0;
-      onImageChange(product._id, newIndex);
+    
+    if (newIndex !== currentImageIndex) {
+      onImageIndexChange(product._id, newIndex);
+      onHoverTimeChange(product._id, currentTime);
     }
-  }, [product._id, product.images, currentImageIndex, onImageChange]);
+  }, [productImages.length, lastHoverTime, currentImageIndex, onImageIndexChange, onHoverTimeChange, product._id]);
 
-  const hasMultipleImages = (product.images || []).length > 1;
-  const currentImage = getCurrentImage();
+  const handleMouseLeave = useCallback(() => {
+    onHoverTimeChange(product._id, 0);
+  }, [onHoverTimeChange, product._id]);
 
   return (
-    <div 
-      className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 cursor-pointer"
-      onClick={handleOpenDetail}
-    >
-      {/* Image Container */}
-      <div className="relative h-48 overflow-hidden rounded-t-lg">
-        {/* Loading Skeleton */}
-        {isLoading && (
-          <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
-            <div className="w-12 h-12 border-4 border-gray-300 border-t-orange-500 rounded-full animate-spin"></div>
-          </div>
-        )}
-
-        {/* Product Image */}
-        <img
-          src={currentImage}
-          alt={product.name}
-          className={`w-full h-full object-cover transition-opacity duration-300 ${
-            isLoading ? 'opacity-0' : 'opacity-100'
-          }`}
-          onLoad={handleImageLoad}
-          onError={handleImageError}
-          loading="lazy"
-        />
-
-        {/* Image Navigation for Multiple Images */}
-        {hasMultipleImages && !isLoading && (
-          <>
-            <button
-              onClick={handlePrevImage}
-              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-75 transition-all duration-200"
-            >
-              ←
-            </button>
-            <button
-              onClick={handleNextImage}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-75 transition-all duration-200"
-            >
-              →
-            </button>
-
-            {/* Image Counter */}
-            <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-              {currentImageIndex + 1}/{product.images.length}
+    <div className="bg-white rounded-lg lg:rounded-xl overflow-hidden shadow-lg hover:shadow-xl border border-gray-200 hover:border-gray-300 transition-all duration-300 flex flex-col h-full transform hover:scale-[1.02]">
+      <div className="relative cursor-pointer" onClick={handleProductClick}>
+        {/* Image Container */}
+        <div 
+          className="relative w-full h-32 sm:h-48 lg:h-56 overflow-hidden bg-white border-b border-gray-200 group rounded-t-xl"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
+          {currentImage ? (
+            <img 
+              src={currentImage} 
+              alt={product.name} 
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-contain transition-opacity duration-300" 
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-white">
+              <i className="fas fa-image text-gray-400 text-3xl"></i>
             </div>
-          </>
-        )}
+          )}
+          
+          {/* Image indicators */}
+          {productImages.length > 1 && (
+            <div className="absolute bottom-0 left-0 right-0 flex gap-1 px-4 pb-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {productImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onImageIndexChange(product._id, index);
+                  }}
+                  className={`flex-1 h-[0.5px] sm:h-[3px] rounded-full transition-colors duration-200 ${
+                    index === currentImageIndex ? 'bg-primary-orange' : 'bg-gray-300 hover:bg-gray-400'
+                  }`}
+                  aria-label={`Image ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* Badge */}
-        {product.badge && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+        {/* Badges */}
+        {product.badge && product.badge !== 'Chegirma' && (
+          <span className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-primary-orange text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
             {product.badge}
-          </div>
+          </span>
         )}
-
-        {/* Error Fallback */}
-        {imageError && (
-          <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
-            <div className="text-gray-400 text-center">
-              <div className="text-2xl mb-2">📦</div>
-              <div className="text-sm">Rasm yuklanmadi</div>
-            </div>
-          </div>
+        {product.oldPrice && product.oldPrice > product.price && (
+          <span className="absolute top-2 right-2 lg:top-3 lg:right-3 bg-red-500 text-white px-2 py-1 lg:px-3 lg:py-1 rounded-full text-xs font-semibold z-20">
+            -{discount}%
+          </span>
         )}
       </div>
-
-      {/* Product Info */}
-      <div className="p-4">
-        <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">
-          {product.name}
-        </h3>
-        
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-2">
-            <span className="text-lg font-bold text-orange-600">
-              {product.price?.toLocaleString()} so'm
-            </span>
-            {product.oldPrice && product.oldPrice > product.price && (
-              <span className="text-sm text-gray-500 line-through">
-                {product.oldPrice.toLocaleString()}
-              </span>
+      
+      <div className="p-2 sm:p-3 lg:p-4 flex flex-col flex-grow bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 border-t border-gray-200/50 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-50"></div>
+        <div className="relative z-10 flex flex-col h-full">
+          <div className="flex-grow">
+            <div className="cursor-pointer mb-1 sm:mb-2" onClick={handleProductClick}>
+              <h3 className="font-semibold text-gray-800 text-xs sm:text-base lg:text-lg line-clamp-2 min-h-[1.5rem] sm:min-h-[2.5rem] hover:text-primary-orange transition-colors duration-200 leading-snug">
+                {product.name || 'Noma\'lum mahsulot'}
+              </h3>
+            </div>
+            
+            {product.description && (
+              <div className="mb-1 sm:mb-2 p-1 sm:p-2 bg-blue-50 rounded-md border-l-3 border-blue-200">
+                <p className="text-gray-600 text-xs sm:text-sm line-clamp-1 sm:line-clamp-2 leading-relaxed">
+                  {product.description}
+                </p>
+              </div>
             )}
           </div>
-        </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">
-            {product.category}
-          </span>
-          <button
-            onClick={handleAddToCart}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded text-sm transition-colors duration-200"
-          >
-            Savatga
-          </button>
-        </div>
-
-        {/* Stock Info */}
-        {product.stock !== undefined && (
-          <div className="mt-2 text-xs text-gray-500">
-            {product.stock > 0 ? `${product.stock} ${product.unit || 'dona'} mavjud` : 'Tugagan'}
+          <div className="mt-auto">
+            <div className="flex items-center justify-between mb-1 sm:mb-2">
+              <div className="flex flex-col">
+                <span className="font-bold text-gray-900 text-xs sm:text-base lg:text-lg">
+                  {formatPrice(product.price)}
+                </span>
+                {product.oldPrice && product.oldPrice > product.price && (
+                  <div className="flex items-center space-x-1 sm:space-x-2">
+                    <span className="text-gray-500 line-through text-xs sm:text-sm">
+                      {formatPrice(product.oldPrice)}
+                    </span>
+                    <span className="text-red-500 text-xs sm:text-sm font-medium">
+                      -{discount}%
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {product.stock !== undefined && (
+                <div className="text-right">
+                  <p className="text-xs sm:text-sm text-blue-600 font-medium">
+                    {product.stock > 0 ? `${product.stock} ${product.unit || 'dona'}` : 'Tugagan'}
+                  </p>
+                  {product.stock > 0 && product.stock < 10 && (
+                    <p className="text-xs text-red-500 font-medium">Kam qoldi!</p>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <button
+              onClick={handleAddToCart}
+              className="w-full bg-primary-orange text-white py-1.5 sm:py-2 lg:py-2.5 px-2 sm:px-3 lg:px-4 rounded-lg hover:bg-opacity-90 transition duration-300 font-semibold flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base"
+            >
+              <i className="fas fa-shopping-cart text-xs lg:text-sm"></i>
+              <span className="hidden sm:inline">Buyurtma berish</span>
+              <span className="sm:hidden">Buyurtma</span>
+            </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
