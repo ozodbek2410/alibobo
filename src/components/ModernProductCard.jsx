@@ -1,17 +1,21 @@
 import React, { useState, useCallback, memo } from 'react';
 import { ShoppingCartIcon } from './Icons';
 
-const ModernProductCard = memo(({ 
-  product, 
-  onAddToCart, 
+const ModernProductCard = memo(({
+  product,
+  onAddToCart,
   onOpenDetail,
-  currentImageIndex = 0,
+  currentImageIndex: externalCurrentImageIndex = 0,
   onImageChange,
+  lastHoverTime: externalLastHoverTime = 0,
+  onHoverTimeChange,
   className = ""
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
+  const [internalCurrentImageIndex, setInternalCurrentImageIndex] = useState(0);
+  const [internalLastHoverTime, setInternalLastHoverTime] = useState(0);
+
 
   // Helper function to format price safely
   const formatPrice = (price) => {
@@ -26,226 +30,305 @@ const ModernProductCard = memo(({
   };
 
   // Get product images
-  const productImages = product.images && product.images.length > 0 
-    ? product.images 
+  const productImages = product.images && product.images.length > 0
+    ? product.images
     : (product.image ? [product.image] : ['/assets/default-product.png']);
-  
+
+  // Use external state if provided, otherwise use internal state
+  const currentImageIndex = onImageChange ? externalCurrentImageIndex : internalCurrentImageIndex;
+  const lastHoverTime = onHoverTimeChange ? externalLastHoverTime : internalLastHoverTime;
+
   const currentImage = productImages[currentImageIndex] || productImages[0];
   const discount = product.oldPrice ? calculateDiscount(product.price, product.oldPrice) : 0;
   const hasMultipleImages = productImages.length > 1;
 
-  // Handle image navigation
-  const handleImageNavigation = useCallback((direction, e) => {
-    e.stopPropagation();
-    if (!hasMultipleImages || !onImageChange) return;
-    
-    const newIndex = direction === 'next' 
-      ? (currentImageIndex + 1) % productImages.length
-      : currentImageIndex === 0 ? productImages.length - 1 : currentImageIndex - 1;
-    
-    onImageChange(product._id, newIndex);
-  }, [currentImageIndex, productImages.length, hasMultipleImages, onImageChange, product._id]);
+  // Handle hover-based image navigation (from original ProductCard.jsx)
+  const handleMouseMove = useCallback((e) => {
+    if (productImages.length <= 1) return;
+
+    const currentTime = Date.now();
+    const hoverDelay = 800; // 800ms delay between changes
+
+    if (currentTime - lastHoverTime < hoverDelay) {
+      return; // Too soon, ignore this hover
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+
+    let newIndex;
+
+    if (x < width / 2) {
+      // Left side - previous image
+      newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : currentImageIndex;
+    } else {
+      // Right side - next image
+      newIndex = currentImageIndex < productImages.length - 1 ? currentImageIndex + 1 : currentImageIndex;
+    }
+
+    if (newIndex !== currentImageIndex) {
+      if (onImageChange && onHoverTimeChange) {
+        // Use external state management
+        onImageChange(product._id, newIndex);
+        onHoverTimeChange(product._id, currentTime);
+      } else {
+        // Use internal state management
+        setInternalCurrentImageIndex(newIndex);
+        setInternalLastHoverTime(currentTime);
+      }
+    }
+  }, [productImages.length, lastHoverTime, currentImageIndex, onImageChange, onHoverTimeChange, product._id]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (onHoverTimeChange) {
+      onHoverTimeChange(product._id, 0);
+    }
+  }, [onHoverTimeChange, product._id]);
+
+  // Handle touch events for mobile
+  const handleTouchStart = useCallback((e) => {
+    if (productImages.length <= 1) return;
+
+    const touch = e.touches[0];
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const width = rect.width;
+
+    let newIndex;
+
+    if (x < width / 2) {
+      // Left side - previous image
+      newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : currentImageIndex;
+    } else {
+      // Right side - next image
+      newIndex = currentImageIndex < productImages.length - 1 ? currentImageIndex + 1 : currentImageIndex;
+    }
+
+    if (newIndex !== currentImageIndex) {
+      if (onImageChange && onHoverTimeChange) {
+        // Use external state management
+        onImageChange(product._id, newIndex);
+        onHoverTimeChange(product._id, Date.now());
+      } else {
+        // Use internal state management
+        setInternalCurrentImageIndex(newIndex);
+        setInternalLastHoverTime(Date.now());
+      }
+    }
+  }, [productImages.length, currentImageIndex, onImageChange, onHoverTimeChange, product._id]);
 
   // Handle dot navigation
   const handleDotClick = useCallback((index, e) => {
     e.stopPropagation();
     if (onImageChange) {
       onImageChange(product._id, index);
+    } else {
+      setInternalCurrentImageIndex(index);
     }
   }, [onImageChange, product._id]);
 
   // Handle action buttons
   const handleAddToCart = useCallback((e) => {
     e.stopPropagation();
-    onAddToCart(product);
-  }, [onAddToCart, product]);
+
+    // If product has variants, open detail modal instead of adding directly
+    if (product.hasVariants && product.variants && product.variants.length > 0) {
+      onOpenDetail(product);
+    } else {
+      onAddToCart(product);
+    }
+  }, [onAddToCart, onOpenDetail, product]);
 
   const handleOpenDetail = useCallback(() => {
     onOpenDetail(product);
   }, [onOpenDetail, product]);
 
+  const handleCardClick = useCallback(() => {
+    // If product has variants, open detail modal for variant selection
+    if (product.hasVariants && product.variants && product.variants.length > 0) {
+      onOpenDetail(product);
+    } else {
+      // If no variants, add directly to cart
+      onAddToCart(product);
+    }
+  }, [product, onOpenDetail, onAddToCart]);
+
   return (
-    <div 
-      className={`group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full border border-gray-100 hover:border-gray-200 ${className}`}
+    <div
+      className={`group bg-white rounded-lg shadow-md p-2.5 md:p-3 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 border border-gray-200 hover:border-orange-200 relative h-full flex flex-col cursor-pointer ${className}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={handleCardClick}
     >
       {/* Image Container */}
-      <div className="relative cursor-pointer overflow-hidden" onClick={handleOpenDetail}>
-        <div className="relative w-full h-48 sm:h-56 lg:h-64 bg-white">
+      <div className="relative cursor-pointer overflow-hidden rounded-lg mb-3 border border-gray-100" onClick={handleOpenDetail}>
+        <div
+          className="relative w-full h-40 sm:h-48 lg:h-56 bg-white rounded-lg"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          onTouchStart={handleTouchStart}
+        >
           {/* Main Image */}
           <img
             src={currentImage}
             alt={product.name}
-            className={`w-full h-full object-contain transition-all duration-500 ${
-              isHovered ? 'scale-105' : 'scale-100'
-            } ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
+            className={`w-full h-full object-contain transition-all duration-500 ${isHovered ? 'scale-105' : 'scale-100'
+              } ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
             loading="lazy"
             onLoad={() => setImageLoading(false)}
             onError={() => {
-              setImageError(true);
               setImageLoading(false);
             }}
           />
-          
+
           {/* Loading Skeleton */}
           {imageLoading && (
             <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
-              <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-6 h-6 lg:w-8 lg:h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
               </svg>
             </div>
           )}
 
+          {/* Hover Areas Indicator (only visible on hover for multiple images) */}
+          {hasMultipleImages && (
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              <div className="absolute left-0 top-0 w-1/2 h-full bg-gradient-to-r from-black/5 to-transparent"></div>
+              <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-black/5 to-transparent"></div>
+            </div>
+          )}
 
+          {/* Progress Indicators - Show current image position */}
+          {hasMultipleImages && (
+            <div className="absolute bottom-0 left-0 right-0 flex gap-1 px-2 pb-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
+              {productImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={(e) => handleDotClick(index, e)}
+                  className={`flex-1 h-0.5 rounded-full transition-all duration-300 ${index === currentImageIndex
+                    ? 'bg-primary-orange shadow-sm'
+                    : 'bg-gray-400/70 hover:bg-gray-500/80'
+                    }`}
+                  aria-label={`Rasm ${index + 1}`}
+                  title={`Rasm ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Badges */}
-          <div className="absolute top-3 left-3 flex flex-col gap-2">
+          <div className="absolute top-2 left-2 lg:top-3 lg:left-3 flex flex-col gap-1 lg:gap-2">
             {/* Discount Badge */}
             {discount > 0 && (
-              <span className="bg-red-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-sm">
+              <span className="bg-red-500 text-white px-1.5 py-0.5 lg:px-2.5 lg:py-1 rounded-full text-xs font-bold shadow-sm">
                 -{discount}%
               </span>
             )}
-            
+
             {/* Custom Badge */}
-            {product.badge && product.badge !== 'Chegirma' && (
-              <span className="bg-primary-orange text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-sm">
+            {product.badge && product.badge !== 'Yo\'q' && (
+              <span className="bg-blue-500 text-white px-1.5 py-0.5 lg:px-2.5 lg:py-1 rounded-full text-xs font-bold shadow-sm">
                 {product.badge}
               </span>
             )}
-            
-            {/* Popular Badge */}
-            {(product.rating >= 4.5 && !product.badge && !discount) && (
-              <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-sm">
-                ⭐ Mashhur
+
+            {/* Stock Badge */}
+            {product.stock !== undefined && product.stock < 5 && product.stock > 0 && (
+              <span className="bg-orange-500 text-white px-1.5 py-0.5 lg:px-2.5 lg:py-1 rounded-full text-xs font-bold shadow-sm">
+                Kam qoldi
               </span>
             )}
-            
+
             {/* New Badge */}
-            {(product.isNew && !product.badge && !discount && !(product.rating >= 4.5)) && (
-              <span className="bg-gradient-to-r from-green-400 to-green-600 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-sm">
+            {product.isNew && (
+              <span className="bg-gradient-to-r from-green-400 to-green-600 text-white px-1.5 py-0.5 lg:px-2.5 lg:py-1 rounded-full text-xs font-bold shadow-sm">
                 🆕 Yangi
               </span>
             )}
           </div>
-
-
         </div>
       </div>
 
-      {/* Product Info */}
-      <div className="p-4 flex flex-col flex-grow">
-        {/* Product Name */}
-        <div className="mb-3 cursor-pointer" onClick={handleOpenDetail}>
-          <h3 className="font-semibold text-gray-900 text-sm lg:text-base line-clamp-2 leading-tight hover:text-primary-orange transition-colors duration-200 min-h-[2.5rem]">
+      {/* Product Info - Zamonaviy va rangli dizayn */}
+      <div className="flex flex-col flex-grow space-y-2">
+        {/* Brand - Rangli brand indicator */}
+        {product.brand && (
+          <div className="inline-flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
+            <span className="text-xs text-purple-600 font-medium tracking-wide uppercase bg-purple-50 px-2 py-0.5 rounded-full">
+              {product.brand}
+            </span>
+          </div>
+        )}
+        
+        {/* Product Name va Description - Yaqin joylashtirilgan */}
+        <div className="cursor-pointer space-y-1" onClick={handleOpenDetail}>
+          <h3 className="font-semibold text-sm md:text-base text-gray-900 leading-snug hover:text-primary-orange transition-colors duration-200 line-clamp-2">
             {product.name || 'Noma\'lum mahsulot'}
           </h3>
+          
+          {/* Description - Yaqin joylashtirilgan */}
+          {product.description && (
+            <div className="bg-slate-50 p-1.5 rounded border-l-2 border-slate-200 mt-0">
+              <p className="text-slate-600 text-xs leading-tight line-clamp-2 font-medium m-0">
+                {product.description}
+              </p>
+            </div>
+          )}
         </div>
-
-        {/* Rating */}
-        {product.rating && (
-          <div className="flex items-center gap-1 mb-2">
-            <div className="flex items-center">
-              {[...Array(5)].map((_, i) => (
-                <svg
-                  key={i}
-                  className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'text-yellow-400' : 'text-gray-300'}`}
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              ))}
-            </div>
-            <span className="text-xs text-gray-500 ml-1">({product.rating})</span>
-          </div>
-        )}
-
-        {/* Variants Preview */}
-        {product.hasVariants && product.variants && product.variants.length > 0 && (
-          <div className="mb-2">
-            <div className="flex flex-wrap gap-1">
-              {product.variants[0]?.options?.slice(0, 2).map((option, index) => (
-                <span 
-                  key={index}
-                  className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded"
-                >
-                  {option.value}
-                </span>
-              ))}
-              {product.variants[0]?.options?.length > 2 && (
-                <span className="text-xs text-gray-500">
-                  +{product.variants[0].options.length - 2}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Description */}
-        {product.description && (
-          <div className="mb-3">
-            <p className="text-gray-600 text-xs leading-relaxed line-clamp-2">
-              {product.description}
-            </p>
-          </div>
-        )}
-
-        {/* Price Section */}
-        <div className="mt-auto">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-900 text-base lg:text-lg">
-                  {formatPrice(product.price)}
-                </span>
-                {discount > 0 && (
-                  <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">
-                    -{discount}%
-                  </span>
-                )}
-              </div>
-              {product.oldPrice && product.oldPrice > product.price && (
-                <span className="text-gray-500 line-through text-sm">
-                  {formatPrice(product.oldPrice)}
-                </span>
-              )}
-            </div>
-            
-            {/* Stock Info */}
-            {product.stock !== undefined && product.stock > 0 && (
-              <div className="text-right">
-                <p className="text-xs text-gray-600">
-                  <span className="text-green-600 font-medium">{product.stock}</span>
-                  <span className="ml-1">{product.unit || 'dona'}</span>
-                </p>
-                {product.stock < 10 && (
-                  <p className="text-xs text-orange-500 font-medium">Kam qoldi!</p>
-                )}
-              </div>
+        
+        {/* Price Section - Enhanced layout with colors */}
+        <div className="space-y-1">
+          <div className="flex items-baseline gap-2">
+            <span className="text-lg md:text-xl font-bold text-primary-orange">
+              {formatPrice(product.price)}
+            </span>
+            {product.oldPrice && (
+              <span className="text-xs text-gray-400 line-through bg-gray-50 px-1.5 py-0.5 rounded">
+                {formatPrice(product.oldPrice)}
+              </span>
             )}
           </div>
-
-          {/* Add to Cart Button */}
-          <button
-            onClick={handleAddToCart}
-            disabled={product.stock === 0}
-            className={`w-full py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-              product.stock === 0
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : 'bg-primary-orange text-white hover:bg-orange-600 hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]'
-            }`}
-          >
-            <ShoppingCartIcon className="w-4 h-4" />
-            <span className="hidden sm:inline">
-              {product.stock === 0 ? 'Tugagan' : 'Savatga qo\'shish'}
-            </span>
-            <span className="sm:hidden">
-              {product.stock === 0 ? 'Tugagan' : 'Qo\'shish'}
-            </span>
-          </button>
+          
+          {/* Discount badge */}
+          {discount > 0 && (
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-red-50 to-pink-50 text-red-600 text-xs font-medium rounded-full border border-red-100">
+              <div className="w-1 h-1 bg-red-500 rounded-full"></div>
+              -{discount}% chegirma
+            </div>
+          )}
         </div>
+        
+        {/* Stock Info - Compact one line */}
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 rounded-full ${product.stock > 10 ? 'bg-green-500' : product.stock > 0 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+            <span className="text-gray-600 font-medium">Mavjud:</span>
+          </div>
+          <span className={`font-semibold ${
+            product.stock > 10 
+              ? 'text-green-600' 
+              : product.stock > 0 
+                ? 'text-yellow-600' 
+                : 'text-red-600'
+          }`}>
+            {product.stock > 0 ? `${product.stock} ${product.unit || 'dona'}` : 'Tugagan'}
+          </span>
+        </div>
+        
+        {/* Button - Gradient design */}
+        <button
+          onClick={handleAddToCart}
+          disabled={product.stock === 0}
+          className={`w-full py-2 px-4 rounded-lg font-semibold text-sm transition-all duration-200 mt-auto ${
+            product.stock === 0
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-gradient-to-r from-primary-orange to-orange-500 text-white hover:from-orange-600 hover:to-orange-600 hover:shadow-lg active:scale-[0.98] shadow-md'
+          }`}
+        >
+          {product.stock === 0 ? 'Tugagan' : 'Ko\'rish'}
+        </button>
       </div>
     </div>
   );

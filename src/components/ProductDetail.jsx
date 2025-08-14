@@ -7,7 +7,10 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
-  
+
+  // Notification state
+  const [showNotification, setShowNotification] = useState(false);
+
   // Variant system states
   const [selectedVariants, setSelectedVariants] = useState({});
   const [variantPrice, setVariantPrice] = useState(product?.price || 0);
@@ -15,10 +18,10 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
   const [variantImage, setVariantImage] = useState(product?.image || '');
 
   // Get product images - support both old and new format
-  const baseImages = product?.images && product.images.length > 0 
-    ? product.images 
+  const baseImages = product?.images && product.images.length > 0
+    ? product.images
     : (product?.image ? [product.image] : ['/assets/default-product.png']);
-  
+
   // Add variant image to images if it's not already included
   const productImages = React.useMemo(() => {
     if (variantImage && variantImage !== product?.image && !baseImages.includes(variantImage)) {
@@ -37,33 +40,33 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
       setVariantPrice(product.price);
       setVariantStock(product.stock);
       setVariantImage(product.image);
-      
+
       // Auto-select first variant options
       if (product.hasVariants && product.variants && product.variants.length > 0) {
         const autoSelectedVariants = {};
         let autoPrice = product.price;
         let autoStock = product.stock;
         let autoImage = product.image;
-        
+
         product.variants.forEach(variant => {
           if (variant.options && variant.options.length > 0) {
-            // Select first available option (not out of stock)
-            const firstAvailableOption = variant.options.find(option => option.stock > 0) || variant.options[0];
-            autoSelectedVariants[variant.name] = firstAvailableOption.value;
-            
+            // Always select first option as default
+            const firstOption = variant.options[0];
+            autoSelectedVariants[variant.name] = firstOption.value;
+
             // Update price, stock, and image based on first variant
-            if (firstAvailableOption.price && firstAvailableOption.price > 0) {
-              autoPrice = firstAvailableOption.price;
+            if (firstOption.price && firstOption.price > 0) {
+              autoPrice = firstOption.price;
             }
-            if (firstAvailableOption.stock !== undefined) {
-              autoStock = Math.min(autoStock, firstAvailableOption.stock);
+            if (firstOption.stock !== undefined) {
+              autoStock = Math.min(autoStock, firstOption.stock);
             }
-            if (firstAvailableOption.image) {
-              autoImage = firstAvailableOption.image;
+            if (firstOption.image) {
+              autoImage = firstOption.image;
             }
           }
         });
-        
+
         setSelectedVariants(autoSelectedVariants);
         setVariantPrice(autoPrice);
         setVariantStock(autoStock);
@@ -114,34 +117,47 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
 
   const discount = product.oldPrice ? calculateDiscount(product.price, product.oldPrice) : 0;
 
-  // Check if all variants are selected
-  const allVariantsSelected = !product.hasVariants || 
-    !product.variants || 
-    product.variants.length === 0 || 
+  // Check if all variants are selected - always true since we auto-select
+  const allVariantsSelected = !product.hasVariants ||
+    !product.variants ||
+    product.variants.length === 0 ||
     product.variants.every(variant => selectedVariants[variant.name]);
 
   const handleAddToCart = () => {
-    // Don't add to cart if variants are required but not all selected
-    if (product.hasVariants && !allVariantsSelected) {
-      return;
+    // Auto-selection ensures all variants are always selected, no need for validation
+
+    // Create display name with variant info
+    let displayName = product.name;
+    if (product.hasVariants && Object.keys(selectedVariants).length > 0) {
+      const variantInfo = Object.values(selectedVariants).join(', ');
+      displayName = `${product.name} (${variantInfo})`;
     }
 
     const productToAdd = {
       ...product,
+      name: displayName, // Use display name with variant info
       selectedColor,
       selectedSize,
       quantity,
+      // Override price with variant price
+      price: product.hasVariants ? variantPrice : product.price,
       // Add variant information
       selectedVariants: product.hasVariants ? selectedVariants : {},
       finalPrice: product.hasVariants ? variantPrice : product.price,
       finalStock: product.hasVariants ? variantStock : (product.stock || product.quantity),
       finalImage: product.hasVariants ? variantImage : product.image,
       // Create a unique identifier for cart items with variants
-      cartId: product.hasVariants 
+      cartId: product.hasVariants
         ? `${product.id || product._id}-${Object.values(selectedVariants).join('-')}`
         : (product.id || product._id)
     };
     onAddToCart(productToAdd);
+
+    // Show notification
+    setShowNotification(true);
+    setTimeout(() => {
+      setShowNotification(false);
+    }, 3000);
   };
 
   const handleImageClick = (index) => {
@@ -181,11 +197,10 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                     <button
                       key={index}
                       onClick={() => handleImageClick(index)}
-                      className={`flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                        selectedImageIndex === index
+                      className={`flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${selectedImageIndex === index
                           ? 'border-primary-orange'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                     >
                       <img
                         src={image}
@@ -196,7 +211,7 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                   ))}
                 </div>
               )}
-              
+
               {/* Main Image */}
               <div className="relative bg-white rounded-lg overflow-hidden aspect-square border border-gray-100">
                 <img
@@ -204,7 +219,7 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                   alt={product.name}
                   className="w-full h-full object-contain"
                 />
-                
+
                 {/* Navigation Arrows */}
                 {productImages.length > 1 && (
                   <>
@@ -241,26 +256,32 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
 
             {/* Product Info */}
             <div className="space-y-4 sm:space-y-5">
-              {/* Price */}
-              <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg shadow-sm border border-orange-200">
-                <div className="flex flex-wrap items-center gap-2 mb-3">
-                  {discount > 0 && (
-                    <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium">
+              {/* Price - Compact and styled */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200">
+                {discount > 0 && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
                       -{discount}% Chegirma
                     </span>
-                  )}
-                </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-700 font-medium text-sm">Narxi:</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span className="text-gray-700 font-medium text-sm">Narxi</span>
+                    </div>
                     <span className="text-xl font-bold text-primary-orange">
                       {formatPrice(product.hasVariants ? variantPrice : product.price)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-700 font-medium text-sm">Holati:</span>
-                    <span className="text-green-600 font-medium flex items-center gap-1 text-sm">
-                      <i className="fas fa-check-circle text-sm"></i>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-700 font-medium text-sm">Holati</span>
+                    </div>
+                    <span className="text-green-600 font-medium flex items-center gap-1 text-sm bg-green-50 px-2 py-1 rounded-md">
+                      <i className="fas fa-check-circle text-xs"></i>
                       Mavjud
                     </span>
                   </div>
@@ -277,7 +298,7 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                 </div>
               )}
 
-              {/* Product Variants - New Uzum Market Style */}
+              {/* Product Variants */}
               {product.hasVariants && product.variants && product.variants.length > 0 && (
                 <div className="space-y-4">
                   <ProductVariantSelector
@@ -302,11 +323,10 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                       <button
                         key={index}
                         onClick={() => setSelectedColor(color)}
-                        className={`px-2 sm:px-3 py-1 sm:py-2 rounded-lg border transition-all duration-200 text-xs sm:text-sm ${
-                          selectedColor === color
+                        className={`px-2 sm:px-3 py-1 sm:py-2 rounded-lg border transition-all duration-200 text-xs sm:text-sm ${selectedColor === color
                             ? 'border-primary-orange bg-orange-50 text-primary-orange'
                             : 'border-gray-300 hover:border-gray-400'
-                        }`}
+                          }`}
                       >
                         {color}
                       </button>
@@ -324,11 +344,10 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                       <button
                         key={index}
                         onClick={() => setSelectedSize(size)}
-                        className={`px-2 sm:px-3 py-1 sm:py-2 rounded-lg border transition-all duration-200 text-xs sm:text-sm ${
-                          selectedSize === size
+                        className={`px-2 sm:px-3 py-1 sm:py-2 rounded-lg border transition-all duration-200 text-xs sm:text-sm ${selectedSize === size
                             ? 'border-primary-orange bg-orange-50 text-primary-orange'
                             : 'border-gray-300 hover:border-gray-400'
-                        }`}
+                          }`}
                       >
                         {size}
                       </button>
@@ -369,61 +388,54 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                   </button>
                 </div>
               </div>
-              
 
               {/* Product Information */}
-              <div className="space-y-3 border-t border-gray-200 pt-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg p-3 shadow-sm">
-                <h4 className="font-medium text-gray-800 text-sm flex items-center gap-2">
-                  <i className="fas fa-info-circle text-primary-orange text-sm"></i>
-                  Mahsulot ma'lumotlari
-                </h4>
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  {/* Single row layout for mobile */}
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between p-2 border-l-4 border-primary-orange bg-orange-50 rounded-r">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-700 font-medium text-sm">Kategoriya:</span>
-                        <span className="text-gray-900 font-medium text-sm">{getCategoryDisplayName(product.category)}</span>
-                      </div>
+              <div className="space-y-3 border-t border-gray-200 pt-4">
+                <h4 className="font-medium text-gray-800 text-sm">Mahsulot ma'lumotlari</h4>
+                <div className="space-y-3">
+                  {/* Category Info */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span className="text-gray-700 text-sm font-medium">Kategoriya</span>
                     </div>
-                    
-                    {/* Show selected variant stock information */}
-                    {product.hasVariants && product.variants && product.variants.length > 0 ? (
-                      <div className="flex items-center justify-between p-2 border-l-4 border-primary-orange bg-orange-50 rounded-r">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-700 font-medium text-sm">Miqdor:</span>
-                          <span className="text-gray-900 font-medium text-sm">
-                            {variantStock > 0 ? `${variantStock} ta mavjud` : 'Tugagan'}
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between p-2 border-l-4 border-primary-orange bg-orange-50 rounded-r">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-700 font-medium text-sm">Miqdor:</span>
-                          <span className="text-gray-900 font-medium text-sm">{product.quantity || product.stock || '100'} ta mavjud</span>
-                        </div>
-                      </div>
-                    )}
+                    <span className="text-gray-900 font-semibold text-sm bg-blue-50 px-2 py-1 rounded-md">
+                      {getCategoryDisplayName(product.category)}
+                    </span>
                   </div>
-                </div>
-              </div>
 
-              {/* Product Features - Hidden on mobile */}
-              <div className="hidden md:block space-y-3 border-t border-gray-200 pt-4">
-                <h4 className="font-semibold text-gray-900 text-sm">Xususiyatlari</h4>
-                <div className="space-y-2 text-xs text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <i className="fas fa-truck text-primary-orange text-xs"></i>
-                    <span>Yetkazib berish</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <i className="fas fa-star text-primary-orange text-xs"></i>
-                    <span>Yuqori sifat</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <i className="fas fa-tools text-primary-orange text-xs"></i>
-                    <span>Qurilish uchun mos</span>
+                  {/* Stock Info */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${
+                        (product.hasVariants ? variantStock : (product.quantity || product.stock || 0)) > 10 
+                          ? 'bg-green-500' 
+                          : (product.hasVariants ? variantStock : (product.quantity || product.stock || 0)) > 0 
+                            ? 'bg-yellow-500' 
+                            : 'bg-red-500'
+                      }`}></div>
+                      <span className="text-gray-700 text-sm font-medium">Miqdor</span>
+                    </div>
+                    {product.hasVariants && product.variants && product.variants.length > 0 ? (
+                      <span className={`font-semibold text-sm px-2 py-1 rounded-md ${
+                        variantStock > 0 
+                          ? 'text-green-700 bg-green-50' 
+                          : 'text-red-700 bg-red-50'
+                      }`}>
+                        {variantStock > 0 ? `${variantStock} ta mavjud` : 'Tugagan'}
+                      </span>
+                    ) : (
+                      <span className={`font-semibold text-sm px-2 py-1 rounded-md ${
+                        (product.quantity || product.stock || 0) > 0 
+                          ? 'text-green-700 bg-green-50' 
+                          : 'text-red-700 bg-red-50'
+                      }`}>
+                        {(product.quantity || product.stock || 0) > 0 
+                          ? `${product.quantity || product.stock || '100'} ta mavjud` 
+                          : 'Tugagan'
+                        }
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -431,20 +443,27 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
               {/* Add to Cart Button */}
               <button
                 onClick={handleAddToCart}
-                disabled={!allVariantsSelected}
-                className={`w-full py-3 px-6 rounded-lg transition-all duration-200 font-medium text-base flex items-center justify-center gap-2 shadow-md ${
-                  allVariantsSelected
-                    ? 'bg-primary-orange text-white hover:bg-opacity-90'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                className="w-full py-3 px-6 rounded-lg transition-all duration-200 font-medium text-base flex items-center justify-center gap-2 shadow-md bg-primary-orange text-white hover:bg-opacity-90"
               >
                 <i className="fas fa-shopping-cart text-sm"></i>
-                {allVariantsSelected ? 'Savatga qo\'shish' : 'Variantlarni tanlang'}
+                Savatga qo'shish
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Success Notification - Kichik modal */}
+      {showNotification && (
+        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-3 py-2 rounded-lg shadow-lg z-[60] transform transition-all duration-300">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+              <i className="fas fa-check text-white text-xs"></i>
+            </div>
+            <p className="font-medium text-sm">Savatga qo'shildi!</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

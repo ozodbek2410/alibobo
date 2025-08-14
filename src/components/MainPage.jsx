@@ -18,6 +18,9 @@ const MainPage = ({ onSuccessfulLogin }) => {
   // Catalog and search states
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Active section state for bottom navigation
+  const [activeSection, setActiveSection] = useState('products');
 
   // Parallel data loading for initial page load
   const { data: parallelData } = useParallelFetch([
@@ -41,37 +44,47 @@ const MainPage = ({ onSuccessfulLogin }) => {
 
   // Memoized cart functions for performance
   const addToCart = useCallback((product) => {
-    const existingItem = cart.find(item => item.id === product.id || item._id === product._id);
-    
+    // Use cartId for variants, otherwise use regular id
+    const productIdentifier = product.cartId || product._id || product.id;
+    const existingItem = cart.find(item => {
+      const itemIdentifier = item.cartId || item._id || item.id;
+      return itemIdentifier === productIdentifier;
+    });
+
     if (existingItem) {
-      setCart(cart.map(item => 
-        (item.id === product.id || item._id === product._id)
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
+      setCart(cart.map(item => {
+        const itemIdentifier = item.cartId || item._id || item.id;
+        return itemIdentifier === productIdentifier
+          ? { ...item, quantity: item.quantity + (product.quantity || 1) }
+          : item;
+      }));
     } else {
       const productToAdd = {
         ...product,
-        id: product._id || product.id,
-        quantity: 1
+        id: productIdentifier,
+        quantity: product.quantity || 1
       };
       setCart([...cart, productToAdd]);
     }
   }, [cart]);
 
   const removeFromCart = useCallback((productId) => {
-    setCart(prev => prev.filter(item => item.id !== productId && item._id !== productId));
+    setCart(prev => prev.filter(item => {
+      const itemIdentifier = item.cartId || item._id || item.id;
+      return itemIdentifier !== productId;
+    }));
   }, []);
 
   const updateCartQuantity = useCallback((productId, newQuantity) => {
     if (newQuantity <= 0) {
       removeFromCart(productId);
     } else {
-      setCart(prev => prev.map(item => 
-        (item.id === productId || item._id === productId)
+      setCart(prev => prev.map(item => {
+        const itemIdentifier = item.cartId || item._id || item.id;
+        return itemIdentifier === productId
           ? { ...item, quantity: newQuantity }
-          : item
-      ));
+          : item;
+      }));
     }
   }, [removeFromCart]);
 
@@ -100,7 +113,7 @@ const MainPage = ({ onSuccessfulLogin }) => {
 
   return (
     <>
-      <Header 
+      <Header
         onSuccessfulLogin={onSuccessfulLogin}
         cart={cart}
         isCartOpen={isCartOpen}
@@ -112,9 +125,11 @@ const MainPage = ({ onSuccessfulLogin }) => {
         onCategorySelect={handleCategorySelect}
         selectedCategory={selectedCategory}
         onSearch={handleSearch}
+        activeSection={activeSection}
+        setActiveSection={setActiveSection}
       />
       <div id="products">
-        <ProductsGrid 
+        <ProductsGrid
           cart={cart}
           onAddToCart={addToCart}
           onToggleCart={toggleCart}
@@ -124,6 +139,7 @@ const MainPage = ({ onSuccessfulLogin }) => {
           selectedCategory={selectedCategory}
           searchQuery={searchQuery}
           onInitialProductsLoaded={handleInitialProductsLoaded}
+          onCategorySelect={handleCategorySelect}
         />
       </div>
       <div id="craftsmen">

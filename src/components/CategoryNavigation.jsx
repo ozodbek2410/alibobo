@@ -1,150 +1,65 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-const CategoryNavigation = ({ onCategorySelect, selectedCategory, isModalOpen, setIsModalOpen }) => {
-  const [internalModalOpen, setInternalModalOpen] = useState(false);
-  
-  // Use external modal state if provided, otherwise use internal state
-  const modalOpen = isModalOpen !== undefined ? isModalOpen : internalModalOpen;
-  const setModalOpen = setIsModalOpen !== undefined ? setIsModalOpen : setInternalModalOpen;
-
-  // Categories from admin panel - Main categories only
-  const categories = [
-    { name: "Santexnika", value: "santexnika", icon: "fas fa-faucet", hasProducts: true },
-    { name: "Yevro-Remont", value: "yevro-remont", icon: "fas fa-home", hasProducts: true },
-    { name: "Elektrika", value: "elektrika", icon: "fas fa-bolt", hasProducts: true },
-    { name: "Xoz-Mag", value: "xoz-mag", icon: "fas fa-shopping-basket", hasProducts: true },
-    { name: "Dekorativ-Mahsulotlar", value: "dekorativ-mahsulotlar", icon: "fas fa-palette", hasProducts: true }
+const CategoryNavigation = ({ 
+  categories = [], 
+  selectedCategory = '', 
+  onCategorySelect,
+  className = '',
+  isDesktop = false
+}) => {
+  // Top 5 categories for desktop, all categories for mobile
+  const allCategories = [
+    { id: 'all', name: '', displayName: 'Hammasi', icon: 'fas fa-th-large' },
+    { id: 'xoz-mag', name: 'xoz-mag', displayName: 'Xo\'z-mag', icon: 'fas fa-home' },
+    { id: 'yevro-remont', name: 'yevro-remont', displayName: 'Yevro remont', icon: 'fas fa-tools' },
+    { id: 'elektrika', name: 'elektrika', displayName: 'Elektrika', icon: 'fas fa-bolt' },
+    { id: 'dekorativ-mahsulotlar', name: 'dekorativ-mahsulotlar', displayName: 'Dekorativ', icon: 'fas fa-paint-brush' },
+    { id: 'santexnika', name: 'santexnika', displayName: 'Santexnika', icon: 'fas fa-faucet' },
   ];
 
-  // Show first 7 categories with products in the horizontal bar
-  const visibleCategories = categories.filter(category => category.hasProducts).slice(0, 7);
-  const hasMoreCategories = categories.length > 7;
+  // Desktop: faqat 5 ta asosiy kategoriya, Mobile: barcha kategoriyalar
+  const categoriesToUse = categories.length > 0 
+    ? categories 
+    : isDesktop 
+      ? allCategories // Hammasi + 5 ta asosiy kategoriya
+      : allCategories;
 
-  const handleCategoryClick = (categoryValue) => {
+  const handleCategoryClick = (category) => {
     if (onCategorySelect) {
-      onCategorySelect(categoryValue);
+      onCategorySelect(category.name);
     }
-    setModalOpen(false); // Close modal when category is selected
-  };
-
-  const handleAllProductsClick = () => {
-    if (onCategorySelect) {
-      onCategorySelect('');
-    }
-    setModalOpen(false); // Close modal when "All" is selected
-  };
-
-  const openModal = () => {
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
   };
 
   return (
-    <>
-      <div className="bg-white border-b border-gray-200 shadow-lg hidden lg:block">
-        <div className="container mx-auto px-6">
-          <div className="flex items-center justify-between py-3">
-            <div className="flex items-center space-x-1">
-            {/* All Products Button */}
-            <button
-              onClick={handleAllProductsClick}
-              className={`px-4 py-2 whitespace-nowrap transition-all duration-200 relative ${
-                selectedCategory === '' 
-                  ? 'text-primary-orange border-b-2 border-primary-orange' 
-                  : 'text-gray-700 hover:text-primary-orange hover:border-b-2 hover:border-primary-orange'
-              }`}
-            >
-              <span className="font-medium text-sm">Barchasi</span>
-            </button>
-
-            {/* Visible Category Buttons */}
-            {visibleCategories.map((category, index) => (
-              <button
-                key={index}
-                onClick={() => handleCategoryClick(category.value)}
-                className={`px-4 py-2 whitespace-nowrap transition-all duration-200 relative ${
-                  selectedCategory === category.value 
-                    ? 'text-primary-orange border-b-2 border-primary-orange' 
-                    : 'text-gray-700 hover:text-primary-orange hover:border-b-2 hover:border-primary-orange'
-                }`}
-              >
-                <span className="font-medium text-sm">{category.name}</span>
-              </button>
-            ))}
-
-            </div>
+    <div className={`w-full ${className}`}>
+      {/* Horizontal scrollable container */}
+      <div className={`overflow-x-auto scrollbar-hide ${isDesktop ? 'lg:overflow-x-visible' : ''}`}>
+        <div className={`flex gap-2 px-0 py-2 ${isDesktop ? 'lg:justify-start lg:px-0 lg:gap-3' : 'min-w-max'}`}>
+          {categoriesToUse.map((category) => {
+            const isSelected = selectedCategory === category.name || 
+                             (selectedCategory === '' && category.id === 'all');
             
-            {/* Yana (More) Button */}
-            {hasMoreCategories && (
+            return (
               <button
-                onClick={openModal}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all duration-200 text-gray-700 hover:bg-gray-100 hover:text-primary-orange border border-gray-300"
+                key={category.id}
+                onClick={() => handleCategoryClick(category)}
+                className={`
+                  flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium
+                  whitespace-nowrap transition-all duration-200 min-h-[36px]
+                  ${isSelected 
+                    ? 'bg-primary-orange text-white shadow-sm' 
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-primary-orange'
+                  }
+                `}
               >
-                <i className="fas fa-ellipsis-h text-sm"></i>
-                <span className="font-medium text-sm">Yana</span>
+                <i className={`${category.icon} text-sm`}></i>
+                <span>{category.displayName}</span>
               </button>
-            )}
-          </div>
+            );
+          })}
         </div>
       </div>
-
-      {/* Category Modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800">Barcha kategoriyalar</h2>
-              <button
-                onClick={closeModal}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                <i className="fas fa-times text-xl"></i>
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-              {/* All Products Button */}
-              <div className="mb-6">
-                <button
-                  onClick={handleAllProductsClick}
-                  className={`flex items-center space-x-3 p-4 rounded-lg w-full text-left transition-all duration-200 ${
-                    selectedCategory === '' 
-                      ? 'bg-primary-orange text-white shadow-md' 
-                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-primary-orange'
-                  }`}
-                >
-                  <i className="fas fa-th-large text-lg"></i>
-                  <span className="font-medium">Barcha mahsulotlar</span>
-                </button>
-              </div>
-
-              {/* Categories Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-                {categories.map((category, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleCategoryClick(category.value)}
-                    className={`flex items-center space-x-3 p-3 sm:p-4 rounded-lg text-left transition-all duration-200 ${
-                      selectedCategory === category.value 
-                        ? 'bg-primary-orange text-white shadow-md' 
-                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-primary-orange'
-                    }`}
-                  >
-                    <i className={`${category.icon} text-base sm:text-lg`}></i>
-                    <span className="font-medium text-sm sm:text-base">{category.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 };
 

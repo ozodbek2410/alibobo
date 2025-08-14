@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue, useTransition } from 'react';
 import { useOptimizedFetch } from '../hooks/useOptimizedFetch';
 import CartSidebar from './CartSidebar';
+import ColorfulCategoryFilter from './ColorfulCategoryFilter';
 
 import ModernProductGrid from './ModernProductGrid';
 import { useOptimizedFilters } from '../hooks/useOptimizedFilters';
@@ -16,7 +17,8 @@ const ProductsGrid = ({
   onCheckout,
   selectedCategory,
   searchQuery,
-  onInitialProductsLoaded
+  onInitialProductsLoaded,
+  onCategorySelect
 }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,23 +57,11 @@ const ProductsGrid = ({
   // Category mapping function - frontend to backend
   const getCategoryApiValue = (frontendCategory) => {
     const categoryMapping = {
-      "xoz-mag": "xoz-mag",
-      "yevro-remont": "yevro-remont",
-      "elektrika": "elektrika",
-      "dekorativ-mahsulotlar": "dekorativ-mahsulotlar",
-      "santexnika": "santexnika",
-      "g'isht-va-bloklar": "gisht",
-      "asbob-uskunalar": "asbob", 
-      "bo'yoq-va-lak": "boyoq",
-      "elektr-mollalari": "elektr",
-      "metall-va-armatura": "metall",
-      "yog'och-va-mebel": "yog'och",
-      "tom-materiallar": "tom",
-      "issiqlik-va-konditsioner": "issiqlik",
-      "dekor-va-bezatish": "dekor",
-      "temir-beton": "temir",
-      "gips-va-shpaklovka": "gips",
-      "boshqalar": "boshqalar"
+      "xoz-mag": "Xoz-mag",
+      "yevro-remont": "Yevro-remont",
+      "elektrika": "Elektrika",
+      "dekorativ-mahsulotlar": "Dekorativ-mahsulotlar",
+      "santexnika": "Santexnika",
     };
     
     return categoryMapping[frontendCategory] || frontendCategory;
@@ -391,6 +381,15 @@ const ProductsGrid = ({
   
 
 
+  // Handle category selection from CategoryNavigation
+  const handleCategorySelect = useCallback((categoryName) => {
+    // Use the parent's onCategorySelect if available, otherwise update local state
+    if (onCategorySelect) {
+      onCategorySelect(categoryName);
+    }
+    setCurrentCategory(categoryName || 'all');
+  }, [onCategorySelect]);
+
   // Show loading skeleton only when truly loading and no products
   if (loading && products.length === 0) {
     return (
@@ -412,16 +411,19 @@ const ProductsGrid = ({
     );
   }
 
-
-
   return (
-    <div className="container mx-auto px-4 lg:px-6 py-6 lg:py-8">
+    <div className="container mx-auto px-4 lg:px-6 py-1 lg:py-2">
 
+      {/* Colorful Category Filter - Mobile and Desktop */}
+      <div className="mb-6">
+        <ColorfulCategoryFilter
+          selectedCategory={selectedCategory}
+          onCategorySelect={handleCategorySelect}
+        />
+      </div>
 
-
-      
       {/* Badge Filter */}
-      <div className="mb-6 lg:mb-8">
+      <div className="mb-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3 lg:gap-4">
             <span className="text-gray-700 font-medium text-sm lg:text-base">Saralash:</span>
@@ -430,7 +432,7 @@ const ProductsGrid = ({
                 ref={selectRef}
                 value={quickFilter}
                 onChange={(e) => setQuickFilter(e.target.value)}
-                className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-gray-800 font-medium focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-all duration-200 cursor-pointer text-sm min-w-[110px] lg:min-w-[120px]"
+                className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-1.5 pr-8 text-gray-800 font-medium focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-all duration-200 cursor-pointer text-sm min-w-[110px] lg:min-w-[120px]"
               >
                 <option value="all">Hammasi</option>
                 <option value="mashhur">Mashhur</option>

@@ -291,18 +291,18 @@ const CartSidebar = ({ isOpen, onClose, cart, onRemoveFromCart, onUpdateQuantity
                 const totalPrice = (price * item.quantity).toLocaleString();
                 
                 return (
-                  <div key={item.id} className="flex items-start space-x-4 p-4 bg-white rounded-lg shadow-sm border">
+                  <div key={item.id} className="flex items-start space-x-3 sm:space-x-4 p-3 sm:p-4 bg-white rounded-lg shadow-sm border">
                     <img
                       src={item.image || '/api/placeholder/80/80'}
                       alt={item.name}
                       className="w-20 h-20 object-cover rounded-lg"
                     />
-                    <div className="flex-1">
-                      <h4 className="font-bold text-primary-dark mb-1">{item.name}</h4>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-primary-dark mb-1 text-sm sm:text-base line-clamp-2 leading-tight">{item.name}</h4>
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
                         Mahsulot
                       </span>
-                      <p className="text-sm text-gray-500 mt-2">{item.price} / dona</p>
+                      <p className="text-xs sm:text-sm text-gray-500 mt-2 truncate">{item.price} / dona</p>
                       <div className="flex items-center space-x-2 mt-3">
                         <button
                           onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
@@ -320,12 +320,14 @@ const CartSidebar = ({ isOpen, onClose, cart, onRemoveFromCart, onUpdateQuantity
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-primary-dark">{totalPrice} so'm</p>
+                      <p className="text-sm sm:text-lg font-bold text-primary-dark">{totalPrice} so'm</p>
                       <button
                         onClick={() => onRemoveFromCart(item.id)}
-                        className="text-red-500 hover:text-red-700 text-sm font-medium mt-6"
+                        className="text-red-500 hover:text-red-700 text-xs sm:text-sm font-medium mt-2 sm:mt-6"
                       >
-                        <i className="fas fa-trash-alt mr-1"></i> O'chirish
+                        <i className="fas fa-trash-alt mr-1"></i> 
+                        <span className="hidden sm:inline">O'chirish</span>
+                        <span className="sm:hidden">O'chir</span>
                       </button>
                     </div>
                   </div>

@@ -4,14 +4,14 @@ import CartSidebar from './CartSidebar';
 import Catalog from './Catalog';
 import CategoryNavigation from './CategoryNavigation';
 
-const Header = ({ 
-  onSuccessfulLogin, 
-  cart, 
-  isCartOpen, 
-  onToggleCart, 
-  onRemoveFromCart, 
-  onUpdateQuantity, 
-  onCheckout, 
+const Header = ({
+  onSuccessfulLogin,
+  cart,
+  isCartOpen,
+  onToggleCart,
+  onRemoveFromCart,
+  onUpdateQuantity,
+  onCheckout,
   getTotalItems,
   onCategorySelect,
   selectedCategory,
@@ -65,20 +65,20 @@ const Header = ({
 
   const handleLogin = (e) => {
     e.preventDefault();
-    
+
     if (username === 'admin' && password === 'admin123') {
       setShowLoginModal(false);
       setUsername('');
       setPassword('');
-      
+
       // Restore background scroll
       document.body.style.overflow = 'auto';
       document.body.style.paddingRight = '0px';
-      
+
       if (onSuccessfulLogin) {
         onSuccessfulLogin();
       }
-      
+
       navigate('/admin');
     } else {
       setErrorMessage('Noto\'g\'ri login yoki parol!');
@@ -125,27 +125,27 @@ const Header = ({
             {/* Left side - Logo */}
             <div className="flex items-center min-w-fit">
               {/* Logo */}
-              <div 
+              <div
                 className="flex items-center space-x-3 cursor-pointer select-none"
                 onClick={handleLogoInteraction}
                 onTouchStart={handleLogoInteraction}
                 title="Admin panel uchun 2 marta bosing"
                 style={{ userSelect: 'none' }}
               >
-                <img 
-                  src="/logo.png" 
-                  alt="Logo" 
+                <img
+                  src="/logo.png"
+                  alt="Logo"
                   loading="eager"
                   decoding="async"
                   fetchPriority="high"
                   className="w-12 h-12 object-cover rounded-lg"
                 />
-                <img 
-                  src="/alibobo.png" 
+                <img
+                  src="/alibobo.png"
                   alt="Alibobo"
                   loading="eager"
                   decoding="async"
-                  fetchPriority="high" 
+                  fetchPriority="high"
                   className="h-14 w-36 object-cover"
                 />
               </div>
@@ -162,7 +162,7 @@ const Header = ({
                     placeholder="Mahsulotlar va turkumlar izlash"
                     className="w-full px-4 py-2 pr-10 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300"
                   />
-                  <button 
+                  <button
                     type="submit"
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-orange transition duration-300"
                   >
@@ -190,36 +190,30 @@ const Header = ({
         </div>
       </header>
 
-      {/* Category Navigation - Desktop Only */}
-      <CategoryNavigation 
-        onCategorySelect={onCategorySelect}
-        selectedCategory={selectedCategory}
-        isModalOpen={isCategoryModalOpen}
-        setIsModalOpen={setIsCategoryModalOpen}
-      />
+
 
       {/* Mobile Header - Logo and Search - Hide when cart is open */}
       <header className={`bg-primary-dark shadow-lg lg:hidden transition-transform duration-300 ${isCartOpen ? '-translate-y-full' : 'translate-y-0'}`}>
         <div className="container mx-auto px-4 py-2">
           <div className="flex items-center  justify-between gap-3">
             {/* Mobile Logo */}
-            <div 
+            <div
               className="flex items-center space-x-2 cursor-pointer select-none min-w-fit"
               onClick={handleLogoInteraction}
               onTouchStart={handleLogoInteraction}
               title="Admin panel uchun 2 marta bosing"
               style={{ userSelect: 'none' }}
             >
-              <img 
-                src="/logo.png" 
-                alt="Logo" 
+              <img
+                src="/logo.png"
+                alt="Logo"
                 loading="eager"
                 decoding="async"
                 fetchPriority="high"
                 className="w-8 h-8 object-cover rounded-lg"
               />
-              <img 
-                src="/alibobo.png" 
+              <img
+                src="/alibobo.png"
                 alt="Alibobo"
                 loading="eager"
                 decoding="async"
@@ -238,7 +232,7 @@ const Header = ({
                   placeholder="Qidiruv"
                   className="w-full px-3 py-1.5 pr-8 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300 text-sm"
                 />
-                <button 
+                <button
                   type="submit"
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-orange transition duration-300"
                 >
@@ -252,19 +246,19 @@ const Header = ({
 
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px))' }}>
-        <ul className="flex items-center justify-around bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-[0_-6px_16px_rgba(0,0,0,0.06)] py-2">
+        <ul className="flex items-center justify-around py-3">
           {/* 1. Akademiya */}
           <li className="flex-1">
-            <button 
+            <button
               onClick={() => {
                 // Close cart if open
                 if (isCartOpen) {
                   onToggleCart();
                 }
                 // Scroll to top and show both products and craftsmen
-                window.scrollTo({ 
-                  top: 0, 
-                  behavior: 'smooth' 
+                window.scrollTo({
+                  top: 0,
+                  behavior: 'smooth'
                 });
               }}
               className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full"
@@ -273,27 +267,31 @@ const Header = ({
               <span className="text-[11px] sm:text-xs font-medium">Akademiya</span>
             </button>
           </li>
-          
-          {/* 2. Kategoriyalar */}
+
+          {/* 2. Mahsulotlar */}
           <li className="flex-1">
-            <button 
+            <button
               onClick={() => {
                 // Close cart if open
                 if (isCartOpen) {
                   onToggleCart();
                 }
-                setIsCategoryModalOpen(true);
+                // Scroll to products section
+                window.scrollTo({
+                  top: 0,
+                  behavior: 'smooth'
+                });
               }}
               className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full"
             >
-              <i className="fas fa-th-large text-[18px]"></i>
-              <span className="text-[11px] sm:text-xs font-medium">Kategoriya</span>
+              <i className="fas fa-box text-[18px]"></i>
+              <span className="text-[11px] sm:text-xs font-medium">Mahsulotlar</span>
             </button>
           </li>
-          
+
           {/* 3. Aloqa */}
           <li className="flex-1">
-            <a 
+            <a
               href="tel:+998948494956"
               onClick={() => {
                 // Close cart if open
@@ -307,10 +305,10 @@ const Header = ({
               <span className="text-[11px] sm:text-xs font-medium">Aloqa</span>
             </a>
           </li>
-          
+
           {/* 4. Savatcha */}
           <li className="flex-1">
-            <button 
+            <button
               onClick={toggleCart}
               className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full relative"
             >
@@ -323,10 +321,10 @@ const Header = ({
               )}
             </button>
           </li>
-          
+
           {/* 5. Ustalar */}
           <li className="flex-1">
-            <button 
+            <button
               onClick={() => {
                 // Close cart if open
                 if (isCartOpen) {
@@ -334,7 +332,7 @@ const Header = ({
                 }
                 const craftsmenSection = document.getElementById('craftsmen');
                 if (craftsmenSection) {
-                  craftsmenSection.scrollIntoView({ 
+                  craftsmenSection.scrollIntoView({
                     behavior: 'smooth',
                     block: 'start'
                   });
@@ -351,11 +349,11 @@ const Header = ({
 
       {/* Login Modal */}
       {showLoginModal && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-4"
           onClick={() => setShowLoginModal(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-xl p-6 md:p-8 max-w-md w-full shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -376,7 +374,7 @@ const Header = ({
                   placeholder="Login kiriting"
                 />
               </div>
-              
+
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                   Parol
@@ -392,7 +390,7 @@ const Header = ({
                   placeholder="Parol kiriting"
                 />
               </div>
-              
+
               <div className="flex space-x-3 pt-4">
                 <button
                   type="button"
@@ -415,11 +413,11 @@ const Header = ({
 
       {/* Error Modal */}
       {showErrorModal && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-4"
           onClick={closeErrorModal}
         >
-          <div 
+          <div
             className="bg-white rounded-xl p-6 md:p-8 max-w-sm w-full shadow-2xl text-center"
             onClick={(e) => e.stopPropagation()}
           >

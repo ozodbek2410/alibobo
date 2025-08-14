@@ -14,6 +14,7 @@ const ModernProductGrid = memo(({
   
   // Image carousel states for product cards
   const [currentImageIndexes, setCurrentImageIndexes] = useState({});
+  const [lastHoverTimes, setLastHoverTimes] = useState({});
   
   // Notification states
   const [showAddToCartNotification, setShowAddToCartNotification] = useState(false);
@@ -33,6 +34,11 @@ const ModernProductGrid = memo(({
   // Handle image change for product cards
   const handleImageChange = useCallback((productId, newIndex) => {
     setCurrentImageIndexes(prev => ({ ...prev, [productId]: newIndex }));
+  }, []);
+
+  // Handle hover time change for product cards
+  const handleHoverTimeChange = useCallback((productId, time) => {
+    setLastHoverTimes(prev => ({ ...prev, [productId]: time }));
   }, []);
 
   // Handle add to cart with notification
@@ -115,6 +121,8 @@ const ModernProductGrid = memo(({
             onOpenDetail={openProductDetail}
             currentImageIndex={currentImageIndexes[product._id] || 0}
             onImageChange={handleImageChange}
+            lastHoverTime={lastHoverTimes[product._id] || 0}
+            onHoverTimeChange={handleHoverTimeChange}
           />
         ))}
       </div>

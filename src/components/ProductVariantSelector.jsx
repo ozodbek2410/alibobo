@@ -11,6 +11,30 @@ const ProductVariantSelector = ({ product, onVariantChange, selectedVariants = {
     setLocalSelectedVariants(selectedVariants);
   }, [selectedVariants]);
 
+  // Auto-select first variant if none selected
+  useEffect(() => {
+    if (product.hasVariants && product.variants && product.variants.length > 0) {
+      const autoSelected = {};
+      let needsUpdate = false;
+
+      product.variants.forEach(variant => {
+        if (variant.options && variant.options.length > 0) {
+          if (!selectedVariants[variant.name]) {
+            // Auto-select first option if none selected
+            autoSelected[variant.name] = variant.options[0].value;
+            needsUpdate = true;
+          } else {
+            autoSelected[variant.name] = selectedVariants[variant.name];
+          }
+        }
+      });
+
+      if (needsUpdate) {
+        setLocalSelectedVariants(autoSelected);
+      }
+    }
+  }, [product, selectedVariants]);
+
   // Calculate price and stock based on selected variants
   useEffect(() => {
     let finalPrice = product.price; // Start with base price
@@ -108,11 +132,7 @@ const ProductVariantSelector = ({ product, onVariantChange, selectedVariants = {
             })}
           </div>
           
-          {!localSelectedVariants[variant.name] && (
-            <p className="text-xs text-red-600">
-              Iltimos, {variant.name.toLowerCase()}ni tanlang
-            </p>
-          )}
+
         </div>
       ))}
 
@@ -120,16 +140,7 @@ const ProductVariantSelector = ({ product, onVariantChange, selectedVariants = {
 
 
 
-      {!allVariantsSelected && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-          <div className="flex">
-            <i className="fas fa-exclamation-triangle text-primary-orange mr-2 mt-0.5"></i>
-            <p className="text-sm text-orange-800">
-              Savatga qo'shish uchun barcha variantlarni tanlang
-            </p>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
