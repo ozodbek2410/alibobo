@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const Catalog = ({ onCategorySelect, onClose, selectedCategory }) => {
   // Static categories from admin panel - Main categories first, matching CategoryNavigation.jsx format and order
@@ -22,7 +22,16 @@ const Catalog = ({ onCategorySelect, onClose, selectedCategory }) => {
     { name: "Boshqalar", value: "boshqalar" }
   ];
 
-
+  // Prevent background scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.body.style.paddingRight = '0px';
+    
+    return () => {
+      document.body.style.overflow = 'auto';
+      document.body.style.paddingRight = '0px';
+    };
+  }, []);
 
   const handleCategoryClick = (categoryValue) => {
     onCategorySelect(categoryValue);
@@ -35,8 +44,14 @@ const Catalog = ({ onCategorySelect, onClose, selectedCategory }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4 pb-4">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4 pb-4"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-800">Katalog</h2>

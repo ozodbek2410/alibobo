@@ -1,37 +1,45 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue, useTransition } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
 import { useOptimizedFetch } from '../hooks/useOptimizedFetch';
 import CartSidebar from './CartSidebar';
-import ColorfulCategoryFilter from './ColorfulCategoryFilter';
+import CategoryNavigation from './CategoryNavigation';
 
 import ModernProductGrid from './ModernProductGrid';
-import { useOptimizedFilters } from '../hooks/useOptimizedFilters';
+// import { useOptimizedFilters } from '../hooks/useOptimizedFilters';
 import { SearchIcon, TimesIcon } from './Icons';
+import ProductGridSkeleton from './skeleton/ProductGridSkeleton';
 
-const ProductsGrid = ({ 
-  cart, 
-  onAddToCart, 
-  isCartOpen, 
-  onToggleCart, 
-  onRemoveFromCart, 
-  onUpdateQuantity, 
+const ProductsGrid = ({
+  cart,
+  onAddToCart,
+  isCartOpen,
+  onToggleCart,
+  onRemoveFromCart,
+  onUpdateQuantity,
   onCheckout,
   selectedCategory,
   searchQuery,
   onInitialProductsLoaded,
   onCategorySelect
 }) => {
+  // console.log('ProductsGrid rendered with props:', { selectedCategory, searchQuery });
+
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [showSkeleton, setShowSkeleton] = useState(true);
+  const [minLoadingTime, setMinLoadingTime] = useState(true);
   const [currentCategory, setCurrentCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const sortBy = 'name';
-  const priceRange = 'all';
+
   const [quickFilter, setQuickFilter] = useState('all');
-  const [isPending, startTransition] = useTransition();
-  
-  // Use deferred values for non-urgent updates
-  const deferredQuickFilter = useDeferredValue(quickFilter);
-  const deferredSearchTerm = useDeferredValue(searchTerm);
+  // Track previous filters to detect changes
+  const [previousFilters, setPreviousFilters] = useState({
+    selectedCategory: '',
+    searchQuery: ''
+  });
+
+
   // Modal (bottom sheet) for filtering by price and rating
   const [isPriceRatingSheetOpen, setIsPriceRatingSheetOpen] = useState(false);
   const [sheetMinPrice, setSheetMinPrice] = useState('');
@@ -43,27 +51,26 @@ const ProductsGrid = ({
   const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
   // const [appliedMinRating, setAppliedMinRating] = useState('');
   const [displayedProducts, setDisplayedProducts] = useState(20);
-  // page state not required; arrival order controls display
-  const [hasMore, setHasMore] = useState(true);
 
-  
-  
+
+
+
 
   const selectRef = useRef(null);
-  
+
 
   // const productsRef = useRef(products);
 
   // Category mapping function - frontend to backend
   const getCategoryApiValue = (frontendCategory) => {
     const categoryMapping = {
-      "xoz-mag": "Xoz-mag",
-      "yevro-remont": "Yevro-remont",
-      "elektrika": "Elektrika",
-      "dekorativ-mahsulotlar": "Dekorativ-mahsulotlar",
-      "santexnika": "Santexnika",
+      "xoz-mag": "xoz-mag",
+      "yevro-remont": "yevro-remont",
+      "elektrika": "elektrika",
+      "dekorativ-mahsulotlar": "dekorativ-mahsulotlar",
+      "santexnika": "santexnika",
     };
-    
+
     return categoryMapping[frontendCategory] || frontendCategory;
   };
 
@@ -74,52 +81,80 @@ const ProductsGrid = ({
     params.append('page', '1');
     params.append('sortBy', 'updatedAt');
     params.append('sortOrder', 'desc');
-    
+
     if (selectedCategory && selectedCategory !== '') {
       params.append('category', getCategoryApiValue(selectedCategory));
     }
-    
+
     if (searchQuery && searchQuery.trim() !== '') {
       params.append('search', searchQuery.trim());
     }
-    
+
     return `http://localhost:5000/api/products?${params.toString()}`;
   }, [selectedCategory, searchQuery]);
 
   // Use optimized fetch hook with faster settings for better UX
-  const { 
-    data: apiResponse, 
-    loading: apiLoading, 
-    refetch
+  const {
+    data: apiResponse,
+    loading: apiLoading,
+    error: apiError,
+    refetch,
+    isInitialFetch
   } = useOptimizedFetch(apiUrl, {
-    debounceMs: 300, // 300ms debounce for search
-    throttleMs: 1000, // 1s throttle for rapid changes
-    cacheTime: 5 * 60 * 1000, // 5 minutes cache
-    refetchOnFocus: true, // Smart focus refetch (only if data is stale)
+    debounceMs: 100, // Reduced debounce for faster response
+    throttleMs: 500, // Reduced throttle
+    cacheTime: 10 * 60 * 1000, // 10 minutes cache - longer cache
+    refetchOnFocus: false, // Disable focus refetch to reduce requests
     enabled: true
   });
+
+  // Remove minimum loading time - show data immediately when available
+  useEffect(() => {
+    setMinLoadingTime(false);
+    // If we have data, hide skeleton immediately
+    if (apiResponse && apiResponse.products) {
+      setIsInitialLoad(false);
+      setShowSkeleton(false);
+      setLoading(false);
+    }
+  }, [apiResponse]);
 
   // Update products when API response changes - fixed for correct API structure
   useEffect(() => {
     if (apiResponse) {
-      // API returns: { products: [...], totalPages: X, currentPage: Y, totalCount: Z }
+      // API returns: { products: [...], pagination: {...} }
       if (apiResponse.products && Array.isArray(apiResponse.products)) {
         setProducts(apiResponse.products);
         setDisplayedProducts(Math.min(apiResponse.products.length, 20));
-        setLoading(false);
-        
+
+        // Only hide skeleton after minimum loading time has passed
+        if (!minLoadingTime) {
+          setIsInitialLoad(false); // Mark initial load as complete
+          setShowSkeleton(false); // Hide skeleton when data loads
+          setLoading(false);
+        }
+
         // Call initial products loaded callback
         if (typeof onInitialProductsLoaded === 'function') {
           onInitialProductsLoaded();
         }
       } else {
+        // API javob bo'lsa ham mahsulotlar bo'sh bo'lsa
+        // console.log('API javob bor, lekin mahsulotlar yo\'q:', apiResponse);
         setProducts([]);
-        setLoading(false);
+        if (!minLoadingTime) {
+          setIsInitialLoad(false);
+          setShowSkeleton(false);
+          setLoading(false);
+        }
       }
+    } else {
+      // API javob yo'q
+      // console.log('API javob yo\'q', { apiResponse, apiLoading, apiError });
     }
-  }, [apiResponse, onInitialProductsLoaded]);
+  }, [apiResponse, onInitialProductsLoaded, minLoadingTime]);
 
-  // Update loading state - only show loading when no products exist
+  // Update loading state - show loading when API is loading and no products exist
   useEffect(() => {
     if (products.length > 0) {
       setLoading(false); // Never show loading when products exist
@@ -128,10 +163,49 @@ const ProductsGrid = ({
     }
   }, [apiLoading, products.length]);
 
+  // Handle API loading state changes
+  useEffect(() => {
+    if (apiLoading && products.length === 0) {
+      setShowSkeleton(true);
+    }
+  }, [apiLoading, products.length]);
+
+  // Handle API errors - hide skeleton and show error state
+  useEffect(() => {
+    if (apiError && !minLoadingTime) {
+      setShowSkeleton(false);
+      setIsInitialLoad(false);
+      setLoading(false);
+    }
+  }, [apiError, minLoadingTime]);
+
+  // Initial loading state - ensure loading is true on first render
+  useEffect(() => {
+    if (products.length === 0 && !apiResponse) {
+      setLoading(true);
+    }
+  }, [products.length, apiResponse]);
+
+  // Detect filter changes and show skeleton
+  useEffect(() => {
+    const currentFilters = {
+      selectedCategory: selectedCategory || '',
+      searchQuery: searchQuery || ''
+    };
+
+    const filtersChanged = JSON.stringify(currentFilters) !== JSON.stringify(previousFilters);
+
+    if (filtersChanged && !isInitialLoad) {
+      setShowSkeleton(true);
+      setDisplayedProducts(20);
+    }
+
+    setPreviousFilters(currentFilters);
+  }, [selectedCategory, searchQuery, isInitialLoad]);
+
   // Reset displayed products when filters change (optimized fetch handles the API calls)
   useEffect(() => {
     setDisplayedProducts(20);
-    setHasMore(true);
   }, [selectedCategory, searchQuery]);
 
   // Scroll event listener to close select dropdown
@@ -153,39 +227,71 @@ const ProductsGrid = ({
     setDisplayedProducts(20);
   }, [quickFilter, appliedMinPrice, appliedMaxPrice, searchTerm, currentCategory]);
 
-  // Используем оптимизированные фильтры (должно быть в начале, до условного рендеринга)
-  const {
-    filters,
-    filteredProducts,
-    updateFilter,
-    isPending: isFilterPending
-  } = useOptimizedFilters(products, {
-    search: searchQuery || '',
-    category: selectedCategory || '',
-    minPrice: appliedMinPrice,
-    maxPrice: appliedMaxPrice,
-    sortBy: quickFilter === 'all' ? 'updatedAt' : quickFilter
-  });
+  // Filter products directly without using the hook for now
+  const filteredProducts = useMemo(() => {
+    const productsToFilter = products;
 
-  // Обработчики для виртуализированной сетки
-  const handleToggleFavorite = useCallback((productId) => {
-    // TODO: Implement favorites functionality
-    console.log('Toggle favorite:', productId);
-  }, []);
+    if (!productsToFilter || productsToFilter.length === 0) return [];
 
-  const handleShare = useCallback((product) => {
-    if (navigator.share) {
-      navigator.share({
-        title: product.name,
-        text: `Посмотрите этот товар: ${product.name}`,
-        url: window.location.href
-      });
-    } else {
-      // Fallback для браузеров без Web Share API
-      navigator.clipboard.writeText(window.location.href);
-      alert('Ссылка скопирована в буфер обмена');
+    let filtered = [...productsToFilter];
+
+    // Search filter
+    if (searchQuery && searchQuery.trim()) {
+      const searchLower = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(product =>
+        product.name?.toLowerCase().includes(searchLower) ||
+        product.description?.toLowerCase().includes(searchLower)
+      );
     }
-  }, []);
+
+    // Category filter - API dan kelgan kategoriyalar bilan to'g'ri solishtirish
+    if (selectedCategory && selectedCategory !== 'all' && selectedCategory !== '') {
+      filtered = filtered.filter(product => {
+        // API dan kelgan kategoriya nomini kichik harfga o'tkazib solishtirish
+        const productCategory = product.category?.toLowerCase();
+        const selectedCat = selectedCategory.toLowerCase();
+        return productCategory === selectedCat || productCategory?.includes(selectedCat);
+      });
+    }
+
+    // Price filter
+    if (appliedMinPrice || appliedMaxPrice) {
+      filtered = filtered.filter(product => {
+        const price = parseInt(product.price?.toString().replace(/[^\d]/g, '') || '0');
+        const min = appliedMinPrice ? parseInt(appliedMinPrice) : 0;
+        const max = appliedMaxPrice ? parseInt(appliedMaxPrice) : Infinity;
+        return price >= min && price <= max;
+      });
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      const sortBy = quickFilter === 'all' ? 'updatedAt' : quickFilter;
+      let aValue, bValue;
+
+      switch (sortBy) {
+        case 'price':
+          aValue = parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0');
+          bValue = parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0');
+          break;
+        case 'name':
+          aValue = a.name?.toLowerCase() || '';
+          bValue = b.name?.toLowerCase() || '';
+          break;
+        case 'updatedAt':
+        default:
+          aValue = new Date(a.updatedAt || 0);
+          bValue = new Date(b.updatedAt || 0);
+          break;
+      }
+
+      if (aValue < bValue) return -1;
+      if (aValue > bValue) return 1;
+      return 0;
+    });
+
+    return filtered;
+  }, [products, searchQuery, selectedCategory, appliedMinPrice, appliedMaxPrice, quickFilter]);
 
   // Use centralized addToCart function
   const addToCart = (product) => {
@@ -197,7 +303,7 @@ const ProductsGrid = ({
 
 
   // Manual refresh function
-  
+
 
   // Price filter actions
   const applyPriceFilter = () => {
@@ -250,135 +356,13 @@ const ProductsGrid = ({
     setIsPriceRatingSheetOpen(false);
   };
 
-  
-
-  const getFilteredProducts = () => {
-    if (products.length === 0) {
-      return [];
-    }
-    
-    let filtered = products;
-    
-    // Kategoriya bo'yicha filtrlash
-    if (currentCategory !== 'all') {
-      filtered = filtered.filter(product => product.category === getCategoryApiValue(currentCategory));
-    }
-    
-    // Tezkor filter bo'yicha filtrlash (using deferred value)
-    if (deferredQuickFilter !== 'all') {
-      const matchingProducts = [];
-      const otherProducts = [];
-      
-      filtered.forEach(product => {
-        let matches = false;
-        switch (quickFilter) {
-          case 'mashhur':
-            // Admin paneldan belgilangan mashhur mahsulotlar
-            matches = product.isPopular || product.badge === 'Mashhur';
-            break;
-          case 'chegirma':
-            // Chegirmadagi mahsulotlar: faqat eski va yangi narxga asoslanadi
-            const currentPrice = parseInt(product.price?.toString().replace(/[^\d]/g, '') || '0');
-            const oldPrice = parseInt(product.oldPrice?.toString().replace(/[^\d]/g, '') || '0');
-            matches = (oldPrice > 0 && currentPrice > 0 && oldPrice > currentPrice);
-            break;
-          case 'yangi':
-            // Admin paneldan belgilangan yangi mahsulotlar
-            matches = product.isNew || product.badge === 'Yangi';
-            break;
-          default:
-            // Boshqa holatlar uchun hech qanday maxsus filtr qo'llanmaydi
-            matches = false;
-        }
-        
-        if (matches) {
-          matchingProducts.push(product);
-        } else {
-          otherProducts.push(product);
-        }
-      });
-      
-      // Avval mos kelganlar, keyin qolganlar
-      filtered = [...matchingProducts, ...otherProducts];
-    } else {
-      // Saralash
-      filtered.sort((a, b) => {
-        switch (sortBy) {
-          case 'price-low':
-            return parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0') - 
-                   parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0');
-          case 'price-high':
-            return parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0') - 
-                   parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0');
-          case 'rating':
-            return (b.rating || 0) - (a.rating || 0);
-          case 'name':
-          default:
-            return a.name.localeCompare(b.name);
-        }
-      });
-    }
-    
-    // Qidiruv bo'yicha filtrlash
-    if (searchTerm.trim()) {
-      filtered = filtered.filter(product => 
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-    }
-    
-    // Narx oralig'i bo'yicha filtrlash
-    if (priceRange !== 'all') {
-      filtered = filtered.filter(product => {
-        const price = parseInt(product.price?.toString().replace(/[^\d]/g, '') || '0');
-        switch (priceRange) {
-          case '100000':
-            return price >= 100000;
-          case '200000':
-            return price >= 200000;
-          case '500000':
-            return price >= 500000;
-          case '1000000':
-            return price >= 1000000;
-          case '0-100000':
-            return price < 100000;
-          case '100000-500000':
-            return price >= 100000 && price < 500000;
-          case '500000-1000000':
-            return price >= 500000 && price < 1000000;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Qo'lda kiritilgan narx oralig'i (min/max) bo'yicha filtrlash
-    if (appliedMinPrice !== '' || appliedMaxPrice !== '') {
-      const minVal = appliedMinPrice === '' ? 0 : parseInt(appliedMinPrice, 10);
-      const maxVal = appliedMaxPrice === '' ? Number.POSITIVE_INFINITY : parseInt(appliedMaxPrice, 10);
-      filtered = filtered.filter(product => {
-        const price = parseInt(product.price?.toString().replace(/[^\d]/g, '') || '0', 10);
-        return price >= minVal && price <= maxVal;
-      });
-    }
-
-    // Baho (rating) bo'yicha filtrlash
-    // Rating filter removed for mobile simplicity
-    
-    return filtered;
-  };
-
-  const calculateDiscount = (currentPrice, oldPrice) => {
-    const current = parseInt(currentPrice?.toString().replace(/[^\d]/g, '') || '0');
-    const old = parseInt(oldPrice?.toString().replace(/[^\d]/g, '') || '0');
-    if (!old || !current || isNaN(old) || isNaN(current)) return 0;
-    return Math.round(((old - current) / old) * 100);
-  };
 
 
 
-  
+
+
+
+
 
 
   // Handle category selection from CategoryNavigation
@@ -390,35 +374,75 @@ const ProductsGrid = ({
     setCurrentCategory(categoryName || 'all');
   }, [onCategorySelect]);
 
-  // Show loading skeleton only when truly loading and no products
-  if (loading && products.length === 0) {
+  // Handle retry functionality
+  const handleRetry = useCallback(() => {
+    setShowSkeleton(true);
+    setIsInitialLoad(true);
+    if (refetch) {
+      refetch();
+    }
+  }, [refetch]);
+
+  // Determine when to show skeleton
+  const shouldShowSkeleton = (
+    (isInitialLoad && products.length === 0) ||
+    (apiLoading && products.length === 0) ||
+    (showSkeleton && products.length === 0) ||
+    (isInitialFetch && products.length === 0) ||
+    minLoadingTime // Always show skeleton during minimum loading time
+  );
+
+  // Debug logging - disabled to prevent infinite loop
+  // console.log('=== ProductsGrid Debug ===');
+  // console.log('Products length:', products.length);
+  // console.log('Filtered products length:', filteredProducts.length);
+
+  // Show skeleton when appropriate
+  if (shouldShowSkeleton) {
+    return <ProductGridSkeleton count={8} />;
+  }
+
+  // Show error state if there's an API error and no products
+  if (apiError && products.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-          {[...Array(8)].map((_, index) => (
-            <div key={index} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm animate-pulse">
-              <div className="h-56 bg-gray-200"></div>
-              <div className="p-4">
-                <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded mb-3"></div>
-                <div className="h-6 bg-gray-200 rounded"></div>
-              </div>
+      <div className="container mx-auto px-4 lg:px-6 py-4 lg:py-6">
+        <div className="text-center py-16">
+          <div className="max-w-md mx-auto">
+            <div className="bg-gradient-to-br from-red-100 to-red-200 rounded-full w-32 h-32 flex items-center justify-center mx-auto mb-6">
+              <svg className="w-16 h-16 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
             </div>
-          ))}
+            <h3 className="text-2xl font-bold text-gray-700 mb-3">
+              Xatolik yuz berdi
+            </h3>
+            <p className="text-gray-500 mb-6">
+              Mahsulotlarni yuklashda muammo yuz berdi. Iltimos, qayta urinib ko'ring.
+            </p>
+            <button
+              onClick={handleRetry}
+              className="bg-primary-orange hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 mx-auto"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Qayta urinish
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 lg:px-6 py-1 lg:py-2">
+    <div className="container mx-auto px-4 lg:px-6 py-4 lg:py-6">
 
-      {/* Colorful Category Filter - Mobile and Desktop */}
-      <div className="mb-6">
-        <ColorfulCategoryFilter
+      {/* Category Navigation - Mobile and Desktop */}
+      <div className="mb-2">
+        <CategoryNavigation
           selectedCategory={selectedCategory}
           onCategorySelect={handleCategorySelect}
+          isDesktop={true}
         />
       </div>
 
@@ -427,7 +451,7 @@ const ProductsGrid = ({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3 lg:gap-4">
             <span className="text-gray-700 font-medium text-sm lg:text-base">Saralash:</span>
-              <div className="relative">
+            <div className="relative">
               <select
                 ref={selectRef}
                 value={quickFilter}
@@ -444,15 +468,15 @@ const ProductsGrid = ({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
-                {(appliedMinPrice || appliedMaxPrice) && (
-                  <button
-                    onClick={clearPriceFilter}
-                    className="absolute -right-9 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-700 rounded flex items-center justify-center"
-                    title="Filtrni yopish"
-                  >
-                    <TimesIcon className="w-3 h-3" />
-                  </button>
-                )}
+              {(appliedMinPrice || appliedMaxPrice) && (
+                <button
+                  onClick={clearPriceFilter}
+                  className="absolute -right-9 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-700 rounded flex items-center justify-center"
+                  title="Filtrni yopish"
+                >
+                  <TimesIcon className="w-3 h-3" />
+                </button>
+              )}
             </div>
 
 
@@ -501,8 +525,8 @@ const ProductsGrid = ({
                 onClick={applyPriceFilter}
                 disabled={minPrice && maxPrice && parseInt(maxPrice) < parseInt(minPrice)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${minPrice && maxPrice && parseInt(maxPrice) < parseInt(minPrice)
-                    ? 'bg-gray-300 cursor-not-allowed text-gray-500'
-                    : 'bg-primary-orange hover:bg-primary-orange/90 text-white'
+                  ? 'bg-gray-300 cursor-not-allowed text-gray-500'
+                  : 'bg-primary-orange hover:bg-primary-orange/90 text-white'
                   }`}
               >
                 Qidirish
@@ -534,9 +558,9 @@ const ProductsGrid = ({
 
         </div>
       </div>
-      
 
-   
+
+
 
 
 
@@ -569,13 +593,13 @@ const ProductsGrid = ({
               <SearchIcon className="w-16 h-16 text-gray-400" />
             </div>
             <h3 className="text-2xl font-bold text-gray-700 mb-3">
-              {searchTerm ? 'Hech narsa topilmadi' : 
-               currentCategory === 'all' ? 'Mahsulotlar yo\'q' : `${currentCategory} kategoriyasida mahsulot yo'q`}
+              {searchTerm ? 'Hech narsa topilmadi' :
+                currentCategory === 'all' ? 'Mahsulotlar yo\'q' : `${currentCategory} kategoriyasida mahsulot yo'q`}
             </h3>
             <p className="text-gray-500 mb-6">
-              {searchTerm ? 
+              {searchTerm ?
                 `"${searchTerm}" so'rovi bo'yicha hech qanday mahsulot topilmadi. Boshqa kalit so'zlar bilan qidiring.` :
-                currentCategory === 'all' ? 
+                currentCategory === 'all' ?
                   'Hozircha mahsulotlar qo\'shilmagan. Keyinroq qayta urinib ko\'ring.' :
                   'Bu kategoriyada mahsulotlar mavjud emas. Boshqa kategoriyalarni ko\'rib chiqing.'
               }
@@ -605,7 +629,7 @@ const ProductsGrid = ({
           </div>
         </div>
       )}
-      
+
       {/* Cart Sidebar */}
       <CartSidebar
         isOpen={isCartOpen}
@@ -615,7 +639,7 @@ const ProductsGrid = ({
         onUpdateQuantity={onUpdateQuantity}
         onCheckout={onCheckout}
       />
-      
+
 
 
       {/* Bottom Sheet: Narx Filter (mobile) */}

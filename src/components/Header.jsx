@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CartSidebar from './CartSidebar';
 import Catalog from './Catalog';
-import CategoryNavigation from './CategoryNavigation';
+
 
 const Header = ({
   onSuccessfulLogin,

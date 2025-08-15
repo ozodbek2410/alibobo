@@ -12,6 +12,10 @@ const variantOptionSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  oldPrice: {
+    type: Number,
+    min: 0
+  },
   stock: {
     type: Number,
     default: 0,
@@ -20,7 +24,11 @@ const variantOptionSchema = new mongoose.Schema({
   image: {
     type: String,
     trim: true
-  }
+  },
+  images: [{
+    type: String,
+    trim: true
+  }]
 }, { _id: false });
 
 // Variant schema

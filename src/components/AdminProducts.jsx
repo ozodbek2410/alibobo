@@ -4,6 +4,10 @@ import AdminNotificationModals from './AdminNotificationModals';
 import LoadingCard from './LoadingCard';
 import useNotifications from '../hooks/useNotifications';
 import ProductVariants from './admin/ProductVariants';
+import ImageUploader from './admin/ImageUploader';
+import VariantEditor from './admin/VariantEditor';
+import SimpleProductForm from './admin/SimpleProductForm';
+import VariantManager from './admin/VariantManager';
 
 const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifications }) => {
   // Notification system - matching index.html exactly
@@ -66,11 +70,11 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
 
   // Main categories (asosiy kategoriyalar) - only the 5 main categories
   const mainCategories = [
-    'santexnika',
+    'xoz-mag',
     'yevro-remont', 
     'elektrika',
-    'xoz-mag',
-    'dekorativ-mahsulotlar'
+    'dekorativ-mahsulotlar',
+    'santexnika'
   ];
 
   // Load categories from API with fallback to main categories
@@ -398,95 +402,50 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
 
   // cancelDelete function removed - now using useNotifications hook
 
-  // Multiple images upload handler
-  const handleImagesUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const maxImages = 8; // Increased from 5 to 8
-    const currentImagesCount = formData.images.length + selectedImages.length;
-    
-    if (currentImagesCount + files.length > maxImages) {
-      safeNotifyError('Xatolik', `Maksimal ${maxImages}ta rasm qo'shish mumkin`);
-      return;
-    }
 
-    files.forEach(file => {
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setSelectedImages(prev => [...prev, e.target.result]);
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  };
-
-  // Remove image from selected images
-  const removeSelectedImage = (index) => {
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // Remove image from existing images
-  const removeExistingImage = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
-  };
-
-  // Move image up in order
-  const moveImageUp = (index, isSelected = false) => {
-    if (index === 0) return;
-    
-    if (isSelected) {
-      setSelectedImages(prev => {
-        const newImages = [...prev];
-        [newImages[index - 1], newImages[index]] = [newImages[index], newImages[index - 1]];
-        return newImages;
-      });
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        images: prev.images.map((img, i) => {
-          if (i === index - 1) return prev.images[index];
-          if (i === index) return prev.images[index - 1];
-          return img;
-        })
-      }));
-    }
-  };
-
-  // Move image down in order
-  const moveImageDown = (index, isSelected = false) => {
-    const maxIndex = isSelected ? selectedImages.length - 1 : formData.images.length - 1;
-    if (index === maxIndex) return;
-    
-    if (isSelected) {
-      setSelectedImages(prev => {
-        const newImages = [...prev];
-        [newImages[index], newImages[index + 1]] = [newImages[index + 1], newImages[index]];
-        return newImages;
-      });
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        images: prev.images.map((img, i) => {
-          if (i === index) return prev.images[index + 1];
-          if (i === index + 1) return prev.images[index];
-          return img;
-        })
-      }));
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Majburiy maydonlarni tekshirish
-    if (!formData.name.trim() || !formData.category || !formData.price || !formData.stock) {
+    if (!formData.name.trim() || !formData.category) {
       setTimeout(() => {
-        safeNotifyError('Xatolik', 'Barcha majburiy maydonlarni to\'ldiring');
+        safeNotifyError('Xatolik', 'Mahsulot nomi va kategoriya kiritilishi shart');
       }, 0);
       return;
+    }
+
+    // Variant bo'lmagan mahsulotlar uchun narx va stock tekshirish
+    if (!formData.hasVariants) {
+      if (!formData.price || !formData.stock) {
+        setTimeout(() => {
+          safeNotifyError('Xatolik', 'Narx va zaxira kiritilishi shart');
+        }, 0);
+        return;
+      }
+    } else {
+      // Variant bo'lgan mahsulotlar uchun kamida bitta variant bo'lishi kerak
+      if (!formData.variants || formData.variants.length === 0) {
+        setTimeout(() => {
+          safeNotifyError('Xatolik', 'Kamida bitta variant qo\'shish kerak');
+        }, 0);
+        return;
+      }
+
+      // Har bir variantda kamida bitta option bo'lishi kerak
+      const hasValidVariants = formData.variants.every(variant => 
+        variant.name && variant.options && variant.options.length > 0 &&
+        variant.options.every(option => 
+          option.value && option.price && option.stock !== undefined
+        )
+      );
+
+      if (!hasValidVariants) {
+        setTimeout(() => {
+          safeNotifyError('Xatolik', 'Barcha variantlar to\'liq to\'ldirilishi kerak');
+        }, 0);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -495,26 +454,35 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     console.log('📝 Form ma\'lumotlari:', formData);
 
     try {
-      // Combine existing and new images
-      const allImages = [...formData.images, ...selectedImages];
-      
-      // Ensure at least one image is provided
-      if (allImages.length === 0) {
-        safeNotifyError('Xatolik', 'Kamida bitta rasm qo\'shish kerak');
-        setIsSubmitting(false);
-        return;
+      // For non-variant products, combine existing and new images
+      let allImages = formData.images || [];
+      if (!formData.hasVariants) {
+        allImages = [...(formData.images || []), ...(selectedImages || [])];
+        
+        // Ensure at least one image is provided for non-variant products
+        if (allImages.length === 0) {
+          safeNotifyError('Xatolik', 'Kamida bitta rasm qo\'shish kerak');
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        // For variant products, images are handled within variants
+        // Check if at least one variant has images
+        const hasVariantImages = formData.variants.some(variant => 
+          variant.options.some(option => option.images && option.images.length > 0)
+        );
+        if (!hasVariantImages) {
+          safeNotifyError('Xatolik', 'Kamida bitta variant uchun rasm qo\'shish kerak');
+          setIsSubmitting(false);
+          return;
+        }
       }
       
       const productData = {
         name: formData.name.trim(),
         category: formData.category,
         description: formData.description.trim(),
-        price: parseFloat(formData.price),
-        oldPrice: formData.oldPrice ? parseFloat(formData.oldPrice) : null,
-        stock: parseInt(formData.stock),
         unit: formData.unit,
-        image: allImages[0], // First image for backward compatibility
-        images: allImages, // All images array
         badge: formData.badge,
         hasVariants: formData.hasVariants,
         variants: formData.variants || [],
@@ -522,6 +490,26 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
         reviews: 0,
         status: 'active'
       };
+
+      // Add price, stock, and images based on variant status
+      if (formData.hasVariants) {
+        // For variant products, use base price from first variant or 0
+        const firstVariantOption = formData.variants[0]?.options[0];
+        productData.price = firstVariantOption?.price ? parseFloat(firstVariantOption.price) : 0;
+        productData.oldPrice = firstVariantOption?.oldPrice ? parseFloat(firstVariantOption.oldPrice) : null;
+        productData.stock = formData.variants.reduce((total, variant) => 
+          total + variant.options.reduce((sum, option) => sum + (parseInt(option.stock) || 0), 0), 0
+        );
+        productData.image = firstVariantOption?.images?.[0] || '';
+        productData.images = firstVariantOption?.images || [];
+      } else {
+        // For non-variant products, use form data
+        productData.price = parseFloat(formData.price);
+        productData.oldPrice = formData.oldPrice ? parseFloat(formData.oldPrice) : null;
+        productData.stock = parseInt(formData.stock);
+        productData.image = allImages[0]; // First image for backward compatibility
+        productData.images = allImages; // All images array
+      }
 
       console.log('📤 Yuborilayotgan ma\'lumotlar:', productData);
       console.log('🖼️ Rasmlar soni:', allImages.length);
@@ -760,7 +748,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
               className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
             >
               <option value="">Barcha kategoriyalar</option>
-              {mainCategories.slice(1).map(category => (
+              {mainCategories.map(category => (
                 <option key={category} value={category}>
                   {category}
                 </option>
@@ -853,24 +841,30 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                   </div>
                   
                   {/* Action Buttons */}
-                  <div className="flex items-center justify-center space-x-2 mt-auto pt-3">
+                  <div className="flex items-center justify-center space-x-2 mt-auto">
                     <button 
                       onClick={() => openViewModal(product)}
                       className="flex-1 bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition duration-200 flex items-center justify-center"
+                      title="Ko'rish"
                     >
-                      <i className="fas fa-eye"></i>
+                      <i className="fas fa-eye mr-1"></i>
+                      <span className="text-sm">Ko'rish</span>
                     </button>
                     <button 
                       onClick={() => openEditModal(product)}
                       className="flex-1 bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition duration-200 flex items-center justify-center"
+                      title="Tahrirlash"
                     >
-                      <i className="fas fa-edit"></i>
+                      <i className="fas fa-edit mr-1"></i>
+                      <span className="text-sm">Tahrir</span>
                     </button>
                     <button 
                       onClick={() => openDeleteConfirm(product)}
                       className="flex-1 bg-red-100 text-red-700 p-2 rounded-lg hover:bg-red-200 transition duration-200 flex items-center justify-center"
+                      title="O'chirish"
                     >
-                      <i className="fas fa-trash"></i>
+                      <i className="fas fa-trash mr-1"></i>
+                      <span className="text-sm">O'chir</span>
                     </button>
                   </div>
                 </div>
@@ -959,7 +953,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                     required
                   >
                     <option value="">Kategoriya tanlang</option>
-                    {mainCategories.slice(1).map(category => (
+                    {mainCategories.map(category => (
                       <option key={category} value={category}>
                         {category}
                       </option>
@@ -967,51 +961,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                   </select>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Narx (so'm) *
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.price}
-                    onChange={e => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent"
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Eski narx (so'm)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.oldPrice}
-                    onChange={e => setFormData(prev => ({ ...prev, oldPrice: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent"
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Zaxira *
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.stock}
-                    onChange={e => setFormData(prev => ({ ...prev, stock: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent"
-                    placeholder="0"
-                    min="0"
-                    required
-                  />
-                </div>
+
                 
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
@@ -1078,7 +1028,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
               </div>
 
               {/* Variant System Toggle */}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center">
                   <input
                     type="checkbox"
@@ -1096,140 +1046,30 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                   </label>
                 </div>
                 
-                {formData.hasVariants && (
+                {formData.hasVariants ? (
                   <div className="mt-4">
-                    <ProductVariants
+                    <VariantManager
                       variants={formData.variants}
                       onVariantsChange={(variants) => setFormData(prev => ({ ...prev, variants }))}
+                    />
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <SimpleProductForm
+                      price={formData.price}
+                      oldPrice={formData.oldPrice}
+                      stock={formData.stock}
+                      images={formData.images}
+                      onPriceChange={(price) => setFormData(prev => ({ ...prev, price }))}
+                      onOldPriceChange={(oldPrice) => setFormData(prev => ({ ...prev, oldPrice }))}
+                      onStockChange={(stock) => setFormData(prev => ({ ...prev, stock }))}
+                      onImagesChange={(images) => setFormData(prev => ({ ...prev, images }))}
                     />
                   </div>
                 )}
               </div>
               
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">
-                  Rasmlar (maksimal 8ta)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImagesUpload}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-orange file:text-white hover:file:bg-opacity-90"
-                />
-                
-                {/* Existing images */}
-                {formData.images.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-700">Mavjud rasmlar:</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {formData.images.map((image, index) => (
-                        <div key={`existing-${index}`} className="relative group">
-                          <img 
-                            src={image} 
-                            alt={`Existing ${index + 1}`} 
-                            className="w-full h-32 object-cover rounded-lg border-2 border-gray-300" 
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2">
-                              <button
-                                type="button"
-                                onClick={() => moveImageUp(index, false)}
-                                disabled={index === 0}
-                                className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Yuqoriga ko'chirish"
-                              >
-                                <i className="fas fa-chevron-up"></i>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moveImageDown(index, false)}
-                                disabled={index === formData.images.length - 1}
-                                className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Pastga ko'chirish"
-                              >
-                                <i className="fas fa-chevron-down"></i>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeExistingImage(index)}
-                                className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
-                                title="Rasmni o'chirish"
-                              >
-                                <i className="fas fa-times"></i>
-                              </button>
-                            </div>
-                          </div>
-                          <div className="absolute -top-2 -left-2 bg-primary-orange text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                            {index + 1}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* New selected images */}
-                {selectedImages.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-700">Yangi rasmlar:</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {selectedImages.map((image, index) => (
-                        <div key={`selected-${index}`} className="relative group">
-                          <img 
-                            src={image} 
-                            alt={`Selected ${index + 1}`} 
-                            className="w-full h-32 object-cover rounded-lg border-2 border-green-300" 
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2">
-                              <button
-                                type="button"
-                                onClick={() => moveImageUp(index, true)}
-                                disabled={index === 0}
-                                className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Yuqoriga ko'chirish"
-                              >
-                                <i className="fas fa-chevron-up"></i>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moveImageDown(index, true)}
-                                disabled={index === selectedImages.length - 1}
-                                className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Pastga ko'chirish"
-                              >
-                                <i className="fas fa-chevron-down"></i>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeSelectedImage(index)}
-                                className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
-                                title="Rasmni o'chirish"
-                              >
-                                <i className="fas fa-times"></i>
-                              </button>
-                            </div>
-                          </div>
-                          <div className="absolute -top-2 -left-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                            {formData.images.length + index + 1}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Image count info */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Jami rasmlar: {formData.images.length + selectedImages.length}/8</span>
-                    {(formData.images.length + selectedImages.length) >= 8 && (
-                      <span className="text-amber-600 font-medium">Maksimal rasm soni</span>
-                    )}
-                  </div>
-                </div>
-              </div>
+
               
               <div className="sticky bottom-0 bg-white pt-6 border-t border-gray-200">
                 <div className="flex items-center justify-end space-x-4">

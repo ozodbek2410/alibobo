@@ -35,11 +35,12 @@ const ProductVariantSelector = ({ product, onVariantChange, selectedVariants = {
     }
   }, [product, selectedVariants]);
 
-  // Calculate price and stock based on selected variants
+  // Calculate price, stock, and images based on selected variants
   useEffect(() => {
     let finalPrice = product.price; // Start with base price
     let minStock = product.stock;
     let variantImage = product.image;
+    let variantImages = product.images || (product.image ? [product.image] : []);
 
     if (product.variants && product.variants.length > 0) {
       product.variants.forEach(variant => {
@@ -52,8 +53,14 @@ const ProductVariantSelector = ({ product, onVariantChange, selectedVariants = {
               finalPrice = option.price; // Replace with variant price, not add
             }
             minStock = Math.min(minStock, option.stock || 0);
-            if (option.image) {
+            
+            // Use variant images if available
+            if (option.images && option.images.length > 0) {
+              variantImages = option.images;
+              variantImage = option.images[0];
+            } else if (option.image) {
               variantImage = option.image;
+              variantImages = [option.image];
             }
           }
         }
@@ -64,13 +71,14 @@ const ProductVariantSelector = ({ product, onVariantChange, selectedVariants = {
     setCurrentStock(minStock);
     setCurrentImage(variantImage);
 
-    // Notify parent component
+    // Notify parent component with images array
     if (onVariantChange) {
       onVariantChange({
         selectedVariants: localSelectedVariants,
         price: finalPrice,
         stock: minStock,
-        image: variantImage
+        image: variantImage,
+        images: variantImages
       });
     }
   }, [localSelectedVariants, product]);

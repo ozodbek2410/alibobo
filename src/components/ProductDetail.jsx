@@ -16,19 +16,22 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
   const [variantPrice, setVariantPrice] = useState(product?.price || 0);
   const [variantStock, setVariantStock] = useState(product?.stock || 0);
   const [variantImage, setVariantImage] = useState(product?.image || '');
+  const [variantImages, setVariantImages] = useState(product?.images || (product?.image ? [product.image] : []));
 
-  // Get product images - support both old and new format
-  const baseImages = product?.images && product.images.length > 0
-    ? product.images
-    : (product?.image ? [product.image] : ['/assets/default-product.png']);
-
-  // Add variant image to images if it's not already included
+  // Get product images - support both old and new format, prioritize variant images
   const productImages = React.useMemo(() => {
-    if (variantImage && variantImage !== product?.image && !baseImages.includes(variantImage)) {
-      return [variantImage, ...baseImages];
+    // If we have variant images, use them
+    if (variantImages && variantImages.length > 0) {
+      return variantImages;
     }
+    
+    // Otherwise use base product images
+    const baseImages = product?.images && product.images.length > 0
+      ? product.images
+      : (product?.image ? [product.image] : ['/assets/default-product.png']);
+    
     return baseImages;
-  }, [baseImages, variantImage, product?.image]);
+  }, [variantImages, product?.images, product?.image]);
 
   // Reset state when product changes
   useEffect(() => {
@@ -40,6 +43,7 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
       setVariantPrice(product.price);
       setVariantStock(product.stock);
       setVariantImage(product.image);
+      setVariantImages(product.images || (product.image ? [product.image] : []));
 
       // Auto-select first variant options
       if (product.hasVariants && product.variants && product.variants.length > 0) {
@@ -47,6 +51,7 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
         let autoPrice = product.price;
         let autoStock = product.stock;
         let autoImage = product.image;
+        let autoImages = product.images || (product.image ? [product.image] : []);
 
         product.variants.forEach(variant => {
           if (variant.options && variant.options.length > 0) {
@@ -54,15 +59,19 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
             const firstOption = variant.options[0];
             autoSelectedVariants[variant.name] = firstOption.value;
 
-            // Update price, stock, and image based on first variant
+            // Update price, stock, image and images based on first variant
             if (firstOption.price && firstOption.price > 0) {
               autoPrice = firstOption.price;
             }
             if (firstOption.stock !== undefined) {
               autoStock = Math.min(autoStock, firstOption.stock);
             }
-            if (firstOption.image) {
+            if (firstOption.images && firstOption.images.length > 0) {
+              autoImages = firstOption.images;
+              autoImage = firstOption.images[0];
+            } else if (firstOption.image) {
               autoImage = firstOption.image;
+              autoImages = [firstOption.image];
             }
           }
         });
@@ -71,21 +80,20 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
         setVariantPrice(autoPrice);
         setVariantStock(autoStock);
         setVariantImage(autoImage);
+        setVariantImages(autoImages);
       } else {
         setSelectedVariants({});
       }
     }
   }, [product]);
 
-  // Update main image when variant image changes
+  // Update main image when variant images change
   useEffect(() => {
-    if (variantImage && variantImage !== product?.image && productImages.includes(variantImage)) {
-      const imageIndex = productImages.findIndex(img => img === variantImage);
-      if (imageIndex !== -1) {
-        setSelectedImageIndex(imageIndex);
-      }
+    // Reset to first image when variant images change
+    if (variantImages && variantImages.length > 0) {
+      setSelectedImageIndex(0);
     }
-  }, [variantImage, productImages, product?.image]);
+  }, [variantImages]);
 
   // Prevent background scroll when modal is open
   useEffect(() => {
@@ -309,6 +317,7 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
                       setVariantPrice(variantData.price);
                       setVariantStock(variantData.stock);
                       setVariantImage(variantData.image);
+                      setVariantImages(variantData.images || []);
                     }}
                   />
                 </div>

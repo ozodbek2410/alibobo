@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 
-// Simple cache to prevent duplicate requests
+// Simple cache to prevent duplicate requests - temporarily disabled for skeleton testing
 const cache = new Map();
 
 export const useOptimizedFetch = (url, options = {}) => {
   const { enabled = true, cacheTime = 5 * 60 * 1000 } = options;
   
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isInitialFetch, setIsInitialFetch] = useState(true);
   
   const abortControllerRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -17,15 +18,8 @@ export const useOptimizedFetch = (url, options = {}) => {
     if (!url || !enabled) return;
 
     const fetchData = async () => {
-      // Check cache first
-      const cacheKey = url;
-      const cachedData = cache.get(cacheKey);
-      
-      if (cachedData && (Date.now() - cachedData.timestamp < cacheTime)) {
-        setData(cachedData.data);
-        setError(null);
-        return;
-      }
+      // Always show loading on initial fetch
+      setLoading(true);
 
       // Cancel previous request
       if (abortControllerRef.current) {
@@ -48,19 +42,17 @@ export const useOptimizedFetch = (url, options = {}) => {
 
         const result = await response.json();
 
-        // Cache the result
-        cache.set(cacheKey, {
-          data: result,
-          timestamp: Date.now()
-        });
+        // Cache disabled for skeleton testing
 
         if (isMountedRef.current) {
           setData(result);
           setError(null);
+          setIsInitialFetch(false);
         }
       } catch (err) {
         if (err.name !== 'AbortError' && isMountedRef.current) {
           setError(err);
+          setIsInitialFetch(false);
         }
       } finally {
         if (isMountedRef.current) {
@@ -84,15 +76,15 @@ export const useOptimizedFetch = (url, options = {}) => {
   }, []);
 
   const refetch = () => {
-    cache.delete(url);
     if (url && enabled) {
       // Trigger re-fetch by updating a state
       setLoading(true);
       setError(null);
+      setIsInitialFetch(false); // This is a manual refetch, not initial
     }
   };
 
-  return { data, loading, error, refetch };
+  return { data, loading, error, refetch, isInitialFetch };
 };
 
 // Simple parallel fetch hook

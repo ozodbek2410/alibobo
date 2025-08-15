@@ -7,22 +7,17 @@ const CategoryNavigation = ({
   className = '',
   isDesktop = false
 }) => {
-  // Top 5 categories for desktop, all categories for mobile
+  // Simple categories without icons - like the image
   const allCategories = [
-    { id: 'all', name: '', displayName: 'Hammasi', icon: 'fas fa-th-large' },
-    { id: 'xoz-mag', name: 'xoz-mag', displayName: 'Xo\'z-mag', icon: 'fas fa-home' },
-    { id: 'yevro-remont', name: 'yevro-remont', displayName: 'Yevro remont', icon: 'fas fa-tools' },
-    { id: 'elektrika', name: 'elektrika', displayName: 'Elektrika', icon: 'fas fa-bolt' },
-    { id: 'dekorativ-mahsulotlar', name: 'dekorativ-mahsulotlar', displayName: 'Dekorativ', icon: 'fas fa-paint-brush' },
-    { id: 'santexnika', name: 'santexnika', displayName: 'Santexnika', icon: 'fas fa-faucet' },
+    { id: 'all', name: '', displayName: 'Hammasi' },
+    { id: 'xoz-mag', name: 'xoz-mag', displayName: 'Xoz-mag' },
+    { id: 'yevro-remont', name: 'yevro-remont', displayName: 'Yevro remont' },
+    { id: 'elektrika', name: 'elektrika', displayName: 'Elektrika' },
+    { id: 'dekorativ-mahsulotlar', name: 'dekorativ-mahsulotlar', displayName: 'Dekorativ' },
+    { id: 'santexnika', name: 'santexnika', displayName: 'Santexnika' },
   ];
 
-  // Desktop: faqat 5 ta asosiy kategoriya, Mobile: barcha kategoriyalar
-  const categoriesToUse = categories.length > 0 
-    ? categories 
-    : isDesktop 
-      ? allCategories // Hammasi + 5 ta asosiy kategoriya
-      : allCategories;
+  const categoriesToUse = categories.length > 0 ? categories : allCategories;
 
   const handleCategoryClick = (category) => {
     if (onCategorySelect) {
@@ -31,10 +26,10 @@ const CategoryNavigation = ({
   };
 
   return (
-    <div className={`w-full ${className}`}>
+    <div className={`w-full border-b border-gray-200 ${className}`}>
       {/* Horizontal scrollable container */}
-      <div className={`overflow-x-auto scrollbar-hide ${isDesktop ? 'lg:overflow-x-visible' : ''}`}>
-        <div className={`flex gap-2 px-0 py-2 ${isDesktop ? 'lg:justify-start lg:px-0 lg:gap-3' : 'min-w-max'}`}>
+      <div className="overflow-x-auto scrollbar-hide">
+        <div className="flex gap-0 px-0 py-0 min-w-max">
           {categoriesToUse.map((category) => {
             const isSelected = selectedCategory === category.name || 
                              (selectedCategory === '' && category.id === 'all');
@@ -44,16 +39,25 @@ const CategoryNavigation = ({
                 key={category.id}
                 onClick={() => handleCategoryClick(category)}
                 className={`
-                  flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium
-                  whitespace-nowrap transition-all duration-200 min-h-[36px]
+                  relative px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-300
+                  hover:text-gray-900 group overflow-hidden
                   ${isSelected 
-                    ? 'bg-primary-orange text-white shadow-sm' 
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-primary-orange'
+                    ? 'text-gray-900' 
+                    : 'text-gray-600'
                   }
                 `}
               >
-                <i className={`${category.icon} text-sm`}></i>
-                <span>{category.displayName}</span>
+                {category.displayName}
+                
+                {/* Alibaba style bottom line - sariqroq rang */}
+                <div className={`
+                  absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-orange-400 to-yellow-500
+                  transition-all duration-300 ease-out
+                  ${isSelected 
+                    ? 'w-full' 
+                    : 'w-0 group-hover:w-full'
+                  }
+                `}></div>
               </button>
             );
           })}

@@ -13,18 +13,23 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Static file serving for uploads
+app.use('/uploads', express.static('uploads'));
+
 // Routes
 const productRoutes = require('./routes/productRoutes');
 const craftsmenRoutes = require('./routes/craftsmenRoutes');
 const notificationsRoutes = require('./routes/notificationsRoutes');
 const ordersRoutes = require('./routes/ordersRoutes');
 const statisticsRoutes = require('./routes/statisticsRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 app.use('/api/products', productRoutes);
 app.use('/api/craftsmen', craftsmenRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/statistics', statisticsRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -46,6 +51,7 @@ app.get('/', (req, res) => {
       notifications: '/api/notifications',
       orders: '/api/orders',
       statistics: '/api/statistics',
+      upload: '/api/upload',
       health: '/api/health'
     }
   });
@@ -79,6 +85,7 @@ const startServer = async () => {
     console.log(`   - Notifications: http://localhost:${PORT}/api/notifications`);
     console.log(`   - Orders: http://localhost:${PORT}/api/orders`);
     console.log(`   - Statistics: http://localhost:${PORT}/api/statistics`);
+    console.log(`   - Upload: http://localhost:${PORT}/api/upload`);
     console.log(`   - Health: http://localhost:${PORT}/api/health`);
   });
 

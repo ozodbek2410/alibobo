@@ -29,10 +29,40 @@ const ModernProductCard = memo(({
     return Math.round(((oldPrice - currentPrice) / oldPrice) * 100);
   };
 
-  // Get product images
-  const productImages = product.images && product.images.length > 0
-    ? product.images
-    : (product.image ? [product.image] : ['/assets/default-product.png']);
+  // Get all product images from variants
+  const getAllProductImages = () => {
+    const allImages = [];
+    
+    // If product has variants, collect all variant images
+    if (product.hasVariants && product.variants && product.variants.length > 0) {
+      product.variants.forEach(variant => {
+        if (variant.options && variant.options.length > 0) {
+          variant.options.forEach(option => {
+            if (option.images && option.images.length > 0) {
+              allImages.push(...option.images);
+            } else if (option.image) {
+              allImages.push(option.image);
+            }
+          });
+        }
+      });
+    }
+    
+    // If no variant images, use product images
+    if (allImages.length === 0) {
+      if (product.images && product.images.length > 0) {
+        allImages.push(...product.images);
+      } else if (product.image) {
+        allImages.push(product.image);
+      }
+    }
+    
+    // Remove duplicates and ensure at least one image
+    const uniqueImages = [...new Set(allImages)];
+    return uniqueImages.length > 0 ? uniqueImages : ['/assets/default-product.png'];
+  };
+
+  const productImages = getAllProductImages();
 
   // Use external state if provided, otherwise use internal state
   const currentImageIndex = onImageChange ? externalCurrentImageIndex : internalCurrentImageIndex;
@@ -164,7 +194,7 @@ const ModernProductCard = memo(({
       {/* Image Container */}
       <div className="relative cursor-pointer overflow-hidden rounded-lg mb-3 border border-gray-100" onClick={handleOpenDetail}>
         <div
-          className="relative w-full h-40 sm:h-48 lg:h-56 bg-white rounded-lg"
+          className="relative w-full h-48 sm:h-56 lg:h-64 bg-white rounded-lg"
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           onTouchStart={handleTouchStart}
@@ -217,111 +247,115 @@ const ModernProductCard = memo(({
             </div>
           )}
 
-          {/* Badges */}
-          <div className="absolute top-2 left-2 lg:top-3 lg:left-3 flex flex-col gap-1 lg:gap-2">
-            {/* Discount Badge */}
-            {discount > 0 && (
-              <span className="bg-red-500 text-white px-1.5 py-0.5 lg:px-2.5 lg:py-1 rounded-full text-xs font-bold shadow-sm">
-                -{discount}%
+          {/* Badges - Left side */}
+          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+            {/* New Badge - Smaller font */}
+            {product.isNew && (
+              <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-md font-normal">
+                Yangi
+              </span>
+            )}
+            
+            {/* Popular Badge */}
+            {product.isPopular && (
+              <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-md font-normal">
+                Top
               </span>
             )}
 
             {/* Custom Badge */}
             {product.badge && product.badge !== 'Yo\'q' && (
-              <span className="bg-blue-500 text-white px-1.5 py-0.5 lg:px-2.5 lg:py-1 rounded-full text-xs font-bold shadow-sm">
+              <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-md font-normal">
                 {product.badge}
               </span>
             )}
 
             {/* Stock Badge */}
             {product.stock !== undefined && product.stock < 5 && product.stock > 0 && (
-              <span className="bg-orange-500 text-white px-1.5 py-0.5 lg:px-2.5 lg:py-1 rounded-full text-xs font-bold shadow-sm">
+              <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-md font-normal">
                 Kam qoldi
               </span>
             )}
-
-            {/* New Badge */}
-            {product.isNew && (
-              <span className="bg-gradient-to-r from-green-400 to-green-600 text-white px-1.5 py-0.5 lg:px-2.5 lg:py-1 rounded-full text-xs font-bold shadow-sm">
-                🆕 Yangi
-              </span>
-            )}
           </div>
+
+          {/* Discount Badge - Right side, smaller font, no animation */}
+          {discount > 0 && (
+            <div className="absolute top-2 right-2 z-10">
+              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-md font-normal">
+                -{discount}%
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Product Info - Zamonaviy va rangli dizayn */}
-      <div className="flex flex-col flex-grow space-y-2">
-        {/* Brand - Rangli brand indicator */}
-        {product.brand && (
-          <div className="inline-flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
-            <span className="text-xs text-purple-600 font-medium tracking-wide uppercase bg-purple-50 px-2 py-0.5 rounded-full">
-              {product.brand}
-            </span>
-          </div>
-        )}
-        
-        {/* Product Name va Description - Yaqin joylashtirilgan */}
-        <div className="cursor-pointer space-y-1" onClick={handleOpenDetail}>
-          <h3 className="font-semibold text-sm md:text-base text-gray-900 leading-snug hover:text-primary-orange transition-colors duration-200 line-clamp-2">
-            {product.name || 'Noma\'lum mahsulot'}
-          </h3>
-          
-          {/* Description - Yaqin joylashtirilgan */}
-          {product.description && (
-            <div className="bg-slate-50 p-1.5 rounded border-l-2 border-slate-200 mt-0">
-              <p className="text-slate-600 text-xs leading-tight line-clamp-2 font-medium m-0">
-                {product.description}
-              </p>
+      <div className="flex flex-col flex-1 justify-between">
+        {/* All Product Information in One Container */}
+        <div className="space-y-2">
+          {/* Brand - Rangli brand indicator */}
+          {product.brand && (
+            <div className="inline-flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
+              <span className="text-xs text-purple-600 font-medium tracking-wide uppercase bg-purple-50 px-2 py-0.5 rounded-full">
+                {product.brand}
+              </span>
             </div>
           )}
-        </div>
-        
-        {/* Price Section - Enhanced layout with colors */}
-        <div className="space-y-1">
-          <div className="flex items-baseline gap-2">
-            <span className="text-lg md:text-xl font-bold text-primary-orange">
-              {formatPrice(product.price)}
-            </span>
-            {product.oldPrice && (
-              <span className="text-xs text-gray-400 line-through bg-gray-50 px-1.5 py-0.5 rounded">
-                {formatPrice(product.oldPrice)}
-              </span>
+          
+          {/* Product Name va Description - Yaqin joylashtirilgan */}
+          <div className="cursor-pointer space-y-1" onClick={handleOpenDetail}>
+            <h3 className="font-semibold text-sm md:text-base text-gray-900 leading-snug hover:text-primary-orange transition-colors duration-200 line-clamp-2">
+              {product.name || 'Noma\'lum mahsulot'}
+            </h3>
+            
+            {/* Description - Yaqin joylashtirilgan */}
+            {product.description && (
+              <div className="bg-slate-50 p-1.5 rounded border-l-2 border-slate-200 mt-0">
+                <p className="text-slate-600 text-xs leading-tight line-clamp-2 font-medium m-0">
+                  {product.description}
+                </p>
+              </div>
             )}
           </div>
           
-          {/* Discount badge */}
-          {discount > 0 && (
-            <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-red-50 to-pink-50 text-red-600 text-xs font-medium rounded-full border border-red-100">
-              <div className="w-1 h-1 bg-red-500 rounded-full"></div>
-              -{discount}% chegirma
+          {/* Price Section - Enhanced layout with colors */}
+          <div className="space-y-1">
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg md:text-xl font-bold text-primary-orange">
+                {formatPrice(product.price)}
+              </span>
+              {product.oldPrice && (
+                <span className="text-xs text-gray-400 line-through bg-gray-50 px-1.5 py-0.5 rounded">
+                  {formatPrice(product.oldPrice)}
+                </span>
+              )}
             </div>
-          )}
-        </div>
-        
-        {/* Stock Info - Compact one line */}
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1.5">
-            <div className={`w-2 h-2 rounded-full ${product.stock > 10 ? 'bg-green-500' : product.stock > 0 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
-            <span className="text-gray-600 font-medium">Mavjud:</span>
           </div>
-          <span className={`font-semibold ${
-            product.stock > 10 
-              ? 'text-green-600' 
-              : product.stock > 0 
-                ? 'text-yellow-600' 
-                : 'text-red-600'
-          }`}>
-            {product.stock > 0 ? `${product.stock} ${product.unit || 'dona'}` : 'Tugagan'}
-          </span>
+          
+          {/* Stock Info - Compact one line */}
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5">
+              <div className={`w-2 h-2 rounded-full ${product.stock > 10 ? 'bg-green-500' : product.stock > 0 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+              <span className="text-gray-600 font-medium">Mavjud:</span>
+            </div>
+            <span className={`font-semibold ${
+              product.stock > 10 
+                ? 'text-green-600' 
+                : product.stock > 0 
+                  ? 'text-yellow-600' 
+                  : 'text-red-600'
+            }`}>
+              {product.stock > 0 ? `${product.stock} ${product.unit || 'dona'}` : 'Tugagan'}
+            </span>
+          </div>
         </div>
         
-        {/* Button - Gradient design */}
+        {/* Button - Always at bottom */}
         <button
           onClick={handleAddToCart}
           disabled={product.stock === 0}
-          className={`w-full py-2 px-4 rounded-lg font-semibold text-sm transition-all duration-200 mt-auto ${
+          className={`w-full py-2 px-4 rounded-lg font-semibold text-sm transition-all duration-200 mt-3 ${
             product.stock === 0
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-primary-orange to-orange-500 text-white hover:from-orange-600 hover:to-orange-600 hover:shadow-lg active:scale-[0.98] shadow-md'
