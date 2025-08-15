@@ -8,6 +8,7 @@ import ImageUploader from './admin/ImageUploader';
 import VariantEditor from './admin/VariantEditor';
 import SimpleProductForm from './admin/SimpleProductForm';
 import VariantManager from './admin/VariantManager';
+import '../styles/select-styles.css';
 
 const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifications }) => {
   // Notification system - matching index.html exactly
@@ -745,7 +746,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                 const value = e.target.value;
                 handleFilterChange(value);
               }}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange"
+              className="custom-select"
             >
               <option value="">Barcha kategoriyalar</option>
               {mainCategories.map(category => (
@@ -949,7 +950,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                   <select
                     value={formData.category}
                     onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent"
+                    className="custom-select custom-select-modal"
                     required
                   >
                     <option value="">Kategoriya tanlang</option>
@@ -1069,7 +1070,112 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                 )}
               </div>
               
-
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700">
+                  Rasmlar (maksimal 8ta)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImagesUpload}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-orange file:text-white hover:file:bg-opacity-90"
+                />
+                
+                {/* Existing images */}
+                {formData.images.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-700">Mavjud rasmlar:</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {formData.images.map((image, index) => (
+                        <div key={`existing-${index}`} className="relative group">
+                          <img 
+                            src={image} 
+                            alt={`Existing ${index + 1}`} 
+                            className="w-full h-32 object-cover rounded-lg border-2 border-gray-300" 
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => moveImageDown(index, false)}
+                                disabled={index === formData.images.length - 1}
+                                className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Pastga ko'chirish"
+                              >
+                                <i className="fas fa-chevron-down"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeExistingImage(index)}
+                                className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
+                                title="Rasmni o'chirish"
+                              >
+                                <i className="fas fa-times"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <div className="absolute -top-2 -left-2 bg-primary-orange text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                            {index + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* New selected images */}
+                {selectedImages.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-700">Yangi rasmlar:</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {selectedImages.map((image, index) => (
+                        <div key={`selected-${index}`} className="relative group">
+                          <img 
+                            src={image} 
+                            alt={`Selected ${index + 1}`} 
+                            className="w-full h-32 object-cover rounded-lg border-2 border-green-300" 
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => moveImageDown(index, true)}
+                                disabled={index === selectedImages.length - 1}
+                                className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Pastga ko'chirish"
+                              >
+                                <i className="fas fa-chevron-down"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeSelectedImage(index)}
+                                className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
+                                title="Rasmni o'chirish"
+                              >
+                                <i className="fas fa-times"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <div className="absolute -top-2 -left-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                            {formData.images.length + index + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Image count info */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Jami rasmlar: {formData.images.length + selectedImages.length}/8</span>
+                    {(formData.images.length + selectedImages.length) >= 8 && (
+                      <span className="text-amber-600 font-medium">Maksimal rasm soni</span>
+                    )}
+                  </div>
+                </div>
+              </div>
               
               <div className="sticky bottom-0 bg-white pt-6 border-t border-gray-200">
                 <div className="flex items-center justify-end space-x-4">

@@ -7,6 +7,7 @@ import ModernProductGrid from './ModernProductGrid';
 // import { useOptimizedFilters } from '../hooks/useOptimizedFilters';
 import { SearchIcon, TimesIcon } from './Icons';
 import ProductGridSkeleton from './skeleton/ProductGridSkeleton';
+import '../styles/select-styles.css';
 
 const ProductsGrid = ({
   cart,
@@ -38,8 +39,6 @@ const ProductsGrid = ({
     selectedCategory: '',
     searchQuery: ''
   });
-
-
   // Modal (bottom sheet) for filtering by price and rating
   const [isPriceRatingSheetOpen, setIsPriceRatingSheetOpen] = useState(false);
   const [sheetMinPrice, setSheetMinPrice] = useState('');
@@ -52,14 +51,8 @@ const ProductsGrid = ({
   // const [appliedMinRating, setAppliedMinRating] = useState('');
   const [displayedProducts, setDisplayedProducts] = useState(20);
 
-
-
-
-
   const selectRef = useRef(null);
 
-
-  // const productsRef = useRef(products);
 
   // Category mapping function - frontend to backend
   const getCategoryApiValue = (frontendCategory) => {
@@ -356,14 +349,12 @@ const ProductsGrid = ({
     setIsPriceRatingSheetOpen(false);
   };
 
-
-
-
-
-
-
-
-
+  const calculateDiscount = (currentPrice, oldPrice) => {
+    const current = parseInt(currentPrice?.toString().replace(/[^\d]/g, '') || '0');
+    const old = parseInt(oldPrice?.toString().replace(/[^\d]/g, '') || '0');
+    if (!old || !current || isNaN(old) || isNaN(current)) return 0;
+    return Math.round(((old - current) / old) * 100);
+  };
 
   // Handle category selection from CategoryNavigation
   const handleCategorySelect = useCallback((categoryName) => {
@@ -372,7 +363,7 @@ const ProductsGrid = ({
       onCategorySelect(categoryName);
     }
     setCurrentCategory(categoryName || 'all');
-  }, [onCategorySelect]);
+  }, [onCategorySelect, setCurrentCategory]);
 
   // Handle retry functionality
   const handleRetry = useCallback(() => {
@@ -381,7 +372,7 @@ const ProductsGrid = ({
     if (refetch) {
       refetch();
     }
-  }, [refetch]);
+  }, [refetch, setShowSkeleton, setIsInitialLoad]);
 
   // Determine when to show skeleton
   const shouldShowSkeleton = (
@@ -456,18 +447,13 @@ const ProductsGrid = ({
                 ref={selectRef}
                 value={quickFilter}
                 onChange={(e) => setQuickFilter(e.target.value)}
-                className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-1.5 pr-8 text-gray-800 font-medium focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-all duration-200 cursor-pointer text-sm min-w-[110px] lg:min-w-[120px]"
+                className="custom-select custom-select-main"
               >
                 <option value="all">Hammasi</option>
                 <option value="mashhur">Mashhur</option>
                 <option value="chegirma">Chegirma</option>
                 <option value="yangi">Yangi</option>
               </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none z-10">
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
               {(appliedMinPrice || appliedMaxPrice) && (
                 <button
                   onClick={clearPriceFilter}
