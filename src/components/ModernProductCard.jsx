@@ -1,5 +1,5 @@
 import React, { useState, useCallback, memo } from 'react';
-import { ShoppingCartIcon } from './Icons';
+import { ShoppingCartIcon, EyeIcon } from './Icons';
 
 const ModernProductCard = memo(({
   product,
@@ -158,31 +158,21 @@ const ModernProductCard = memo(({
     }
   }, [onImageChange, product._id]);
 
-  // Handle action buttons
+  // Handle action buttons - Always open detail modal
   const handleAddToCart = useCallback((e) => {
     e.stopPropagation();
-
-    // If product has variants, open detail modal instead of adding directly
-    if (product.hasVariants && product.variants && product.variants.length > 0) {
-      onOpenDetail(product);
-    } else {
-      onAddToCart(product);
-    }
-  }, [onAddToCart, onOpenDetail, product]);
+    // Always open detail modal instead of adding directly to cart
+    onOpenDetail(product);
+  }, [onOpenDetail, product]);
 
   const handleOpenDetail = useCallback(() => {
     onOpenDetail(product);
   }, [onOpenDetail, product]);
 
   const handleCardClick = useCallback(() => {
-    // If product has variants, open detail modal for variant selection
-    if (product.hasVariants && product.variants && product.variants.length > 0) {
-      onOpenDetail(product);
-    } else {
-      // If no variants, add directly to cart
-      onAddToCart(product);
-    }
-  }, [product, onOpenDetail, onAddToCart]);
+    // Always open detail modal when clicking on card
+    onOpenDetail(product);
+  }, [product, onOpenDetail]);
 
   return (
     <div
@@ -361,7 +351,14 @@ const ModernProductCard = memo(({
               : 'bg-gradient-to-r from-primary-orange to-orange-500 text-white hover:from-orange-600 hover:to-orange-600 hover:shadow-lg active:scale-[0.98] shadow-md'
           }`}
         >
-          {product.stock === 0 ? 'Tugagan' : 'Ko\'rish'}
+          {product.stock === 0 ? (
+            'Tugagan'
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <EyeIcon className="w-4 h-4" />
+              <span>Ko'rish</span>
+            </div>
+          )}
         </button>
       </div>
     </div>

@@ -257,30 +257,36 @@ const ProductsGrid = ({
       });
     }
 
-    // Sort
+    // Sort based on quickFilter
     filtered.sort((a, b) => {
-      const sortBy = quickFilter === 'all' ? 'updatedAt' : quickFilter;
-      let aValue, bValue;
-
-      switch (sortBy) {
-        case 'price':
-          aValue = parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0');
-          bValue = parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0');
-          break;
-        case 'name':
-          aValue = a.name?.toLowerCase() || '';
-          bValue = b.name?.toLowerCase() || '';
-          break;
-        case 'updatedAt':
+      switch (quickFilter) {
+        case 'mashhur':
+          // Sort by popularity (reviews count or rating)
+          const aPopularity = (a.reviews || 0) * (a.rating || 0);
+          const bPopularity = (b.reviews || 0) * (b.rating || 0);
+          return bPopularity - aPopularity; // Descending order
+          
+        case 'chegirma':
+          // Sort by discount (products with oldPrice first)
+          const aDiscount = a.oldPrice && a.oldPrice > a.price ? 
+            ((a.oldPrice - a.price) / a.oldPrice) * 100 : 0;
+          const bDiscount = b.oldPrice && b.oldPrice > b.price ? 
+            ((b.oldPrice - b.price) / b.oldPrice) * 100 : 0;
+          return bDiscount - aDiscount; // Descending order
+          
+        case 'yangi':
+          // Sort by newest (createdAt or updatedAt)
+          const aDate = new Date(a.createdAt || a.updatedAt || 0);
+          const bDate = new Date(b.createdAt || b.updatedAt || 0);
+          return bDate - aDate; // Descending order (newest first)
+          
+        case 'all':
         default:
-          aValue = new Date(a.updatedAt || 0);
-          bValue = new Date(b.updatedAt || 0);
-          break;
+          // Default sort by updatedAt
+          const aUpdated = new Date(a.updatedAt || 0);
+          const bUpdated = new Date(b.updatedAt || 0);
+          return bUpdated - aUpdated; // Descending order
       }
-
-      if (aValue < bValue) return -1;
-      if (aValue > bValue) return 1;
-      return 0;
     });
 
     return filtered;
@@ -454,15 +460,7 @@ const ProductsGrid = ({
                 <option value="chegirma">Chegirma</option>
                 <option value="yangi">Yangi</option>
               </select>
-              {(appliedMinPrice || appliedMaxPrice) && (
-                <button
-                  onClick={clearPriceFilter}
-                  className="absolute -right-9 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-700 rounded flex items-center justify-center"
-                  title="Filtrni yopish"
-                >
-                  <TimesIcon className="w-3 h-3" />
-                </button>
-              )}
+
             </div>
 
 
