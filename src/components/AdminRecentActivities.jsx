@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useState, useEffect } from 'react';
+import '../styles/select-styles.css';
 
 const AdminRecentActivities = ({ craftsmen = [], products = [], orders = [], onNavigate }) => {
   const [filter, setFilter] = useState('all');
@@ -126,7 +128,7 @@ const AdminRecentActivities = ({ craftsmen = [], products = [], orders = [], onN
           <div className="relative">
             <i className="fas fa-filter absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
             <select
-              className="appearance-none bg-gray-50 border border-gray-200 rounded-lg pl-10 pr-8 py-2 text-sm focus:outline-none focus:border-primary-orange transition-colors"
+              className="custom-select custom-select-with-icon"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             >
@@ -136,7 +138,6 @@ const AdminRecentActivities = ({ craftsmen = [], products = [], orders = [], onN
                 </option>
               ))}
             </select>
-            <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs"></i>
           </div>
         </div>
       </div>

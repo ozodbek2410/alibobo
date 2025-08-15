@@ -6,14 +6,15 @@ import ColorfulCategoryFilter from './ColorfulCategoryFilter';
 import ModernProductGrid from './ModernProductGrid';
 import { useOptimizedFilters } from '../hooks/useOptimizedFilters';
 import { SearchIcon, TimesIcon } from './Icons';
+import '../styles/select-styles.css';
 
-const ProductsGrid = ({ 
-  cart, 
-  onAddToCart, 
-  isCartOpen, 
-  onToggleCart, 
-  onRemoveFromCart, 
-  onUpdateQuantity, 
+const ProductsGrid = ({
+  cart,
+  onAddToCart,
+  isCartOpen,
+  onToggleCart,
+  onRemoveFromCart,
+  onUpdateQuantity,
   onCheckout,
   selectedCategory,
   searchQuery,
@@ -28,7 +29,7 @@ const ProductsGrid = ({
   const priceRange = 'all';
   const [quickFilter, setQuickFilter] = useState('all');
   const [isPending, startTransition] = useTransition();
-  
+
   // Use deferred values for non-urgent updates
   const deferredQuickFilter = useDeferredValue(quickFilter);
   const deferredSearchTerm = useDeferredValue(searchTerm);
@@ -46,11 +47,11 @@ const ProductsGrid = ({
   // page state not required; arrival order controls display
   const [hasMore, setHasMore] = useState(true);
 
-  
-  
+
+
 
   const selectRef = useRef(null);
-  
+
 
   // const productsRef = useRef(products);
 
@@ -63,7 +64,7 @@ const ProductsGrid = ({
       "dekorativ-mahsulotlar": "Dekorativ-mahsulotlar",
       "santexnika": "Santexnika",
     };
-    
+
     return categoryMapping[frontendCategory] || frontendCategory;
   };
 
@@ -74,22 +75,22 @@ const ProductsGrid = ({
     params.append('page', '1');
     params.append('sortBy', 'updatedAt');
     params.append('sortOrder', 'desc');
-    
+
     if (selectedCategory && selectedCategory !== '') {
       params.append('category', getCategoryApiValue(selectedCategory));
     }
-    
+
     if (searchQuery && searchQuery.trim() !== '') {
       params.append('search', searchQuery.trim());
     }
-    
+
     return `http://localhost:5000/api/products?${params.toString()}`;
   }, [selectedCategory, searchQuery]);
 
   // Use optimized fetch hook with faster settings for better UX
-  const { 
-    data: apiResponse, 
-    loading: apiLoading, 
+  const {
+    data: apiResponse,
+    loading: apiLoading,
     refetch
   } = useOptimizedFetch(apiUrl, {
     debounceMs: 300, // 300ms debounce for search
@@ -107,7 +108,7 @@ const ProductsGrid = ({
         setProducts(apiResponse.products);
         setDisplayedProducts(Math.min(apiResponse.products.length, 20));
         setLoading(false);
-        
+
         // Call initial products loaded callback
         if (typeof onInitialProductsLoaded === 'function') {
           onInitialProductsLoaded();
@@ -197,7 +198,7 @@ const ProductsGrid = ({
 
 
   // Manual refresh function
-  
+
 
   // Price filter actions
   const applyPriceFilter = () => {
@@ -250,25 +251,25 @@ const ProductsGrid = ({
     setIsPriceRatingSheetOpen(false);
   };
 
-  
+
 
   const getFilteredProducts = () => {
     if (products.length === 0) {
       return [];
     }
-    
+
     let filtered = products;
-    
+
     // Kategoriya bo'yicha filtrlash
     if (currentCategory !== 'all') {
       filtered = filtered.filter(product => product.category === getCategoryApiValue(currentCategory));
     }
-    
+
     // Tezkor filter bo'yicha filtrlash (using deferred value)
     if (deferredQuickFilter !== 'all') {
       const matchingProducts = [];
       const otherProducts = [];
-      
+
       filtered.forEach(product => {
         let matches = false;
         switch (quickFilter) {
@@ -290,14 +291,14 @@ const ProductsGrid = ({
             // Boshqa holatlar uchun hech qanday maxsus filtr qo'llanmaydi
             matches = false;
         }
-        
+
         if (matches) {
           matchingProducts.push(product);
         } else {
           otherProducts.push(product);
         }
       });
-      
+
       // Avval mos kelganlar, keyin qolganlar
       filtered = [...matchingProducts, ...otherProducts];
     } else {
@@ -305,11 +306,11 @@ const ProductsGrid = ({
       filtered.sort((a, b) => {
         switch (sortBy) {
           case 'price-low':
-            return parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0') - 
-                   parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0');
+            return parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0') -
+              parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0');
           case 'price-high':
-            return parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0') - 
-                   parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0');
+            return parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0') -
+              parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0');
           case 'rating':
             return (b.rating || 0) - (a.rating || 0);
           case 'name':
@@ -318,16 +319,16 @@ const ProductsGrid = ({
         }
       });
     }
-    
+
     // Qidiruv bo'yicha filtrlash
     if (searchTerm.trim()) {
-      filtered = filtered.filter(product => 
+      filtered = filtered.filter(product =>
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
-    
+
     // Narx oralig'i bo'yicha filtrlash
     if (priceRange !== 'all') {
       filtered = filtered.filter(product => {
@@ -365,7 +366,7 @@ const ProductsGrid = ({
 
     // Baho (rating) bo'yicha filtrlash
     // Rating filter removed for mobile simplicity
-    
+
     return filtered;
   };
 
@@ -378,7 +379,7 @@ const ProductsGrid = ({
 
 
 
-  
+
 
 
   // Handle category selection from CategoryNavigation
@@ -427,32 +428,28 @@ const ProductsGrid = ({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3 lg:gap-4">
             <span className="text-gray-700 font-medium text-sm lg:text-base">Saralash:</span>
-              <div className="relative">
+            <div className="relative">
               <select
                 ref={selectRef}
                 value={quickFilter}
                 onChange={(e) => setQuickFilter(e.target.value)}
-                className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-1.5 pr-8 text-gray-800 font-medium focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-all duration-200 cursor-pointer text-sm min-w-[110px] lg:min-w-[120px]"
+                className="custom-select custom-select-main"
               >
                 <option value="all">Hammasi</option>
                 <option value="mashhur">Mashhur</option>
                 <option value="chegirma">Chegirma</option>
                 <option value="yangi">Yangi</option>
               </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none z-10">
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-                {(appliedMinPrice || appliedMaxPrice) && (
-                  <button
-                    onClick={clearPriceFilter}
-                    className="absolute -right-9 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-700 rounded flex items-center justify-center"
-                    title="Filtrni yopish"
-                  >
-                    <TimesIcon className="w-3 h-3" />
-                  </button>
-                )}
+
+              {(appliedMinPrice || appliedMaxPrice) && (
+                <button
+                  onClick={clearPriceFilter}
+                  className="absolute -right-9 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-700 rounded flex items-center justify-center"
+                  title="Filtrni yopish"
+                >
+                  <TimesIcon className="w-3 h-3" />
+                </button>
+              )}
             </div>
 
 
@@ -501,8 +498,8 @@ const ProductsGrid = ({
                 onClick={applyPriceFilter}
                 disabled={minPrice && maxPrice && parseInt(maxPrice) < parseInt(minPrice)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${minPrice && maxPrice && parseInt(maxPrice) < parseInt(minPrice)
-                    ? 'bg-gray-300 cursor-not-allowed text-gray-500'
-                    : 'bg-primary-orange hover:bg-primary-orange/90 text-white'
+                  ? 'bg-gray-300 cursor-not-allowed text-gray-500'
+                  : 'bg-primary-orange hover:bg-primary-orange/90 text-white'
                   }`}
               >
                 Qidirish
@@ -534,9 +531,9 @@ const ProductsGrid = ({
 
         </div>
       </div>
-      
 
-   
+
+
 
 
 
@@ -569,13 +566,13 @@ const ProductsGrid = ({
               <SearchIcon className="w-16 h-16 text-gray-400" />
             </div>
             <h3 className="text-2xl font-bold text-gray-700 mb-3">
-              {searchTerm ? 'Hech narsa topilmadi' : 
-               currentCategory === 'all' ? 'Mahsulotlar yo\'q' : `${currentCategory} kategoriyasida mahsulot yo'q`}
+              {searchTerm ? 'Hech narsa topilmadi' :
+                currentCategory === 'all' ? 'Mahsulotlar yo\'q' : `${currentCategory} kategoriyasida mahsulot yo'q`}
             </h3>
             <p className="text-gray-500 mb-6">
-              {searchTerm ? 
+              {searchTerm ?
                 `"${searchTerm}" so'rovi bo'yicha hech qanday mahsulot topilmadi. Boshqa kalit so'zlar bilan qidiring.` :
-                currentCategory === 'all' ? 
+                currentCategory === 'all' ?
                   'Hozircha mahsulotlar qo\'shilmagan. Keyinroq qayta urinib ko\'ring.' :
                   'Bu kategoriyada mahsulotlar mavjud emas. Boshqa kategoriyalarni ko\'rib chiqing.'
               }
@@ -605,7 +602,7 @@ const ProductsGrid = ({
           </div>
         </div>
       )}
-      
+
       {/* Cart Sidebar */}
       <CartSidebar
         isOpen={isCartOpen}
@@ -615,7 +612,7 @@ const ProductsGrid = ({
         onUpdateQuantity={onUpdateQuantity}
         onCheckout={onCheckout}
       />
-      
+
 
 
       {/* Bottom Sheet: Narx Filter (mobile) */}
