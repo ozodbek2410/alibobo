@@ -1,9 +1,11 @@
 import { useState, useCallback, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
+import AdminLoadingLayout from './components/skeletons/AdminLoadingLayout';
+
+import AdminSidebar from './components/AdminSidebar'; // Import directly, no lazy loading
 
 const MainPage = lazy(() => import('./components/MainPage'));
-const AdminSidebar = lazy(() => import('./components/AdminSidebar'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 const AdminCraftsmen = lazy(() => import('./components/AdminCraftsmen'));
 const AdminProducts = lazy(() => import('./components/AdminProducts'));
@@ -67,7 +69,6 @@ function App() {
         <Route path="/admin" element={
           <ProtectedRoute>
             <div className="flex">
-              <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
               <AdminSidebar
                 active="dashboard"
                 onLogout={handleLogout}
@@ -75,15 +76,14 @@ function App() {
                 onMobileToggle={handleMobileToggle}
                 counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
               />
-              </Suspense>
               <div className="flex-1 lg:ml-64">
-                <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-                <AdminDashboard
-                  onMobileToggle={handleMobileToggle}
-                  craftsmenCount={craftsmenCount}
-                  productsCount={productsCount}
-                  ordersCount={ordersCount}
-                />
+                <Suspense fallback={<AdminLoadingLayout />}>
+                  <AdminDashboard
+                    onMobileToggle={handleMobileToggle}
+                    craftsmenCount={craftsmenCount}
+                    productsCount={productsCount}
+                    ordersCount={ordersCount}
+                  />
                 </Suspense>
               </div>
             </div>
@@ -91,8 +91,7 @@ function App() {
         } />
         <Route path="/admin/craftsmen" element={
           <ProtectedRoute>
-            <div className="flex ">
-              <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
+            <div className="flex">
               <AdminSidebar
                 active="craftsmen"
                 onLogout={handleLogout}
@@ -100,13 +99,12 @@ function App() {
                 onMobileToggle={handleMobileToggle}
                 counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
               />
-              </Suspense>
               <div className="flex-1 lg:ml-64">
-                <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-                <AdminCraftsmen
-                  onCountChange={handleCraftsmenCountChange}
-                  onMobileToggle={handleMobileToggle}
-                />
+                <Suspense fallback={<AdminLoadingLayout />}>
+                  <AdminCraftsmen
+                    onCountChange={handleCraftsmenCountChange}
+                    onMobileToggle={handleMobileToggle}
+                  />
                 </Suspense>
               </div>
             </div>
@@ -115,7 +113,6 @@ function App() {
         <Route path="/admin/products" element={
           <ProtectedRoute>
             <div className="flex">
-              <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
               <AdminSidebar
                 active="products"
                 onLogout={handleLogout}
@@ -123,13 +120,12 @@ function App() {
                 onMobileToggle={handleMobileToggle}
                 counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
               />
-              </Suspense>
               <div className="flex-1 lg:ml-64">
-                <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-                <AdminProducts
-                  onMobileToggle={handleMobileToggle}
-                  onCountChange={handleProductsCountChange}
-                />
+                <Suspense fallback={<AdminLoadingLayout />}>
+                  <AdminProducts
+                    onMobileToggle={handleMobileToggle}
+                    onCountChange={handleProductsCountChange}
+                  />
                 </Suspense>
               </div>
             </div>
@@ -138,7 +134,6 @@ function App() {
         <Route path="/admin/orders" element={
           <ProtectedRoute>
             <div className="flex">
-              <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
               <AdminSidebar
                 active="orders"
                 onLogout={handleLogout}
@@ -146,13 +141,12 @@ function App() {
                 onMobileToggle={handleMobileToggle}
                 counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
               />
-              </Suspense>
               <div className="flex-1 lg:ml-64">
-                <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-                <AdminOrders
-                  onMobileToggle={handleMobileToggle}
-                  onCountChange={handleOrdersCountChange}
-                />
+                <Suspense fallback={<AdminLoadingLayout />}>
+                  <AdminOrders
+                    onMobileToggle={handleMobileToggle}
+                    onCountChange={handleOrdersCountChange}
+                  />
                 </Suspense>
               </div>
             </div>
@@ -161,7 +155,6 @@ function App() {
         <Route path="/admin/analytics" element={
           <ProtectedRoute>
             <div className="flex">
-              <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
               <AdminSidebar
                 active="analytics"
                 onLogout={handleLogout}
@@ -169,12 +162,11 @@ function App() {
                 onMobileToggle={handleMobileToggle}
                 counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
               />
-              </Suspense>
-              <div className="flex-1">
-                <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-                <AdminAnalytics
-                  onMobileToggle={handleMobileToggle}
-                />
+              <div className="flex-1 lg:ml-64">
+                <Suspense fallback={<AdminLoadingLayout />}>
+                  <AdminAnalytics
+                    onMobileToggle={handleMobileToggle}
+                  />
                 </Suspense>
               </div>
             </div>

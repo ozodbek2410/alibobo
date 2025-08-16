@@ -1,8 +1,10 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import '../styles/select-styles.css';
+import RecentActivitiesSkeleton from './skeletons/RecentActivitiesSkeleton';
+import FadeInTransition from './transitions/FadeInTransition';
 
-const AdminRecentActivities = ({ craftsmen = [], products = [], orders = [], onNavigate }) => {
+const AdminRecentActivities = ({ craftsmen = [], products = [], orders = [], onNavigate, isLoading = false }) => {
   const [filter, setFilter] = useState('all');
   const [activities, setActivities] = useState([]);
 
@@ -120,63 +122,74 @@ const AdminRecentActivities = ({ craftsmen = [], products = [], orders = [], onN
     { value: 'boshqa', label: 'Boshqalar' },
   ];
 
+  // Show Telegram-style skeleton while loading
+  if (isLoading) {
+    return <RecentActivitiesSkeleton itemCount={5} />;
+  }
+
   return (
-    <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-gray-100">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-3 sm:space-y-0">
-        <h3 className="text-lg font-bold text-primary-dark">Oxirgi amallar</h3>
-        <div className="flex justify-end">
-          <div className="relative">
-            <i className="fas fa-filter absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
-            <select
-              className="custom-select custom-select-with-icon"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            >
-              {filterOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+    <FadeInTransition 
+      isLoading={isLoading} 
+      skeleton={<RecentActivitiesSkeleton itemCount={5} />}
+      delay={100}
+    >
+      <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-3 sm:space-y-0">
+          <h3 className="text-lg font-bold text-primary-dark">Oxirgi amallar</h3>
+          <div className="flex justify-end">
+            <div className="relative">
+              <i className="fas fa-filter absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+              <select
+                className="custom-select custom-select-with-icon"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                {filterOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="space-y-3 max-h-96 overflow-y-auto">
-        {filteredActivities.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <i className="fas fa-clock text-3xl mb-3 opacity-50"></i>
-            <p className="text-sm">Hozircha hech qanday faoliyat yo'q</p>
-          </div>
-        ) : (
-          filteredActivities.map((activity, index) => (
-            <div
-              key={`${activity.category}-${index}`}
-              className={`activity-item flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer ${
-                index === 0 ? 'notification-new' : ''
-              }`}
-              onClick={activity.clickAction}
-              data-category={activity.category}
-            >
-              <div className={`w-10 h-10 ${activity.iconBg} rounded-full flex items-center justify-center flex-shrink-0`}>
-                <i className={`fas ${activity.icon} ${activity.iconColor}`}></i>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-800 text-sm md:text-base">
-                  {activity.title}
-                </p>
-                <p className="text-xs md:text-sm text-gray-500 truncate">
-                  {activity.desc}
-                </p>
-              </div>
-              <span className="text-xs text-gray-400 flex-shrink-0">
-                {activity.time}
-              </span>
+        <div className="space-y-3 max-h-96 overflow-y-auto">
+          {filteredActivities.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <i className="fas fa-clock text-3xl mb-3 opacity-50"></i>
+              <p className="text-sm">Hozircha hech qanday faoliyat yo'q</p>
             </div>
-          ))
-        )}
+          ) : (
+            filteredActivities.map((activity, index) => (
+              <div
+                key={`${activity.category}-${index}`}
+                className={`activity-item flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer ${
+                  index === 0 ? 'notification-new' : ''
+                }`}
+                onClick={activity.clickAction}
+                data-category={activity.category}
+              >
+                <div className={`w-10 h-10 ${activity.iconBg} rounded-full flex items-center justify-center flex-shrink-0`}>
+                  <i className={`fas ${activity.icon} ${activity.iconColor}`}></i>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-800 text-sm md:text-base">
+                    {activity.title}
+                  </p>
+                  <p className="text-xs md:text-sm text-gray-500 truncate">
+                    {activity.desc}
+                  </p>
+                </div>
+                <span className="text-xs text-gray-400 flex-shrink-0">
+                  {activity.time}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
       </div>
-    </div>
+    </FadeInTransition>
   );
 };
 

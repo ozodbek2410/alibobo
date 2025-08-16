@@ -96,15 +96,7 @@ const AdminStatsCards = ({
       iconBg: 'bg-orange-300 bg-opacity-20',
       iconColor: 'text-primary-orange',
     },
-    {
-      label: 'Tahrirlar',
-      value: loading ? '...' : formatNumber(editStats?.total || 0),
-      subValue: editStats?.thisWeek ? `${editStats.thisWeek} (bu hafta)` : null,
-      breakdown: editStats?.byType ? `M: ${editStats.byType.products}, U: ${editStats.byType.craftsmen}, B: ${editStats.byType.orders}` : null,
-      icon: 'fas fa-edit',
-      iconBg: 'bg-indigo-100',
-      iconColor: 'text-indigo-600',
-    },
+
     {
       label: 'Daromad',
       value: loading ? '...' : formatRevenue(statistics?.revenue?.total),
@@ -118,8 +110,8 @@ const AdminStatsCards = ({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        {[...Array(5)].map((_, idx) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {[...Array(4)].map((_, idx) => (
           <LoadingSkeleton key={idx} />
         ))}
       </div>
@@ -127,7 +119,7 @@ const AdminStatsCards = ({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       {stats.map((item, idx) => {
         if (error) {
           return <ErrorCard key={idx} {...item} />;

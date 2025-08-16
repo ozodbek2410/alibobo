@@ -80,6 +80,20 @@ code {
   }
 }
 
+/* Telegram-style shimmer animation */
+@keyframes telegram-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: telegram-shimmer 1.5s ease-in-out infinite;
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
 }
