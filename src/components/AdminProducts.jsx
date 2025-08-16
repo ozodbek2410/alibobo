@@ -674,6 +674,73 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     });
   };
 
+  // Image handling functions
+  const handleImagesUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const maxImages = 8;
+    const currentImageCount = formData.images.length + selectedImages.length;
+    
+    if (currentImageCount >= maxImages) {
+      setTimeout(() => {
+        safeNotifyError('Xatolik', `Maksimal ${maxImages}ta rasm qo'shish mumkin`);
+      }, 0);
+      return;
+    }
+    
+    const remainingSlots = maxImages - currentImageCount;
+    const filesToProcess = files.slice(0, remainingSlots);
+    
+    if (files.length > remainingSlots) {
+      setTimeout(() => {
+        safeNotifyWarning('Ogohlantirish', `Faqat ${remainingSlots}ta rasm qo'shildi. Maksimal ${maxImages}ta rasm mumkin.`);
+      }, 0);
+    }
+    
+    filesToProcess.forEach(file => {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setTimeout(() => {
+          safeNotifyError('Xatolik', `${file.name} fayli juda katta (maksimal 5MB)`);
+        }, 0);
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setSelectedImages(prev => [...prev, event.target.result]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeExistingImage = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
+  const removeSelectedImage = (index) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const moveImageDown = (index, isSelected) => {
+    if (isSelected) {
+      setSelectedImages(prev => {
+        if (index >= prev.length - 1) return prev;
+        const newImages = [...prev];
+        [newImages[index], newImages[index + 1]] = [newImages[index + 1], newImages[index]];
+        return newImages;
+      });
+    } else {
+      setFormData(prev => {
+        if (index >= prev.images.length - 1) return prev;
+        const newImages = [...prev.images];
+        [newImages[index], newImages[index + 1]] = [newImages[index + 1], newImages[index]];
+        return { ...prev, images: newImages };
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}

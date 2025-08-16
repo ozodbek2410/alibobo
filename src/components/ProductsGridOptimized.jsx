@@ -4,13 +4,13 @@ import CartSidebar from './CartSidebar';
 import { ProductsGridSkeleton } from './LoadingSkeleton';
 import ProductDetail from './ProductDetail';
 
-const ProductsGrid = memo(({ 
-  cart, 
-  onAddToCart, 
-  isCartOpen, 
-  onToggleCart, 
-  onRemoveFromCart, 
-  onUpdateQuantity, 
+const ProductsGrid = memo(({
+  cart,
+  onAddToCart,
+  isCartOpen,
+  onToggleCart,
+  onRemoveFromCart,
+  onUpdateQuantity,
   onCheckout,
   selectedCategory,
   searchQuery,
@@ -19,7 +19,7 @@ const ProductsGrid = memo(({
   // State management
   const [displayedProducts, setDisplayedProducts] = useState(20);
   const [hasMore, setHasMore] = useState(true);
-  
+
   // Modal states
   const [isPriceRatingSheetOpen, setIsPriceRatingSheetOpen] = useState(false);
   const [minPrice, setMinPrice] = useState('');
@@ -27,20 +27,20 @@ const ProductsGrid = memo(({
   const [appliedMinPrice, setAppliedMinPrice] = useState('');
   const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
   const [quickFilter, setQuickFilter] = useState('all');
-  
+
   // Notification states
   const [showAddToCartNotification, setShowAddToCartNotification] = useState(false);
   const [notificationProduct, setNotificationProduct] = useState('');
-  
+
   // Product detail modal states
   const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  
+
   // Image carousel states
   const [currentImageIndexes, setCurrentImageIndexes] = useState({});
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
-  
+
   const selectRef = useRef(null);
 
   // Category mapping function
@@ -52,7 +52,7 @@ const ProductsGrid = memo(({
       "dekorativ-mahsulotlar": "dekorativ-mahsulotlar",
       "santexnika": "santexnika",
       "g'isht-va-bloklar": "gisht",
-      "asbob-uskunalar": "asbob", 
+      "asbob-uskunalar": "asbob",
       "bo'yoq-va-lak": "boyoq",
       "elektr-mollalari": "elektr",
       "metall-va-armatura": "metall",
@@ -74,26 +74,26 @@ const ProductsGrid = memo(({
     params.append('page', '1');
     params.append('sortBy', 'updatedAt');
     params.append('sortOrder', 'desc');
-    
+
     if (selectedCategory && selectedCategory !== '') {
       params.append('category', getCategoryApiValue(selectedCategory));
     }
-    
+
     if (searchQuery && searchQuery.trim() !== '') {
       params.append('search', searchQuery.trim());
     }
-    
+
     return `http://localhost:5000/api/products?${params.toString()}`;
   }, [selectedCategory, searchQuery, getCategoryApiValue]);
 
   // Smart data fetching with caching and intelligent refetch
-  const { 
-    data: apiResponse, 
-    loading, 
-    error, 
+  const {
+    data: apiResponse,
+    loading,
+    error,
     refetch,
     isStale,
-    lastFetch 
+    lastFetch
   } = useSmartFetch(apiUrl, {
     cacheTime: 5 * 60 * 1000, // 5 minutes cache
     staleTime: 2 * 60 * 1000, // 2 minutes stale time
@@ -109,7 +109,7 @@ const ProductsGrid = memo(({
   // Filter products based on applied filters
   const filteredProducts = useMemo(() => {
     let filtered = [...products];
-    
+
     // Price filter
     if (appliedMinPrice || appliedMaxPrice) {
       filtered = filtered.filter(product => {
@@ -119,7 +119,7 @@ const ProductsGrid = memo(({
         return price >= min && price <= max;
       });
     }
-    
+
     // Quick filter
     if (quickFilter !== 'all') {
       switch (quickFilter) {
@@ -139,7 +139,7 @@ const ProductsGrid = memo(({
           break;
       }
     }
-    
+
     return filtered;
   }, [products, appliedMinPrice, appliedMaxPrice, quickFilter]);
 
@@ -160,7 +160,7 @@ const ProductsGrid = memo(({
   const addToCart = useCallback((product) => {
     if (onAddToCart) {
       onAddToCart(product);
-      
+
       // Show notification
       setNotificationProduct(product.name);
       setShowAddToCartNotification(true);
@@ -214,21 +214,21 @@ const ProductsGrid = memo(({
 
   const handleTouchEnd = useCallback((productId, imagesLength) => {
     if (!touchStart || !touchEnd) return;
-    
+
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > 50;
     const isRightSwipe = distance < -50;
-    
+
     if (isLeftSwipe || isRightSwipe) {
       const currentIndex = currentImageIndexes[productId] || 0;
       let newIndex;
-      
+
       if (isLeftSwipe) {
         newIndex = currentIndex < imagesLength - 1 ? currentIndex + 1 : 0;
       } else {
         newIndex = currentIndex > 0 ? currentIndex - 1 : imagesLength - 1;
       }
-      
+
       handleImageChange(productId, newIndex);
     }
   }, [touchStart, touchEnd, currentImageIndexes, handleImageChange]);
@@ -299,7 +299,7 @@ const ProductsGrid = memo(({
             </span>
           )}
         </div>
-        
+
         <div className="flex items-center space-x-2">
           {lastFetch && (
             <span className="text-sm text-gray-500">
@@ -331,14 +331,14 @@ const ProductsGrid = memo(({
             <option value="Chegirma">Chegirma</option>
             <option value="Yangi">Yangi</option>
           </select>
-          
+
           <button
             onClick={() => setIsPriceRatingSheetOpen(true)}
             className="text-sm text-blue-600 hover:text-blue-800 underline"
           >
             Narx bo'yicha filtrlash
           </button>
-          
+
           {(appliedMinPrice || appliedMaxPrice) && (
             <button
               onClick={resetPriceFilter}
@@ -427,7 +427,7 @@ const ProductsGrid = memo(({
                 <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">
                   {product.name}
                 </h3>
-                
+
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-2">
                     <span className="text-lg font-bold text-orange-600">
@@ -498,7 +498,7 @@ const ProductsGrid = memo(({
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end">
           <div className="bg-white w-full max-w-md mx-auto rounded-t-lg p-6">
             <h3 className="text-lg font-semibold mb-4">Narx bo'yicha filtrlash</h3>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -512,7 +512,7 @@ const ProductsGrid = memo(({
                   placeholder="0"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Maksimal narx (so'm)
@@ -526,7 +526,7 @@ const ProductsGrid = memo(({
                 />
               </div>
             </div>
-            
+
             <div className="flex space-x-3 mt-6">
               <button
                 onClick={() => setIsPriceRatingSheetOpen(false)}

@@ -68,22 +68,22 @@ function App() {
           <ProtectedRoute>
             <div className="flex">
               <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-              <AdminSidebar
-                active="dashboard"
-                onLogout={handleLogout}
-                isMobileOpen={isMobileSidebarOpen}
-                onMobileToggle={handleMobileToggle}
-                counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
-              />
+                <AdminSidebar
+                  active="dashboard"
+                  onLogout={handleLogout}
+                  isMobileOpen={isMobileSidebarOpen}
+                  onMobileToggle={handleMobileToggle}
+                  counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
+                />
               </Suspense>
               <div className="flex-1 lg:ml-64">
                 <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-                <AdminDashboard
-                  onMobileToggle={handleMobileToggle}
-                  craftsmenCount={craftsmenCount}
-                  productsCount={productsCount}
-                  ordersCount={ordersCount}
-                />
+                  <AdminDashboard
+                    onMobileToggle={handleMobileToggle}
+                    craftsmenCount={craftsmenCount}
+                    productsCount={productsCount}
+                    ordersCount={ordersCount}
+                  />
                 </Suspense>
               </div>
             </div>
@@ -93,20 +93,20 @@ function App() {
           <ProtectedRoute>
             <div className="flex ">
               <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-              <AdminSidebar
-                active="craftsmen"
-                onLogout={handleLogout}
-                isMobileOpen={isMobileSidebarOpen}
-                onMobileToggle={handleMobileToggle}
-                counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
-              />
+                <AdminSidebar
+                  active="craftsmen"
+                  onLogout={handleLogout}
+                  isMobileOpen={isMobileSidebarOpen}
+                  onMobileToggle={handleMobileToggle}
+                  counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
+                />
               </Suspense>
               <div className="flex-1 lg:ml-64">
                 <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-                <AdminCraftsmen
-                  onCountChange={handleCraftsmenCountChange}
-                  onMobileToggle={handleMobileToggle}
-                />
+                  <AdminCraftsmen
+                    onCountChange={handleCraftsmenCountChange}
+                    onMobileToggle={handleMobileToggle}
+                  />
                 </Suspense>
               </div>
             </div>
@@ -116,20 +116,20 @@ function App() {
           <ProtectedRoute>
             <div className="flex">
               <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-              <AdminSidebar
-                active="products"
-                onLogout={handleLogout}
-                isMobileOpen={isMobileSidebarOpen}
-                onMobileToggle={handleMobileToggle}
-                counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
-              />
+                <AdminSidebar
+                  active="products"
+                  onLogout={handleLogout}
+                  isMobileOpen={isMobileSidebarOpen}
+                  onMobileToggle={handleMobileToggle}
+                  counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
+                />
               </Suspense>
               <div className="flex-1 lg:ml-64">
                 <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-                <AdminProducts
-                  onMobileToggle={handleMobileToggle}
-                  onCountChange={handleProductsCountChange}
-                />
+                  <AdminProducts
+                    onMobileToggle={handleMobileToggle}
+                    onCountChange={handleProductsCountChange}
+                  />
                 </Suspense>
               </div>
             </div>
@@ -139,20 +139,20 @@ function App() {
           <ProtectedRoute>
             <div className="flex">
               <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-              <AdminSidebar
-                active="orders"
-                onLogout={handleLogout}
-                isMobileOpen={isMobileSidebarOpen}
-                onMobileToggle={handleMobileToggle}
-                counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
-              />
+                <AdminSidebar
+                  active="orders"
+                  onLogout={handleLogout}
+                  isMobileOpen={isMobileSidebarOpen}
+                  onMobileToggle={handleMobileToggle}
+                  counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
+                />
               </Suspense>
               <div className="flex-1 lg:ml-64">
                 <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-                <AdminOrders
-                  onMobileToggle={handleMobileToggle}
-                  onCountChange={handleOrdersCountChange}
-                />
+                  <AdminOrders
+                    onMobileToggle={handleMobileToggle}
+                    onCountChange={handleOrdersCountChange}
+                  />
                 </Suspense>
               </div>
             </div>
@@ -162,19 +162,19 @@ function App() {
           <ProtectedRoute>
             <div className="flex">
               <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-              <AdminSidebar
-                active="analytics"
-                onLogout={handleLogout}
-                isMobileOpen={isMobileSidebarOpen}
-                onMobileToggle={handleMobileToggle}
-                counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
-              />
+                <AdminSidebar
+                  active="analytics"
+                  onLogout={handleLogout}
+                  isMobileOpen={isMobileSidebarOpen}
+                  onMobileToggle={handleMobileToggle}
+                  counts={{ craftsmenCount: craftsmenCount, productsCount: productsCount, ordersCount: ordersCount }}
+                />
               </Suspense>
               <div className="flex-1">
                 <Suspense fallback={<div className="p-6">Yuklanmoqda...</div>}>
-                <AdminAnalytics
-                  onMobileToggle={handleMobileToggle}
-                />
+                  <AdminAnalytics
+                    onMobileToggle={handleMobileToggle}
+                  />
                 </Suspense>
               </div>
             </div>

@@ -174,17 +174,25 @@ const ModernProductCard = memo(({
     onOpenDetail(product);
   }, [product, onOpenDetail]);
 
+  // Badge/chegirma borligini tekshirish
+  const hasBadges = product.isNew || product.isPopular || (product.badge && product.badge !== 'Yo\'q') || 
+                   (product.stock !== undefined && product.stock < 5 && product.stock > 0) || discount > 0;
+
   return (
     <div
-      className={`group bg-white rounded-lg shadow-md p-2.5 md:p-3 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 border border-gray-200 hover:border-orange-200 relative h-full flex flex-col cursor-pointer ${className}`}
+      className={`group bg-white rounded-lg shadow-md p-2 sm:p-2.5 md:p-3 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 border border-gray-200 hover:border-orange-200 relative h-full flex flex-col cursor-pointer ${className}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleCardClick}
     >
-      {/* Image Container */}
-      <div className="relative cursor-pointer overflow-hidden rounded-lg mb-3 border border-gray-100" onClick={handleOpenDetail}>
+      {/* Image Container - Dinamik height */}
+      <div className="relative cursor-pointer overflow-hidden rounded-lg mb-2 sm:mb-3 border border-gray-100" onClick={handleOpenDetail}>
         <div
-          className="relative w-full h-48 sm:h-56 lg:h-64 bg-white rounded-lg"
+          className={`relative w-full bg-white rounded-lg ${
+            hasBadges 
+              ? 'h-40 sm:h-48 lg:h-56' // Badge bor bo'lsa kichikroq
+              : 'h-44 sm:h-52 lg:h-60' // Badge yo'q bo'lsa kattaroq
+          }`}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           onTouchStart={handleTouchStart}
@@ -237,41 +245,41 @@ const ModernProductCard = memo(({
             </div>
           )}
 
-          {/* Badges - Left side */}
-          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
-            {/* New Badge - Smaller font */}
+          {/* Badges - Left side - Telefon uchun kichraytirilgan */}
+          <div className="absolute top-1 left-1 z-10 flex flex-col gap-0.5">
+            {/* New Badge - Telefon uchun kichik */}
             {product.isNew && (
-              <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-md font-normal">
+              <span className="bg-blue-500 text-white text-[10px] sm:text-xs px-1 sm:px-2 py-0.5 rounded font-normal">
                 Yangi
               </span>
             )}
             
-            {/* Popular Badge */}
+            {/* Popular Badge - Telefon uchun kichik */}
             {product.isPopular && (
-              <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-md font-normal">
+              <span className="bg-green-500 text-white text-[10px] sm:text-xs px-1 sm:px-2 py-0.5 rounded font-normal">
                 Top
               </span>
             )}
 
-            {/* Custom Badge */}
+            {/* Custom Badge - Telefon uchun kichik */}
             {product.badge && product.badge !== 'Yo\'q' && (
-              <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-md font-normal">
+              <span className="bg-blue-500 text-white text-[10px] sm:text-xs px-1 sm:px-2 py-0.5 rounded font-normal">
                 {product.badge}
               </span>
             )}
 
-            {/* Stock Badge */}
+            {/* Stock Badge - Telefon uchun kichik */}
             {product.stock !== undefined && product.stock < 5 && product.stock > 0 && (
-              <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-md font-normal">
+              <span className="bg-orange-500 text-white text-[10px] sm:text-xs px-1 sm:px-2 py-0.5 rounded font-normal">
                 Kam qoldi
               </span>
             )}
           </div>
 
-          {/* Discount Badge - Right side, smaller font, no animation */}
+          {/* Discount Badge - Right side - Telefon uchun kichik */}
           {discount > 0 && (
-            <div className="absolute top-2 right-2 z-10">
-              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-md font-normal">
+            <div className="absolute top-1 right-1 z-10">
+              <span className="bg-red-500 text-white text-[10px] sm:text-xs px-1 sm:px-2 py-0.5 rounded font-normal">
                 -{discount}%
               </span>
             </div>
@@ -279,10 +287,10 @@ const ModernProductCard = memo(({
         </div>
       </div>
 
-      {/* Product Info - Zamonaviy va rangli dizayn */}
+      {/* Product Info - Kichraytirilgan */}
       <div className="flex flex-col flex-1 justify-between">
         {/* All Product Information in One Container */}
-        <div className="space-y-2">
+        <div className="space-y-1.5 sm:space-y-2">
           {/* Brand - Rangli brand indicator */}
           {product.brand && (
             <div className="inline-flex items-center gap-1.5">
@@ -293,25 +301,38 @@ const ModernProductCard = memo(({
             </div>
           )}
           
-          {/* Product Name va Description - Yaqin joylashtirilgan */}
-          <div className="cursor-pointer space-y-1" onClick={handleOpenDetail}>
-            <h3 className="font-semibold text-sm md:text-base text-gray-900 leading-snug hover:text-primary-orange transition-colors duration-200 line-clamp-2">
+          {/* Product Name va Description - Kichraytirilgan */}
+          <div className="cursor-pointer space-y-0.5 sm:space-y-1" onClick={handleOpenDetail}>
+            <h3 className="font-semibold text-xs sm:text-sm md:text-base text-gray-900 leading-tight hover:text-primary-orange transition-colors duration-200 line-clamp-2">
               {product.name || 'Noma\'lum mahsulot'}
             </h3>
             
-            {/* Description - Yaqin joylashtirilgan */}
+            {/* Description - Kichraytirilgan */}
             {product.description && (
-              <div className="bg-slate-50 p-1.5 rounded border-l-2 border-slate-200 mt-0">
-                <p className="text-slate-600 text-xs leading-tight line-clamp-2 font-medium m-0">
+              <div className="bg-slate-50 p-1 sm:p-1.5 rounded border-l-2 border-slate-200 mt-0">
+                <p className="text-slate-600 text-[10px] sm:text-xs leading-tight line-clamp-2 font-medium m-0">
                   {product.description}
                 </p>
               </div>
             )}
           </div>
           
-          {/* Price Section - Enhanced layout with colors */}
-          <div className="space-y-1">
-            <div className="flex items-baseline gap-2">
+          {/* Price Section - Narxlar yopishiq */}
+          <div>
+            {/* Telefon uchun - alohida qatorlarda, gap yo'q */}
+            <div className="flex flex-col sm:hidden">
+              <span className="text-base font-bold text-primary-orange leading-tight">
+                {formatPrice(product.price)}
+              </span>
+              {product.oldPrice && (
+                <span className="text-xs text-gray-400 line-through leading-tight">
+                  {formatPrice(product.oldPrice)}
+                </span>
+              )}
+            </div>
+            
+            {/* Desktop uchun - yonma-yon */}
+            <div className="hidden sm:flex items-baseline gap-2">
               <span className="text-lg md:text-xl font-bold text-primary-orange">
                 {formatPrice(product.price)}
               </span>
@@ -323,10 +344,10 @@ const ModernProductCard = memo(({
             </div>
           </div>
           
-          {/* Stock Info - Compact one line */}
-          <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full ${product.stock > 10 ? 'bg-green-500' : product.stock > 0 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+          {/* Stock Info - Kichraytirilgan */}
+          <div className="flex items-center justify-between text-[10px] sm:text-xs">
+            <div className="flex items-center gap-1">
+              <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${product.stock > 10 ? 'bg-green-500' : product.stock > 0 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
               <span className="text-gray-600 font-medium">Mavjud:</span>
             </div>
             <span className={`font-semibold ${
@@ -341,11 +362,11 @@ const ModernProductCard = memo(({
           </div>
         </div>
         
-        {/* Button - Always at bottom */}
+        {/* Button - Kichraytirilgan */}
         <button
           onClick={handleAddToCart}
           disabled={product.stock === 0}
-          className={`w-full py-2 px-4 rounded-lg font-semibold text-sm transition-all duration-200 mt-3 ${
+          className={`w-full py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-200 mt-2 sm:mt-3 ${
             product.stock === 0
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-primary-orange to-orange-500 text-white hover:from-orange-600 hover:to-orange-600 hover:shadow-lg active:scale-[0.98] shadow-md'
