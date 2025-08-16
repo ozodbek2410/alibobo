@@ -6,9 +6,21 @@ import Craftsmen from './Craftsmen';
 import Services from './Services';
 import Footer from './Footer';
 import { useParallelFetch } from '../hooks/useOptimizedFetch';
+import { 
+  useIntelligentPreloading, 
+  useUserBehaviorPreloading, 
+  useNetworkAwarePreloading,
+  useViewportPreloading 
+} from '../hooks/useIntelligentPreloading';
 
 const MainPage = ({ onSuccessfulLogin }) => {
   const [craftsmenData, setCraftsmenData] = useState([]);
+
+  // Initialize intelligent preloading hooks
+  const { preloadOnHover, preloadNow } = useIntelligentPreloading('user');
+  useUserBehaviorPreloading();
+  useNetworkAwarePreloading();
+  useViewportPreloading();
 
 
   // Cart states - centralized here

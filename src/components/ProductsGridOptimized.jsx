@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
-import useSmartFetch from '../hooks/useSmartFetch';
+import { useProducts, usePrefetchProduct } from '../hooks/useProductQueries';
+import { useDebouncedSearch } from '../hooks/useDebounce';
 import CartSidebar from './CartSidebar';
 import { ProductsGridSkeleton } from './LoadingSkeleton';
 import ProductDetail from './ProductDetail';
@@ -14,7 +15,8 @@ const ProductsGrid = memo(({
   onCheckout,
   selectedCategory,
   searchQuery,
-  onInitialProductsLoaded
+  onInitialProductsLoaded,
+  onSearchQueryChange
 }) => {
   // State management
   const [displayedProducts, setDisplayedProducts] = useState(20);
@@ -67,39 +69,23 @@ const ProductsGrid = memo(({
     return categoryMapping[frontendCategory] || frontendCategory;
   }, []);
 
-  // Build API URL with memoization to prevent unnecessary re-renders
-  const apiUrl = useMemo(() => {
-    const params = new URLSearchParams();
-    params.append('limit', '20');
-    params.append('page', '1');
-    params.append('sortBy', 'updatedAt');
-    params.append('sortOrder', 'desc');
-
-    if (selectedCategory && selectedCategory !== '') {
-      params.append('category', getCategoryApiValue(selectedCategory));
-    }
-
-    if (searchQuery && searchQuery.trim() !== '') {
-      params.append('search', searchQuery.trim());
-    }
-
-    return `http://localhost:5000/api/products?${params.toString()}`;
-  }, [selectedCategory, searchQuery, getCategoryApiValue]);
-
-  // Smart data fetching with caching and intelligent refetch
+  // Use React Query for optimized data fetching with caching
   const {
     data: apiResponse,
-    loading,
+    isLoading,
     error,
     refetch,
     isStale,
-    lastFetch
-  } = useSmartFetch(apiUrl, {
-    cacheTime: 5 * 60 * 1000, // 5 minutes cache
-    staleTime: 2 * 60 * 1000, // 2 minutes stale time
-    refetchOnFocus: true, // Smart focus refetch
-    enabled: true
-  });
+    dataUpdatedAt
+  } = useProducts(
+    selectedCategory ? getCategoryApiValue(selectedCategory) : null,
+    searchQuery,
+    1, // page
+    20  // limit
+  );
+
+  // Prefetch hook for product details on hover
+  const prefetchProduct = usePrefetchProduct();
 
   // Memoized products to prevent unnecessary re-renders
   const products = useMemo(() => {
@@ -187,6 +173,11 @@ const ProductsGrid = memo(({
     refetch();
   }, [refetch]);
 
+  // Prefetch product details on hover for instant navigation
+  const handleProductHover = useCallback((productId) => {
+    prefetchProduct(productId);
+  }, [prefetchProduct]);
+
   // Load more products function
   const loadMoreProducts = useCallback(() => {
     const newDisplayed = Math.min(displayedProducts + 20, filteredProducts.length);
@@ -260,7 +251,7 @@ const ProductsGrid = memo(({
   }, []);
 
   // Loading state - Show skeleton instead of spinner for better UX
-  if (loading && products.length === 0) {
+  if (isLoading && products.length === 0) {
     return <ProductsGridSkeleton count={8} />;
   }
 
@@ -301,17 +292,17 @@ const ProductsGrid = memo(({
         </div>
 
         <div className="flex items-center space-x-2">
-          {lastFetch && (
+          {dataUpdatedAt && (
             <span className="text-sm text-gray-500">
-              Oxirgi yangilanish: {lastFetch}
+              Oxirgi yangilanish: {new Date(dataUpdatedAt).toLocaleTimeString()}
             </span>
           )}
           <button
             onClick={handleRefresh}
-            disabled={loading}
+            disabled={isLoading}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50"
           >
-            {loading ? '⏳' : '🔄'} Yangilash
+            {isLoading ? '⏳' : '🔄'} Yangilash
           </button>
         </div>
       </div>
@@ -362,6 +353,7 @@ const ProductsGrid = memo(({
               key={product._id}
               className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 cursor-pointer"
               onClick={() => openProductDetail(product)}
+              onMouseEnter={() => handleProductHover(product._id)}
             >
               {/* Image Container */}
               <div className="relative h-48 overflow-hidden rounded-t-lg">

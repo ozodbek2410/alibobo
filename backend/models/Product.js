@@ -152,11 +152,76 @@ productSchema.pre('save', function (next) {
   next();
 });
 
-// Index for better search performance
-productSchema.index({ name: 'text', description: 'text', category: 'text' });
-productSchema.index({ category: 1 });
-productSchema.index({ price: 1 });
-productSchema.index({ createdAt: -1 });
-productSchema.index({ updatedAt: -1 });
+// Comprehensive indexing strategy for optimal query performance
+
+// 1. Text search index for full-text search functionality
+productSchema.index({ 
+  name: 'text', 
+  description: 'text', 
+  category: 'text' 
+}, {
+  weights: {
+    name: 10,        // Name is most important for search
+    category: 5,     // Category is moderately important
+    description: 1   // Description is least important
+  },
+  name: 'product_text_search'
+});
+
+// 2. Category-based queries (most common filter)
+productSchema.index({ category: 1, status: 1 });
+productSchema.index({ category: 1, price: 1 }); // Category + price filtering
+productSchema.index({ category: 1, createdAt: -1 }); // Category + newest first
+
+// 3. Price-based queries and sorting
+productSchema.index({ price: 1, status: 1 }); // Price filtering with active products
+productSchema.index({ price: -1, status: 1 }); // Price high to low
+productSchema.index({ oldPrice: 1, price: 1 }); // Discount calculations
+
+// 4. Status and availability indexes
+productSchema.index({ status: 1, createdAt: -1 }); // Active products, newest first
+productSchema.index({ status: 1, stock: 1 }); // Available products
+productSchema.index({ stock: 1 }); // Stock availability
+
+// 5. Popularity and featured products
+productSchema.index({ isPopular: 1, status: 1 });
+productSchema.index({ isNew: 1, status: 1 });
+productSchema.index({ badge: 1, status: 1 });
+productSchema.index({ rating: -1, status: 1 }); // Highest rated first
+
+// 6. Time-based queries
+productSchema.index({ createdAt: -1, status: 1 }); // Newest products
+productSchema.index({ updatedAt: -1, status: 1 }); // Recently updated
+
+// 7. Compound indexes for common query patterns
+productSchema.index({ 
+  status: 1, 
+  category: 1, 
+  price: 1, 
+  createdAt: -1 
+}); // Complete product listing with filters
+
+productSchema.index({ 
+  status: 1, 
+  isPopular: 1, 
+  rating: -1 
+}); // Popular products by rating
+
+productSchema.index({ 
+  status: 1, 
+  stock: 1, 
+  category: 1 
+}); // Available products by category
+
+// 8. Variant-specific indexes
+productSchema.index({ hasVariants: 1, status: 1 });
+productSchema.index({ 'variants.options.stock': 1 }); // Variant stock
+
+// 9. SEO and slug indexes
+productSchema.index({ slug: 1 }, { unique: true, sparse: true });
+
+// 10. Admin dashboard indexes
+productSchema.index({ createdAt: -1 }); // For admin product listing
+productSchema.index({ updatedAt: -1 }); // For recently modified products
 
 module.exports = mongoose.model('Product', productSchema);

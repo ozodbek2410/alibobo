@@ -1,148 +1,202 @@
-import { useState, useMemo, useCallback, useDeferredValue, useTransition, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useThrottle } from './useDebounce';
 
-// Debounce хук
-function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
+// Hook for managing filters with throttling to prevent excessive API calls
+export const useOptimizedFilters = (initialFilters = {}) => {
+  const [filters, setFilters] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-    
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-  
-  return debouncedValue;
-}
+  // Throttle filter updates to prevent excessive API calls
+  const throttledFilters = useThrottle(filters, 300);
 
-// Основной хук для оптимизированной фильтрации
-export function useOptimizedFilters(products, initialFilters = {}) {
-  const [filters, setFilters] = useState({
-    search: '',
-    category: '',
-    priceRange: 'all',
-    minPrice: '',
-    maxPrice: '',
-    sortBy: 'updatedAt',
-    sortOrder: 'desc',
-    ...initialFilters
-  });
-  
-  const [isPending, startTransition] = useTransition();
-  
-  // Debounce для поиска (300ms)
-  const debouncedSearch = useDebounce(filters.search, 300);
-  const debouncedMinPrice = useDebounce(filters.minPrice, 400);
-  const debouncedMaxPrice = useDebounce(filters.maxPrice, 400);
-  
-  // Deferred values для плавности UI
-  const deferredSearch = useDeferredValue(debouncedSearch);
-  const deferredMinPrice = useDeferredValue(debouncedMinPrice);
-  const deferredMaxPrice = useDeferredValue(debouncedMaxPrice);
-  
-  // Мемоизированная фильтрация
-  const filteredProducts = useMemo(() => {
-    if (!products || products.length === 0) return [];
-    
-    let filtered = [...products];
-    
-    // Поиск по названию
-    if (deferredSearch.trim()) {
-      const searchLower = deferredSearch.toLowerCase().trim();
-      filtered = filtered.filter(product => 
-        product.name?.toLowerCase().includes(searchLower) ||
-        product.description?.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    // Фильтр по категории
-    if (filters.category && filters.category !== 'all') {
-      filtered = filtered.filter(product => 
-        product.category === filters.category
-      );
-    }
-    
-    // Фильтр по цене
-    if (deferredMinPrice || deferredMaxPrice) {
-      filtered = filtered.filter(product => {
-        const price = parseInt(product.price?.toString().replace(/[^\d]/g, '') || '0');
-        const min = deferredMinPrice ? parseInt(deferredMinPrice) : 0;
-        const max = deferredMaxPrice ? parseInt(deferredMaxPrice) : Infinity;
-        return price >= min && price <= max;
-      });
-    }
-    
-    // Сортировка
-    filtered.sort((a, b) => {
-      const { sortBy, sortOrder } = filters;
-      let aValue, bValue;
-      
-      switch (sortBy) {
-        case 'price':
-          aValue = parseInt(a.price?.toString().replace(/[^\d]/g, '') || '0');
-          bValue = parseInt(b.price?.toString().replace(/[^\d]/g, '') || '0');
-          break;
-        case 'name':
-          aValue = a.name?.toLowerCase() || '';
-          bValue = b.name?.toLowerCase() || '';
-          break;
-        case 'updatedAt':
-        default:
-          aValue = new Date(a.updatedAt || 0);
-          bValue = new Date(b.updatedAt || 0);
-          break;
-      }
-      
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-    
-    return filtered;
-  }, [products, deferredSearch, filters.category, deferredMinPrice, deferredMaxPrice, filters.sortBy, filters.sortOrder]);
-  
-  // Оптимизированные обновления фильтров
+  // Update applied filters when throttled filters change
+  useMemo(() => {
+    setAppliedFilters(throttledFilters);
+  }, [throttledFilters]);
+
+  // Update individual filter
   const updateFilter = useCallback((key, value) => {
-    startTransition(() => {
-      setFilters(prev => ({ ...prev, [key]: value }));
-    });
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
   }, []);
-  
+
+  // Update multiple filters at once
   const updateFilters = useCallback((newFilters) => {
-    startTransition(() => {
-      setFilters(prev => ({ ...prev, ...newFilters }));
+    setFilters(prev => ({
+      ...prev,
+      ...newFilters
+    }));
+  }, []);
+
+  // Clear specific filter
+  const clearFilter = useCallback((key) => {
+    setFilters(prev => {
+      const newFilters = { ...prev };
+      delete newFilters[key];
+      return newFilters;
     });
   }, []);
-  
-  const resetFilters = useCallback(() => {
-    startTransition(() => {
-      setFilters({
-        search: '',
-        category: '',
-        priceRange: 'all',
-        minPrice: '',
-        maxPrice: '',
-        sortBy: 'updatedAt',
-        sortOrder: 'desc'
-      });
-    });
+
+  // Clear all filters
+  const clearAllFilters = useCallback(() => {
+    setFilters({});
   }, []);
-  
+
+  // Check if filters are active
+  const hasActiveFilters = useMemo(() => {
+    return Object.keys(appliedFilters).length > 0 && 
+           Object.values(appliedFilters).some(value => 
+             value !== null && value !== undefined && value !== ''
+           );
+  }, [appliedFilters]);
+
+  // Get filter count
+  const activeFilterCount = useMemo(() => {
+    return Object.values(appliedFilters).filter(value => 
+      value !== null && value !== undefined && value !== ''
+    ).length;
+  }, [appliedFilters]);
+
   return {
     filters,
-    filteredProducts,
+    appliedFilters,
     updateFilter,
     updateFilters,
-    resetFilters,
-    isPending,
-    // Статистика для отладки
-    stats: {
-      total: products?.length || 0,
-      filtered: filteredProducts.length,
-      isSearching: !!deferredSearch.trim(),
-      hasFilters: filters.category !== '' || deferredMinPrice || deferredMaxPrice
-    }
+    clearFilter,
+    clearAllFilters,
+    hasActiveFilters,
+    activeFilterCount,
+    isFiltering: JSON.stringify(filters) !== JSON.stringify(throttledFilters)
   };
-}
+};
+
+// Hook for price range filtering with validation
+export const usePriceRangeFilter = (initialMin = '', initialMax = '') => {
+  const [minPrice, setMinPrice] = useState(initialMin);
+  const [maxPrice, setMaxPrice] = useState(initialMax);
+  const [appliedMinPrice, setAppliedMinPrice] = useState(initialMin);
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState(initialMax);
+
+  // Validate and apply price range
+  const applyPriceRange = useCallback(() => {
+    const min = parseFloat(minPrice) || 0;
+    const max = parseFloat(maxPrice) || Infinity;
+    
+    // Validate range
+    if (min > max && max !== Infinity) {
+      // Swap values if min > max
+      setMinPrice(max.toString());
+      setMaxPrice(min.toString());
+      setAppliedMinPrice(max.toString());
+      setAppliedMaxPrice(min.toString());
+    } else {
+      setAppliedMinPrice(minPrice);
+      setAppliedMaxPrice(maxPrice);
+    }
+  }, [minPrice, maxPrice]);
+
+  // Clear price range
+  const clearPriceRange = useCallback(() => {
+    setMinPrice('');
+    setMaxPrice('');
+    setAppliedMinPrice('');
+    setAppliedMaxPrice('');
+  }, []);
+
+  // Check if price range is active
+  const hasPriceRange = useMemo(() => {
+    return appliedMinPrice !== '' || appliedMaxPrice !== '';
+  }, [appliedMinPrice, appliedMaxPrice]);
+
+  // Get price range object for API
+  const priceRange = useMemo(() => {
+    const range = {};
+    if (appliedMinPrice !== '') range.min = parseFloat(appliedMinPrice);
+    if (appliedMaxPrice !== '') range.max = parseFloat(appliedMaxPrice);
+    return Object.keys(range).length > 0 ? range : null;
+  }, [appliedMinPrice, appliedMaxPrice]);
+
+  return {
+    minPrice,
+    maxPrice,
+    appliedMinPrice,
+    appliedMaxPrice,
+    setMinPrice,
+    setMaxPrice,
+    applyPriceRange,
+    clearPriceRange,
+    hasPriceRange,
+    priceRange
+  };
+};
+
+// Hook for category filtering with hierarchy support
+export const useCategoryFilter = (initialCategory = '') => {
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  const [categoryHistory, setCategoryHistory] = useState([]);
+
+  // Navigate to category
+  const navigateToCategory = useCallback((category) => {
+    if (selectedCategory && selectedCategory !== category) {
+      setCategoryHistory(prev => [...prev, selectedCategory]);
+    }
+    setSelectedCategory(category);
+  }, [selectedCategory]);
+
+  // Go back to previous category
+  const goBackCategory = useCallback(() => {
+    if (categoryHistory.length > 0) {
+      const previousCategory = categoryHistory[categoryHistory.length - 1];
+      setCategoryHistory(prev => prev.slice(0, -1));
+      setSelectedCategory(previousCategory);
+    } else {
+      setSelectedCategory('');
+    }
+  }, [categoryHistory]);
+
+  // Clear category selection
+  const clearCategory = useCallback(() => {
+    setSelectedCategory('');
+    setCategoryHistory([]);
+  }, []);
+
+  return {
+    selectedCategory,
+    categoryHistory,
+    navigateToCategory,
+    goBackCategory,
+    clearCategory,
+    hasCategory: selectedCategory !== '',
+    canGoBack: categoryHistory.length > 0
+  };
+};
+
+// Hook for sorting with common sort options
+export const useSortFilter = (initialSort = 'newest') => {
+  const [sortBy, setSortBy] = useState(initialSort);
+
+  const sortOptions = useMemo(() => [
+    { value: 'newest', label: 'Eng yangi', field: 'createdAt', order: 'desc' },
+    { value: 'oldest', label: 'Eng eski', field: 'createdAt', order: 'asc' },
+    { value: 'price-low', label: 'Narx: Pastdan yuqoriga', field: 'price', order: 'asc' },
+    { value: 'price-high', label: 'Narx: Yuqoridan pastga', field: 'price', order: 'desc' },
+    { value: 'name-az', label: 'Nom: A-Z', field: 'name', order: 'asc' },
+    { value: 'name-za', label: 'Nom: Z-A', field: 'name', order: 'desc' },
+    { value: 'popular', label: 'Mashhur', field: 'popularity', order: 'desc' }
+  ], []);
+
+  const currentSort = useMemo(() => {
+    return sortOptions.find(option => option.value === sortBy) || sortOptions[0];
+  }, [sortBy, sortOptions]);
+
+  return {
+    sortBy,
+    setSortBy,
+    sortOptions,
+    currentSort,
+    sortField: currentSort.field,
+    sortOrder: currentSort.order
+  };
+};

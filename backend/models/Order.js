@@ -57,14 +57,44 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for better performance
-orderSchema.index({ status: 1 });
-orderSchema.index({ createdAt: 1 });
-orderSchema.index({ updatedAt: 1 });
-orderSchema.index({ totalAmount: 1 });
-orderSchema.index({ status: 1, createdAt: 1 });
-orderSchema.index({ createdAt: 1, updatedAt: 1 }, { name: 'edit_tracking' });
+// Comprehensive indexing for order management and analytics
+
+// 1. Status-based queries (most common)
+orderSchema.index({ status: 1, createdAt: -1 }); // Orders by status, newest first
+orderSchema.index({ status: 1, totalAmount: -1 }); // High-value orders by status
+
+// 2. Time-based queries for analytics
+orderSchema.index({ createdAt: -1 }); // Recent orders
+orderSchema.index({ orderDate: -1 }); // Orders by date
+orderSchema.index({ completedDate: -1 }, { sparse: true }); // Completed orders only
+
+// 3. Customer-based queries
+orderSchema.index({ customerPhone: 1, createdAt: -1 }); // Customer order history
+orderSchema.index({ customerEmail: 1, createdAt: -1 }, { sparse: true }); // Email-based lookup
+
+// 4. Financial analytics
+orderSchema.index({ totalAmount: -1, status: 1 }); // High-value orders
 orderSchema.index({ createdAt: 1, totalAmount: 1 }, { name: 'revenue_calculations' });
-orderSchema.index({ customerName: 'text', customerPhone: 'text' });
+
+// 5. Text search for customer lookup
+orderSchema.index({ 
+  customerName: 'text', 
+  customerPhone: 'text',
+  customerEmail: 'text'
+}, {
+  weights: {
+    customerPhone: 10,  // Phone is primary identifier
+    customerName: 5,    // Name is secondary
+    customerEmail: 3    // Email is tertiary
+  },
+  name: 'customer_search'
+});
+
+// 6. Admin dashboard queries
+orderSchema.index({ status: 1, updatedAt: -1 }); // Recently updated orders
+orderSchema.index({ createdAt: -1, status: 1 }); // Recent orders with status
+
+// 7. Performance monitoring
+orderSchema.index({ updatedAt: -1 }); // Recently modified orders
 
 module.exports = mongoose.model('Order', orderSchema);

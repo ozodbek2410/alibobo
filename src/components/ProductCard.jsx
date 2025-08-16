@@ -1,11 +1,15 @@
 import React, { useState, useCallback, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import OptimizedImage from './OptimizedImage';
 
 const ProductCard = memo(({
   product,
   onAddToCart,
   onOpenDetail,
-  className = ""
+  className = "",
+  enableRouteNavigation = true
 }) => {
+  const navigate = useNavigate();
   const [imageLoading, setImageLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -58,27 +62,42 @@ const ProductCard = memo(({
   const currentImage = productImages[currentImageIndex];
   const discount = product.oldPrice ? calculateDiscount(product.price, product.oldPrice) : 0;
 
-  // Handle action buttons
+  // Handle card click - navigate to product detail page
   const handleCardClick = useCallback(() => {
-    // If product has variants, open detail modal for variant selection
-    if (product.hasVariants && product.variants && product.variants.length > 0) {
-      onOpenDetail(product);
+    if (enableRouteNavigation) {
+      navigate(`/product/${product._id}`);
     } else {
-      // If no variants, add directly to cart
-      onAddToCart(product);
+      // Fallback to modal for quick preview
+      if (product.hasVariants && product.variants && product.variants.length > 0) {
+        onOpenDetail(product);
+      } else {
+        onAddToCart(product);
+      }
     }
-  }, [product, onOpenDetail, onAddToCart]);
+  }, [product, onOpenDetail, onAddToCart, navigate, enableRouteNavigation]);
 
-  const handleButtonClick = useCallback((e) => {
+  // Handle quick preview button
+  const handleQuickPreview = useCallback((e) => {
     e.stopPropagation();
-
-    // If product has variants, open detail modal instead of adding directly
-    if (product.hasVariants && product.variants && product.variants.length > 0) {
+    if (onOpenDetail) {
       onOpenDetail(product);
+    }
+  }, [onOpenDetail, product]);
+
+  // Handle add to cart button
+  const handleAddToCart = useCallback((e) => {
+    e.stopPropagation();
+    if (product.hasVariants && product.variants && product.variants.length > 0) {
+      // For products with variants, open detail page or modal
+      if (enableRouteNavigation) {
+        navigate(`/product/${product._id}`);
+      } else {
+        onOpenDetail(product);
+      }
     } else {
       onAddToCart(product);
     }
-  }, [onAddToCart, onOpenDetail, product]);
+  }, [onAddToCart, onOpenDetail, product, navigate, enableRouteNavigation]);
 
   return (
     <div
@@ -120,25 +139,17 @@ const ProductCard = memo(({
 
       {/* Image Container */}
       <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden relative group">
-        <img
+        <OptimizedImage
           src={currentImage}
           alt={product.name}
-          className={`w-full h-full object-contain hover:scale-105 transition-transform duration-300 ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
-          loading="lazy"
+          className="w-full h-full hover:scale-105 transition-transform duration-300"
+          aspectRatio="1"
+          objectFit="contain"
+          placeholder="skeleton"
+          priority={false}
           onLoad={() => setImageLoading(false)}
-          onError={() => {
-            setImageLoading(false);
-          }}
+          onError={() => setImageLoading(false)}
         />
-
-        {/* Loading Skeleton */}
-        {imageLoading && (
-          <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
-            <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-            </svg>
-          </div>
-        )}
 
         {/* Image Navigation - Show only if multiple images */}
         {productImages.length > 1 && (
@@ -239,17 +250,30 @@ const ProductCard = memo(({
           Mavjud: {product.stock || 0} {product.unit || 'dona'}
         </div>
 
-        {/* Action Button */}
-        <button
-          onClick={handleButtonClick}
-          disabled={product.stock === 0}
-          className={`w-full py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-300 mt-auto ${product.stock === 0
-            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-            : 'bg-primary-orange text-white hover:bg-opacity-90 hover:shadow-md'
-            }`}
-        >
-          {product.stock === 0 ? 'Tugagan' : 'Ko\'rish'}
-        </button>
+        {/* Action Buttons */}
+        <div className="space-y-2">
+          <button
+            onClick={handleAddToCart}
+            disabled={product.stock === 0}
+            className={`w-full py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-300 ${product.stock === 0
+              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+              : 'bg-primary-orange text-white hover:bg-opacity-90 hover:shadow-md'
+              }`}
+          >
+            {product.stock === 0 ? 'Tugagan' : 
+             (product.hasVariants && product.variants && product.variants.length > 0) ? 'Ko\'rish' : 'Savatga'}
+          </button>
+          
+          {/* Quick Preview Button (only show if modal handler exists) */}
+          {onOpenDetail && enableRouteNavigation && (
+            <button
+              onClick={handleQuickPreview}
+              className="w-full py-2 px-4 rounded-lg font-medium text-sm border border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition-all duration-300"
+            >
+              Tez ko'rish
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

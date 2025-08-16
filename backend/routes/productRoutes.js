@@ -1,112 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
+const { getProducts, getProductById, getCategories, clearCache } = require('../controllers/productController');
 
-// GET /api/products - Get all products with pagination and filtering
-router.get('/', async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 20,
-      category,
-      search,
-      sortBy = 'updatedAt',
-      sortOrder = 'desc'
-    } = req.query;
+// GET /api/products - Get all products with optimized pagination and filtering
+router.get('/', getProducts);
 
-    // Build filter object
-    const filter = {};
-    
-    if (category && category !== 'all') {
-      filter.category = category;
-    }
-    
-    if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { category: { $regex: search, $options: 'i' } }
-      ];
-    }
+// GET /api/products/categories/list - Get all categories with counts (cached)
+router.get('/categories/list', getCategories);
 
-    // Build sort object
-    const sort = {};
-    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+// GET /api/products/cache/clear - Clear cache (admin only)
+router.get('/cache/clear', clearCache);
 
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    // Execute query
-    const [products, totalCount] = await Promise.all([
-      Product.find(filter)
-        .sort(sort)
-        .skip(skip)
-        .limit(parseInt(limit)),
-      Product.countDocuments(filter)
-    ]);
-
-    const totalPages = Math.ceil(totalCount / parseInt(limit));
-
-    res.json({
-      products,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages,
-        totalCount,
-        hasNextPage: parseInt(page) < totalPages,
-        hasPrevPage: parseInt(page) > 1
-      }
-    });
-  } catch (error) {
-    console.error('❌ Get products error:', error);
-    res.status(500).json({ 
-      message: 'Mahsulotlarni olishda xatolik',
-      error: error.message 
-    });
-  }
-});
-
-// GET /api/products/categories/list - Get all categories
-router.get('/categories/list', async (req, res) => {
-  try {
-    const categories = await Product.distinct('category');
-    const categoriesWithCount = await Promise.all(
-      categories.map(async (category) => {
-        const count = await Product.countDocuments({ category });
-        return { name: category, count };
-      })
-    );
-
-    res.json({
-      categories: categoriesWithCount.sort((a, b) => b.count - a.count)
-    });
-  } catch (error) {
-    console.error('❌ Get categories error:', error);
-    res.status(500).json({ 
-      message: 'Kategoriyalarni olishda xatolik',
-      error: error.message 
-    });
-  }
-});
-
-// GET /api/products/:id - Get single product
-router.get('/:id', async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    
-    if (!product) {
-      return res.status(404).json({ message: 'Mahsulot topilmadi' });
-    }
-
-    res.json(product);
-  } catch (error) {
-    console.error('❌ Get product error:', error);
-    res.status(500).json({ 
-      message: 'Mahsulotni olishda xatolik',
-      error: error.message 
-    });
-  }
-});
+// GET /api/products/:id - Get single product (optimized)
+router.get('/:id', getProductById);
 
 // POST /api/products - Create new product
 router.post('/', async (req, res) => {
