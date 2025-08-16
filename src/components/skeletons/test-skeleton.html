@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram-Style Skeleton Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes telegram-shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .animate-shimmer {
+            animation: telegram-shimmer 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-8">Telegram-Style Loading Test</h1>
+        
+        <!-- Recent Activities Skeleton -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <!-- Header skeleton -->
+            <div class="flex items-center justify-between mb-6">
+                <div class="relative overflow-hidden">
+                    <div class="w-32 h-6 bg-gray-200 rounded"></div>
+                    <div class="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                </div>
+                <div class="relative overflow-hidden">
+                    <div class="w-24 h-8 bg-gray-100 rounded-md"></div>
+                    <div class="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                </div>
+            </div>
+
+            <!-- Activity items skeleton -->
+            <div class="space-y-4">
+                <!-- Item 1 -->
+                <div class="relative overflow-hidden rounded-lg">
+                    <div class="flex items-start space-x-4 p-4 hover:bg-gray-50 rounded-lg transition-colors">
+                        <!-- Icon skeleton -->
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
+                        </div>
+                        
+                        <!-- Content skeleton -->
+                        <div class="flex-1 min-w-0">
+                            <!-- Title skeleton -->
+                            <div class="w-3/4 h-4 bg-gray-200 rounded mb-2"></div>
+                            
+                            <!-- Description skeleton -->
+                            <div class="w-full h-3 bg-gray-100 rounded mb-1"></div>
+                            <div class="w-2/3 h-3 bg-gray-100 rounded"></div>
+                        </div>
+                        
+                        <!-- Timestamp skeleton -->
+                        <div class="flex-shrink-0">
+                            <div class="w-16 h-3 bg-gray-100 rounded"></div>
+                        </div>
+                    </div>
+                    <div class="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                </div>
+
+                <!-- Item 2 -->
+                <div class="relative overflow-hidden rounded-lg">
+                    <div class="flex items-start space-x-4 p-4 hover:bg-gray-50 rounded-lg transition-colors">
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="w-2/3 h-4 bg-gray-200 rounded mb-2"></div>
+                            <div class="w-full h-3 bg-gray-100 rounded mb-1"></div>
+                            <div class="w-1/2 h-3 bg-gray-100 rounded"></div>
+                        </div>
+                        <div class="flex-shrink-0">
+                            <div class="w-16 h-3 bg-gray-100 rounded"></div>
+                        </div>
+                    </div>
+                    <div class="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                </div>
+
+                <!-- Item 3 -->
+                <div class="relative overflow-hidden rounded-lg">
+                    <div class="flex items-start space-x-4 p-4 hover:bg-gray-50 rounded-lg transition-colors">
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="w-4/5 h-4 bg-gray-200 rounded mb-2"></div>
+                            <div class="w-full h-3 bg-gray-100 rounded mb-1"></div>
+                            <div class="w-3/4 h-3 bg-gray-100 rounded"></div>
+                        </div>
+                        <div class="flex-shrink-0">
+                            <div class="w-16 h-3 bg-gray-100 rounded"></div>
+                        </div>
+                    </div>
+                    <div class="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

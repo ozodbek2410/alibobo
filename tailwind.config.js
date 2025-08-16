@@ -13,6 +13,15 @@ module.exports = {
       fontFamily: {
         'sans': ['Inter', 'system-ui', 'sans-serif'],
       },
+      animation: {
+        'shimmer': 'telegram-shimmer 1.5s ease-in-out infinite',
+      },
+      keyframes: {
+        'telegram-shimmer': {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+      },
     },
   },
   plugins: [],

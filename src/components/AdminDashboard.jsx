@@ -114,33 +114,23 @@ const AdminDashboard = ({ onMobileToggle, onNavigate }) => {
 
       {/* Main content */}
       <main className="p-6 max-w-7xl mx-auto">
-        {activitiesLoading && statsLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <i className="fas fa-spinner fa-spin text-3xl text-primary-orange mb-4"></i>
-              <p className="text-gray-600">Ma'lumotlar yuklanmoqda...</p>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Stats Cards */}
-            <AdminStatsCards 
-              statistics={statistics}
-              editStats={editStats}
-              loading={statsLoading}
-              error={statsError}
-              formatNumber={formatNumber}
-            />
-            
-            {/* Recent Activities */}
-            <AdminRecentActivities 
-              craftsmen={craftsmenData}
-              products={productsData}
-              orders={ordersData}
-              onNavigate={handleNavigateFromActivity}
-            />
-          </>
-        )}
+        {/* Stats Cards - Always show, with individual loading */}
+        <AdminStatsCards 
+          statistics={statistics}
+          editStats={editStats}
+          loading={statsLoading}
+          error={statsError}
+          formatNumber={formatNumber}
+        />
+        
+        {/* Recent Activities - Always show, with Telegram-style skeleton */}
+        <AdminRecentActivities 
+          craftsmen={craftsmenData}
+          products={productsData}
+          orders={ordersData}
+          onNavigate={handleNavigateFromActivity}
+          isLoading={activitiesLoading}
+        />
       </main>
 
       {/* Notification Modals */}
