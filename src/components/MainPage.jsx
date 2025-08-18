@@ -37,7 +37,7 @@ const MainPage = ({ onSuccessfulLogin }) => {
   // Parallel data loading for initial page load
   const { data: parallelData } = useParallelFetch([
     'http://localhost:5000/api/craftsmen?limit=100&status=active',
-    'http://localhost:5000/api/products?limit=20&page=1'
+    'http://localhost:5000/api/products?limit=1000&page=1'
   ]);
 
   // Update craftsmen data when parallel fetch completes
@@ -119,8 +119,15 @@ const MainPage = ({ onSuccessfulLogin }) => {
   }, []);
 
   const handleSearch = useCallback((query) => {
-    setSearchQuery(query);
-    console.log('🔍 Search query in MainPage:', query);
+    const q = (query || '').trim();
+    setSearchQuery(q);
+    // Reset category filter so search shows across all products
+    setSelectedCategory('');
+    // Scroll to products section for immediate feedback
+    const productsEl = document.getElementById('products');
+    if (productsEl) {
+      productsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }, []);
 
   return (

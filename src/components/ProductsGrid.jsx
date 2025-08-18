@@ -70,7 +70,7 @@ const ProductsGrid = ({
   // Build API URL with parameters
   const apiUrl = useMemo(() => {
     const params = new URLSearchParams();
-    params.append('limit', '20');
+    params.append('limit', '1000');
     params.append('page', '1');
     params.append('sortBy', 'updatedAt');
     params.append('sortOrder', 'desc');
@@ -560,12 +560,12 @@ const ProductsGrid = ({
 
           {/* Load More Button */}
           {displayedProducts < filteredProducts.length && (
-            <div className="flex justify-center mt-8">
+            <div className="flex justify-start mt-8">
               <button
                 onClick={() => setDisplayedProducts(prev => Math.min(prev + 20, filteredProducts.length))}
                 className="px-8 py-3 bg-primary-orange hover:bg-orange-600 text-white rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
-                Ko'proq ko'rish ({Math.min(20, filteredProducts.length - displayedProducts)} ta)
+                Ko'proq ko'rish
               </button>
             </div>
           )}

@@ -139,17 +139,98 @@ const productSchema = new mongoose.Schema({
   timestamps: true // This adds createdAt and updatedAt automatically
 });
 
-// Create slug from name before saving
-productSchema.pre('save', function (next) {
-  if (this.isModified('name') && !this.slug) {
-    this.slug = this.name
+// Create slug from name before saving (ensure uniqueness)
+productSchema.pre('save', async function (next) {
+  try {
+    // If slug provided or name changed/new, compute slug base and ensure uniqueness
+    const needsSlug = this.isNew || this.isModified('name') || this.isModified('slug');
+    if (needsSlug) {
+      const baseSource = this.slug && typeof this.slug === 'string' && this.slug.trim() ? this.slug : this.name;
+      if (baseSource && typeof baseSource === 'string') {
+        const baseSlug = baseSource
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/(^-+|-+$)/g, '');
+        if (baseSlug) {
+          // Ensure uniqueness by adding -2, -3, ... if needed
+          const Model = this.constructor;
+          let uniqueSlug = baseSlug;
+          const regex = new RegExp(`^${baseSlug}(?:-(\\d+))?$`);
+          const existing = await Model.find({ slug: regex }, { slug: 1, _id: 1 }).lean();
+          if (existing.length) {
+            // Exclude self (updates) and compute next suffix
+            const taken = new Set(
+              existing
+                .filter(doc => String(doc._id) !== String(this._id))
+                .map(doc => doc.slug)
+            );
+            if (taken.has(baseSlug)) {
+              let max = 1;
+              for (const s of taken) {
+                const m = s.match(/-(\d+)$/);
+                if (m) max = Math.max(max, parseInt(m[1], 10));
+              }
+              uniqueSlug = `${baseSlug}-${max + 1}`;
+            }
+          }
+          this.slug = uniqueSlug;
+        }
+      }
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Update slug on findOneAndUpdate when name/slug changes (ensure uniqueness)
+productSchema.pre('findOneAndUpdate', async function (next) {
+  try {
+    const update = this.getUpdate() || {};
+    const $set = update.$set || update;
+    const nameChanged = typeof $set.name === 'string' && $set.name.trim() !== '';
+    const slugChanged = typeof $set.slug === 'string';
+    if (!nameChanged && !slugChanged) return next();
+
+    const Model = this.model;
+    const docId = this.getQuery()?._id;
+    const baseSource = slugChanged && $set.slug && $set.slug.trim() ? $set.slug : $set.name;
+    const baseSlug = (baseSource || '')
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
-      .trim('-');
+      .replace(/(^-+|-+$)/g, '');
+
+    if (!baseSlug) return next();
+
+    let uniqueSlug = baseSlug;
+    const regex = new RegExp(`^${baseSlug}(?:-(\\d+))?$`);
+    const existing = await Model.find({ slug: regex }, { slug: 1, _id: 1 }).lean();
+    if (existing.length) {
+      const taken = new Set(
+        existing
+          .filter(doc => !docId || String(doc._id) !== String(docId))
+          .map(doc => doc.slug)
+      );
+      if (taken.has(baseSlug)) {
+        let max = 1;
+        for (const s of taken) {
+          const m = s.match(/-(\d+)$/);
+          if (m) max = Math.max(max, parseInt(m[1], 10));
+        }
+        uniqueSlug = `${baseSlug}-${max + 1}`;
+      }
+    }
+
+    if (update.$set) update.$set.slug = uniqueSlug; else update.slug = uniqueSlug;
+    this.setUpdate(update);
+    next();
+  } catch (err) {
+    next(err);
   }
-  next();
 });
 
 // Comprehensive indexing strategy for optimal query performance

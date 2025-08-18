@@ -1,7 +1,6 @@
 import { useState, useCallback, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from './lib/queryClient';
 import './App.css';
 
@@ -93,10 +92,7 @@ function App() {
       </Routes>
       </Router>
       
-      {/* React Query DevTools - only in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools initialIsOpen={false} />
-      )}
+    
     </QueryClientProvider>
   );
 }

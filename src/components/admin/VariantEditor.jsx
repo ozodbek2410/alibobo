@@ -237,11 +237,19 @@ const VariantEditor = ({
                     placeholder="0"
                     min="0"
                     step="0.01"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+                      if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+                    }}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent ${
                       errors[`option_${optionIndex}`]?.price ? 'border-red-300 bg-red-50' : 'border-gray-300'
                     }`}
                     required
                   />
+
                   {errors[`option_${optionIndex}`]?.price && (
                     <p className="text-xs text-red-600">{errors[`option_${optionIndex}`].price}</p>
                   )}
@@ -259,8 +267,16 @@ const VariantEditor = ({
                     placeholder="0"
                     min="0"
                     step="0.01"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+                      if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent"
                   />
+
                 </div>
 
                 {/* Stock */}
@@ -274,17 +290,25 @@ const VariantEditor = ({
                     onChange={(e) => updateOption(optionIndex, 'stock', e.target.value)}
                     placeholder="0"
                     min="0"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+                      if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+                    }}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent ${
                       errors[`option_${optionIndex}`]?.stock ? 'border-red-300 bg-red-50' : 'border-gray-300'
                     }`}
                     required
                   />
+
                   {errors[`option_${optionIndex}`]?.stock && (
                     <p className="text-xs text-red-600">{errors[`option_${optionIndex}`].stock}</p>
                   )}
                 </div>
               </div>
-
+ 
               {/* Option Images */}
               <div className="mt-3">
                 <ImageUploader

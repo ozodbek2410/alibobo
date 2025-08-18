@@ -28,6 +28,29 @@ router.post('/', async (req, res) => {
     res.status(201).json(savedProduct);
   } catch (error) {
     console.error('❌ Create product error:', error);
+    // Handle duplicate key error for unique slug
+    if (
+      (error && error.code === 11000) ||
+      (error && error.name === 'MongoServerError' && error.message && error.message.includes('E11000'))
+    ) {
+      const isSlugConflict = error.keyPattern?.slug || (error.message && /index:\s*slug_\d+/.test(error.message));
+      if (isSlugConflict) {
+        return res.status(409).json({
+          code: 'DUPLICATE_SLUG',
+          message: 'Slug allaqachon mavjud. Iltimos mahsulot nomini o\'zgartiring.',
+          field: 'slug',
+          conflictValue: error.keyValue?.slug
+        });
+      }
+    }
+    // Validation error
+    if (error && error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: 'Yaroqsiz ma\'lumotlar',
+        details: error.errors 
+      });
+    }
+    // Generic server error
     res.status(500).json({ 
       message: 'Mahsulot yaratishda xatolik',
       error: error.message 
@@ -59,6 +82,29 @@ router.put('/:id', async (req, res) => {
     res.json(updatedProduct);
   } catch (error) {
     console.error('❌ Update product error:', error);
+    // Handle duplicate key error for unique slug
+    if (
+      (error && error.code === 11000) ||
+      (error && error.name === 'MongoServerError' && error.message && error.message.includes('E11000'))
+    ) {
+      const isSlugConflict = error.keyPattern?.slug || (error.message && /index:\s*slug_\d+/.test(error.message));
+      if (isSlugConflict) {
+        return res.status(409).json({
+          code: 'DUPLICATE_SLUG',
+          message: 'Slug allaqachon mavjud. Iltimos mahsulot nomini o\'zgartiring.',
+          field: 'slug',
+          conflictValue: error.keyValue?.slug
+        });
+      }
+    }
+    // Validation error
+    if (error && error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: 'Yaroqsiz ma\'lumotlar',
+        details: error.errors 
+      });
+    }
+    // Generic server error
     res.status(500).json({ 
       message: 'Mahsulotni yangilashda xatolik',
       error: error.message 

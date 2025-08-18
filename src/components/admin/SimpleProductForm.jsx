@@ -28,6 +28,13 @@ const SimpleProductForm = ({
             placeholder="0"
             min="0"
             step="0.01"
+            inputMode="decimal"
+            autoComplete="off"
+            onWheel={(e) => e.currentTarget.blur()}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+              if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+            }}
             className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent ${
               !price ? 'border-red-300 bg-red-50' : 'border-gray-300'
             }`}
@@ -50,6 +57,13 @@ const SimpleProductForm = ({
             placeholder="0"
             min="0"
             step="0.01"
+            inputMode="decimal"
+            autoComplete="off"
+            onWheel={(e) => e.currentTarget.blur()}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+              if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent"
           />
         </div>
@@ -65,6 +79,13 @@ const SimpleProductForm = ({
             onChange={(e) => onStockChange(e.target.value)}
             placeholder="0"
             min="0"
+            inputMode="numeric"
+            autoComplete="off"
+            onWheel={(e) => e.currentTarget.blur()}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+              if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+            }}
             className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent ${
               stock === '' || stock === undefined ? 'border-red-300 bg-red-50' : 'border-gray-300'
             }`}

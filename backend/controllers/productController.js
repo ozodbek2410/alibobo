@@ -1,7 +1,7 @@
 const Product = require('../models/Product');
 
 // Performance constants
-const MAX_LIMIT = 50; // Maximum items per page
+const MAX_LIMIT = 1000; // Maximum items per page
 const DEFAULT_LIMIT = 20; // Default items per page
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 

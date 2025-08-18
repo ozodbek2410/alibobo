@@ -149,8 +149,8 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       if (response.ok) {
         console.log('✅ API chaqiruv muvaffaqiyatli:', data.products.length, 'ta mahsulot');
         setProducts(data.products);
-        setTotalPages(data.totalPages);
-        setTotalCount(data.totalCount);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setTotalCount(data.pagination?.totalCount || data.totalCount || 0);
         // Removed onCountChange call to prevent infinite re-renders
       } else {
         throw new Error(data.message || 'Mahsulotlar yuklanmadi');
@@ -209,7 +209,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
 
   // Separate useEffect for page changes
   useEffect(() => {
-    if (isInitializedRef.current && currentPage > 1) {
+    if (isInitializedRef.current) {
       console.log('📄 Sahifa o\'zgartirildi:', currentPage);
       fetchProducts({
         page: currentPage,
@@ -451,15 +451,13 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
 
     setIsSubmitting(true);
 
-    console.log('🔄 Mahsulot saqlanmoqda...', selectedProduct ? 'Tahrirlash' : 'Yangi qo\'shish');
-    console.log('📝 Form ma\'lumotlari:', formData);
+    console.log(' Mahsulot saqlanmoqda...', selectedProduct ? 'Tahrirlash' : 'Yangi qo\'shish');
+    console.log(' Form ma\'lumotlari:', formData);
 
     try {
-      // For non-variant products, combine existing and new images
+      // For non-variant products, rely on images managed by SimpleProductForm's ImageUploader
       let allImages = formData.images || [];
       if (!formData.hasVariants) {
-        allImages = [...(formData.images || []), ...(selectedImages || [])];
-        
         // Ensure at least one image is provided for non-variant products
         if (allImages.length === 0) {
           safeNotifyError('Xatolik', 'Kamida bitta rasm qo\'shish kerak');
@@ -512,9 +510,9 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
         productData.images = allImages; // All images array
       }
 
-      console.log('📤 Yuborilayotgan ma\'lumotlar:', productData);
-      console.log('🖼️ Rasmlar soni:', allImages.length);
-      console.log('💰 Eski narx:', productData.oldPrice);
+      console.log(' Yuborilayotgan ma\'lumotlar:', productData);
+      console.log(' Rasmlar soni:', allImages.length);
+      console.log(' Eski narx:', productData.oldPrice);
 
       const url = selectedProduct && selectedProduct._id 
         ? `http://localhost:5000/api/products/${selectedProduct._id}`
@@ -536,9 +534,46 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       console.log('📡 Response ok:', response.ok);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Backend xatolik response:', errorText);
-        throw new Error(`Backend xatolik: ${response.status} - ${errorText}`);
+        // Try to parse JSON error for better UX
+        let errorData = null;
+        let rawText = '';
+        try {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            errorData = await response.json();
+          } else {
+            rawText = await response.text();
+          }
+        } catch (parseErr) {
+          console.error('❌ Xato javobni parse qilishda muammo:', parseErr);
+        }
+
+        // Duplicate slug (unique index) -> 409 Conflict
+        if (response.status === 409 && (errorData?.code === 'DUPLICATE_SLUG' || errorData?.field === 'slug')) {
+          const msg = errorData?.message || "Slug allaqachon mavjud. Iltimos mahsulot nomini o'zgartiring.";
+          setTimeout(() => {
+            safeNotifyError('Slug xatosi', msg);
+          }, 0);
+          // Keep modal open so user can adjust the name and resubmit
+          return;
+        }
+
+        // Validation errors
+        if (response.status === 400) {
+          const msg = errorData?.message || "Yaroqsiz ma'lumotlar";
+          setTimeout(() => {
+            safeNotifyError('Xatolik', msg);
+          }, 0);
+          return;
+        }
+
+        // Generic server/network error
+        const genericMsg = errorData?.message || rawText || `Server xatoligi: ${response.status}`;
+        console.error('❌ Backend xatolik response:', genericMsg);
+        setTimeout(() => {
+          safeNotifyError('Xatolik', genericMsg);
+        }, 0);
+        return;
       }
 
       const data = await response.json();
@@ -579,14 +614,6 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
           fetchProducts(); // Use fetchProducts to reload with current filters
           loadCategories(); // Reload categories to include new ones
         }, 500);
-      } else {
-        // Har qanday xatolik (404 ham) haqiqiy xatolik
-        const errorMessage = data.message || `Server xatoligi: ${response.status}`;
-        console.error('❌ Xatolik:', errorMessage);
-        setTimeout(() => {
-          safeNotifyError('Xatolik', errorMessage);
-        }, 0);
-        closeModal();
       }
     } catch (error) {
       console.error('❌ Mahsulot saqlashda xatolik:', error);
@@ -851,12 +878,13 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
             products.map(product => (
               <div key={product._id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 product-card flex flex-col h-full">
                 {/* Product Image */}
-                <div className="relative h-48 bg-gray-100 rounded-t-lg overflow-hidden">
+                <div className="relative overflow-hidden rounded-t-lg bg-white border-b border-gray-100 h-44 sm:h-52 lg:h-60">
                   {(product.images && product.images.length > 0) || product.image ? (
                     <img 
                       src={product.images && product.images.length > 0 ? product.images[0] : product.image} 
                       alt={product.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain p-2 bg-white"
+                      loading="lazy"
                     />
                   ) : (
                     <div className={`w-full h-full flex items-center justify-center bg-gradient-to-r ${getAvatarGradient(product.name)}`}>
@@ -1135,113 +1163,6 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                     />
                   </div>
                 )}
-              </div>
-              
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">
-                  Rasmlar (maksimal 8ta)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImagesUpload}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-orange file:text-white hover:file:bg-opacity-90"
-                />
-                
-                {/* Existing images */}
-                {formData.images.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-700">Mavjud rasmlar:</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {formData.images.map((image, index) => (
-                        <div key={`existing-${index}`} className="relative group">
-                          <img 
-                            src={image} 
-                            alt={`Existing ${index + 1}`} 
-                            className="w-full h-32 object-cover rounded-lg border-2 border-gray-300" 
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2">
-                              <button
-                                type="button"
-                                onClick={() => moveImageDown(index, false)}
-                                disabled={index === formData.images.length - 1}
-                                className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Pastga ko'chirish"
-                              >
-                                <i className="fas fa-chevron-down"></i>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeExistingImage(index)}
-                                className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
-                                title="Rasmni o'chirish"
-                              >
-                                <i className="fas fa-times"></i>
-                              </button>
-                            </div>
-                          </div>
-                          <div className="absolute -top-2 -left-2 bg-primary-orange text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                            {index + 1}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* New selected images */}
-                {selectedImages.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-700">Yangi rasmlar:</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {selectedImages.map((image, index) => (
-                        <div key={`selected-${index}`} className="relative group">
-                          <img 
-                            src={image} 
-                            alt={`Selected ${index + 1}`} 
-                            className="w-full h-32 object-cover rounded-lg border-2 border-green-300" 
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2">
-                              <button
-                                type="button"
-                                onClick={() => moveImageDown(index, true)}
-                                disabled={index === selectedImages.length - 1}
-                                className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Pastga ko'chirish"
-                              >
-                                <i className="fas fa-chevron-down"></i>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeSelectedImage(index)}
-                                className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
-                                title="Rasmni o'chirish"
-                              >
-                                <i className="fas fa-times"></i>
-                              </button>
-                            </div>
-                          </div>
-                          <div className="absolute -top-2 -left-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                            {formData.images.length + index + 1}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Image count info */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Jami rasmlar: {formData.images.length + selectedImages.length}/8</span>
-                    {(formData.images.length + selectedImages.length) >= 8 && (
-                      <span className="text-amber-600 font-medium">Maksimal rasm soni</span>
-                    )}
-                  </div>
-                </div>
               </div>
               
               <div className="sticky bottom-0 bg-white pt-6 border-t border-gray-200">

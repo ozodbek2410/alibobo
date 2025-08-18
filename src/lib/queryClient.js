@@ -30,7 +30,7 @@ export const queryKeys = {
   products: {
     all: ['products'],
     lists: () => [...queryKeys.products.all, 'list'],
-    list: (category, search, page = 1, limit = 20) => 
+    list: (category, search, page = 1, limit = 200) => 
       [...queryKeys.products.lists(), { category, search, page, limit }],
     details: () => [...queryKeys.products.all, 'detail'],
     detail: (id) => [...queryKeys.products.details(), id],
@@ -78,7 +78,7 @@ export const prefetchQueries = {
       queryKey: queryKeys.products.list(category, search, 1),
       queryFn: () => {
         const params = new URLSearchParams({
-          limit: '20',
+          limit: '200',
           page: '1',
           sortBy: 'updatedAt',
           sortOrder: 'desc',

@@ -164,6 +164,14 @@ const ProductVariants = ({ variants = [], onVariantsChange }) => {
                     value={option.price}
                     onChange={(e) => updateVariantOption(variantIndex, optionIndex, 'price', parseInt(e.target.value) || 0)}
                     placeholder="0"
+                    min="0"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+                      if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+                    }}
                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
@@ -175,6 +183,14 @@ const ProductVariants = ({ variants = [], onVariantsChange }) => {
                     value={option.stock}
                     onChange={(e) => updateVariantOption(variantIndex, optionIndex, 'stock', parseInt(e.target.value) || 0)}
                     placeholder="0"
+                    min="0"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+                      if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+                    }}
                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
