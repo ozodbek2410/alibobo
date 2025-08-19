@@ -4,6 +4,7 @@ import CartSidebar from './CartSidebar';
 import CategoryNavigation from './CategoryNavigation';
 
 import ModernProductGrid from './ModernProductGrid';
+import { getFuzzyMatches, getDidYouMeanTerms, normalizeText } from '../hooks/useFuzzySearch';
 // import { useOptimizedFilters } from '../hooks/useOptimizedFilters';
 import { SearchIcon, TimesIcon } from './Icons';
 import ProductGridSkeleton from './skeleton/ProductGridSkeleton';
@@ -20,7 +21,8 @@ const ProductsGrid = ({
   selectedCategory,
   searchQuery,
   onInitialProductsLoaded,
-  onCategorySelect
+  onCategorySelect,
+  onSearch
 }) => {
   // console.log('ProductsGrid rendered with props:', { selectedCategory, searchQuery });
 
@@ -79,9 +81,8 @@ const ProductsGrid = ({
       params.append('category', getCategoryApiValue(selectedCategory));
     }
 
-    if (searchQuery && searchQuery.trim() !== '') {
-      params.append('search', searchQuery.trim());
-    }
+    // Note: do NOT send search to backend; fetch all (up to limit) and filter locally with
+    // normalization and fuzzy fallback to better handle typos and partial inputs on mobile.
 
     return `http://localhost:5000/api/products?${params.toString()}`;
   }, [selectedCategory, searchQuery]);
@@ -218,7 +219,7 @@ const ProductsGrid = ({
   // Reset displayed products when filters change
   useEffect(() => {
     setDisplayedProducts(20);
-  }, [quickFilter, appliedMinPrice, appliedMaxPrice, searchTerm, currentCategory]);
+  }, [quickFilter, appliedMinPrice, appliedMaxPrice]);
 
   // Filter products directly without using the hook for now
   const filteredProducts = useMemo(() => {
@@ -228,13 +229,31 @@ const ProductsGrid = ({
 
     let filtered = [...productsToFilter];
 
-    // Search filter
+    // Enhanced search filter - normalized substring match across multiple fields
     if (searchQuery && searchQuery.trim()) {
-      const searchLower = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(product =>
-        product.name?.toLowerCase().includes(searchLower) ||
-        product.description?.toLowerCase().includes(searchLower)
-      );
+      const q = normalizeText(searchQuery);
+      filtered = filtered.filter(product => {
+        const name = normalizeText(product.name || '');
+        const description = normalizeText(product.description || '');
+        const category = normalizeText(product.category || '');
+        const brand = normalizeText(product.brand || '');
+        const unit = normalizeText(product.unit || '');
+        const badge = normalizeText(product.badge || '');
+        return (
+          name.includes(q) ||
+          description.includes(q) ||
+          category.includes(q) ||
+          brand.includes(q) ||
+          unit.includes(q) ||
+          badge.includes(q)
+        );
+      });
+
+      // If no direct substring matches, fallback to fuzzy matches as primary results
+      if (filtered.length === 0) {
+        const matches = getFuzzyMatches(productsToFilter, searchQuery, 20);
+        filtered = matches.map(m => m.product);
+      }
     }
 
     // Category filter - API dan kelgan kategoriyalar bilan to'g'ri solishtirish
@@ -261,10 +280,21 @@ const ProductsGrid = ({
     filtered.sort((a, b) => {
       switch (quickFilter) {
         case 'mashhur':
-          // Sort by popularity (reviews count or rating)
+          // Prioritize items that have a "Mashhur" badge or marked as popular
+          const aHasPopularBadge = ((a.badge || '').toLowerCase().includes('mashhur')) || !!a.isPopular;
+          const bHasPopularBadge = ((b.badge || '').toLowerCase().includes('mashhur')) || !!b.isPopular;
+          if (aHasPopularBadge !== bHasPopularBadge) {
+            return bHasPopularBadge - aHasPopularBadge; // true first
+          }
+          // Fallback: sort by popularity score (reviews * rating), then by updatedAt
           const aPopularity = (a.reviews || 0) * (a.rating || 0);
           const bPopularity = (b.reviews || 0) * (b.rating || 0);
-          return bPopularity - aPopularity; // Descending order
+          if (bPopularity !== aPopularity) {
+            return bPopularity - aPopularity; // Descending order
+          }
+          const aUpdatedAt = new Date(a.updatedAt || 0);
+          const bUpdatedAt = new Date(b.updatedAt || 0);
+          return bUpdatedAt - aUpdatedAt;
           
         case 'chegirma':
           // Sort by discount (products with oldPrice first)
@@ -275,7 +305,13 @@ const ProductsGrid = ({
           return bDiscount - aDiscount; // Descending order
           
         case 'yangi':
-          // Sort by newest (createdAt or updatedAt)
+          // Prioritize items with "Yangi" badge or isNew flag, then by newest date
+          const aHasNewBadge = ((a.badge || '').toLowerCase().includes("yangi")) || !!a.isNew;
+          const bHasNewBadge = ((b.badge || '').toLowerCase().includes("yangi")) || !!b.isNew;
+          if (aHasNewBadge !== bHasNewBadge) {
+            return bHasNewBadge - aHasNewBadge; // true first
+          }
+          // Fallback by createdAt/updatedAt
           const aDate = new Date(a.createdAt || a.updatedAt || 0);
           const bDate = new Date(b.createdAt || b.updatedAt || 0);
           return bDate - aDate; // Descending order (newest first)
@@ -290,7 +326,18 @@ const ProductsGrid = ({
     });
 
     return filtered;
-  }, [products, searchQuery, selectedCategory, appliedMinPrice, appliedMaxPrice, quickFilter]);
+  }, [products, searchQuery, quickFilter, appliedMinPrice, appliedMaxPrice]);
+
+  // Fuzzy suggestions when exact filter yields no results
+  const fuzzyMatches = useMemo(() => {
+    if (!searchQuery) return [];
+    return getFuzzyMatches(products, searchQuery, 12);
+  }, [products, searchQuery]);
+
+  const didYouMeanTerms = useMemo(() => {
+    if (!searchQuery) return [];
+    return getDidYouMeanTerms(fuzzyMatches, 5);
+  }, [fuzzyMatches, searchQuery]);
 
   // Use centralized addToCart function
   const addToCart = (product) => {
@@ -432,7 +479,7 @@ const ProductsGrid = ({
   }
 
   return (
-    <div className="container mx-auto px-4 lg:px-6 py-4 lg:py-6">
+    <div className="container mx-auto px-4 lg:px-6 py-4 lg:py-6 pb-24 lg:pb-6">
 
       {/* Category Navigation - Mobile and Desktop */}
       <div className="mb-2">
@@ -577,30 +624,49 @@ const ProductsGrid = ({
               <SearchIcon className="w-16 h-16 text-gray-400" />
             </div>
             <h3 className="text-2xl font-bold text-gray-700 mb-3">
-              {searchTerm ? 'Hech narsa topilmadi' :
-                currentCategory === 'all' ? 'Mahsulotlar yo\'q' : `${currentCategory} kategoriyasida mahsulot yo'q`}
+              {searchQuery ? 'Hech narsa topilmadi' :
+                (!selectedCategory || selectedCategory === '') ? 'Mahsulotlar yo\'q' : `${selectedCategory} kategoriyasida mahsulot yo'q`}
             </h3>
             <p className="text-gray-500 mb-6">
-              {searchTerm ?
-                `"${searchTerm}" so'rovi bo'yicha hech qanday mahsulot topilmadi. Boshqa kalit so'zlar bilan qidiring.` :
-                currentCategory === 'all' ?
+              {searchQuery ?
+                `"${searchQuery}" so'rovi bo'yicha hech qanday mahsulot topilmadi. Boshqa kalit so'zlar bilan qidiring.` :
+                (!selectedCategory || selectedCategory === '') ?
                   'Hozircha mahsulotlar qo\'shilmagan. Keyinroq qayta urinib ko\'ring.' :
                   'Bu kategoriyada mahsulotlar mavjud emas. Boshqa kategoriyalarni ko\'rib chiqing.'
               }
             </p>
+            {/* Did you mean suggestions */}
+            {searchQuery && didYouMeanTerms.length > 0 && (
+              <div className="mb-6">
+                <div className="text-sm text-gray-600 mb-2">Balki shuni nazarda tutgandirsiz:</div>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {didYouMeanTerms.map((term) => (
+                    <button
+                      key={term}
+                      onClick={() => onSearch && onSearch(term)}
+                      className="px-3 py-1.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-sm hover:bg-orange-100"
+                    >
+                      {term}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              {searchTerm && (
+              {searchQuery && (
                 <button
-                  onClick={() => setSearchTerm('')}
+                  onClick={() => {
+                    if (onSearch) onSearch('');
+                  }}
                   className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
                 >
                   <TimesIcon className="w-4 h-4" />
                   Qidiruvni tozalash
                 </button>
               )}
-              {currentCategory !== 'all' && (
+              {selectedCategory && selectedCategory !== '' && (
                 <button
-                  onClick={() => setCurrentCategory('all')}
+                  onClick={() => onCategorySelect && onCategorySelect('')}
                   className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -610,6 +676,17 @@ const ProductsGrid = ({
                 </button>
               )}
             </div>
+            {/* Similar products grid based on fuzzy matches */}
+            {searchQuery && fuzzyMatches.length > 0 && (
+              <div className="mt-10">
+                <h4 className="text-lg font-semibold text-gray-800 mb-4">Shunga o'xshash mahsulotlar</h4>
+                <ModernProductGrid
+                  products={fuzzyMatches.map((m) => m.product)}
+                  onAddToCart={onAddToCart}
+                  loading={false}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

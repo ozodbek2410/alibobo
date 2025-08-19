@@ -58,7 +58,7 @@ const ModernProductGrid = memo(({
   // Loading skeleton
   if (loading && products.length === 0) {
     return (
-      <div className={`grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6 ${className}`}>
+      <div className={`grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-6 ${className}`}>
         {[...Array(8)].map((_, index) => (
           <div key={index} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm animate-pulse">
             <div className="h-48 sm:h-56 lg:h-64 bg-gray-200"></div>
@@ -112,7 +112,7 @@ const ModernProductGrid = memo(({
       )}
 
       {/* Products Grid */}
-      <div className={`grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6 ${className}`}>
+      <div className={`grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-6 ${className}`}>
         {products.map((product) => (
           <ModernProductCard
             key={product._id}

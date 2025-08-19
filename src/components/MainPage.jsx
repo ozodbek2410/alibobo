@@ -159,6 +159,7 @@ const MainPage = ({ onSuccessfulLogin }) => {
           searchQuery={searchQuery}
           onInitialProductsLoaded={handleInitialProductsLoaded}
           onCategorySelect={handleCategorySelect}
+          onSearch={handleSearch}
         />
       </div>
       <div id="craftsmen">

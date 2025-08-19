@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CartSidebar from './CartSidebar';
 import Catalog from './Catalog';
-
+import { useDebounce } from '../hooks/useDebounce';
+import { getFuzzyMatches } from '../hooks/useFuzzySearch';
 
 const Header = ({
   onSuccessfulLogin,
@@ -27,18 +28,54 @@ const Header = ({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  // Typeahead state
+  const [isFocused, setIsFocused] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const debouncedQuery = useDebounce(searchQuery, 250);
 
-  // Scroll event listener to close dropdowns
+  // Fetch and filter close-match suggestions based on debounced input
   useEffect(() => {
-    const handleScroll = () => {
-      // setShowCatalogDropdown(false);
+    const q = (debouncedQuery || '').trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const fetchSuggestions = async () => {
+      try {
+        const url = `/api/products?search=${encodeURIComponent(q)}&limit=20`;
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) throw new Error('Failed to load suggestions');
+        const data = await res.json();
+        const products = Array.isArray(data?.products) ? data.products : [];
+        // Use fuzzy matcher to get only close matches
+        const matches = getFuzzyMatches(products, q, 10);
+        const seen = new Set();
+        const names = [];
+        for (const m of matches) {
+          const name = m?.product?.name || '';
+          if (name && !seen.has(name)) {
+            seen.add(name);
+            names.push(name);
+          }
+        }
+        setSuggestions(names);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Suggestion fetch error:', err.message);
+          setSuggestions([]);
+        }
+      }
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
+    fetchSuggestions();
+    return () => controller.abort();
+  }, [debouncedQuery]);
+
+  // All suggestion-related helpers removed
+
+  // Removed close-on-scroll logic (no suggestions panel)
 
   const handleLogoInteraction = (e) => {
     e.preventDefault();
@@ -100,11 +137,10 @@ const Header = ({
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      console.log('Searching for:', searchQuery);
-      if (onSearch) {
-        onSearch(searchQuery);
-      }
+    const q = searchQuery.trim();
+    // Always propagate the query (including empty) so clearing input resets results
+    if (onSearch) {
+      onSearch(q);
     }
   };
 
@@ -158,7 +194,16 @@ const Header = ({
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSearchQuery(v);
+                      // If cleared, immediately clear global search so products reload
+                      if (v.trim() === '' && onSearch) {
+                        onSearch('');
+                      }
+                    }}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setTimeout(() => setIsFocused(false), 150)}
                     placeholder="Mahsulotlar va turkumlar izlash"
                     className="w-full px-4 py-2 pr-10 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300"
                   />
@@ -168,6 +213,27 @@ const Header = ({
                   >
                     <i className="fas fa-search text-base"></i>
                   </button>
+                  {/* Close-match typeahead suggestions (desktop) */}
+                  {isFocused && debouncedQuery.trim().length >= 2 && suggestions.length > 0 && (
+                    <ul className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-md z-50 max-h-80 overflow-auto">
+                      {suggestions.map((name) => (
+                        <li key={name}>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setSearchQuery(name);
+                              if (onSearch) onSearch(name);
+                              setIsFocused(false);
+                            }}
+                          >
+                            <span className="text-sm text-gray-800">{name}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </form>
             </div>
@@ -189,8 +255,6 @@ const Header = ({
           </div>
         </div>
       </header>
-
-
 
       {/* Mobile Header - Logo and Search - Hide when cart is open */}
       <header className={`bg-primary-dark shadow-lg lg:hidden transition-transform duration-300 ${isCartOpen ? '-translate-y-full' : 'translate-y-0'}`}>
@@ -228,7 +292,15 @@ const Header = ({
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSearchQuery(v);
+                    if (v.trim() === '' && onSearch) {
+                      onSearch('');
+                    }
+                  }}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setTimeout(() => setIsFocused(false), 150)}
                   placeholder="Qidiruv"
                   className="w-full px-3 py-1.5 pr-8 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition duration-300 text-sm"
                 />
@@ -238,6 +310,27 @@ const Header = ({
                 >
                   <i className="fas fa-search text-xs"></i>
                 </button>
+                {/* Close-match typeahead suggestions (mobile) */}
+                {isFocused && debouncedQuery.trim().length >= 2 && suggestions.length > 0 && (
+                  <ul className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-md z-50 max-h-80 overflow-auto">
+                    {suggestions.map((name) => (
+                      <li key={name}>
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setSearchQuery(name);
+                            if (onSearch) onSearch(name);
+                            setIsFocused(false);
+                          }}
+                        >
+                          <span className="text-sm text-gray-800">{name}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </form>
           </div>
@@ -276,11 +369,21 @@ const Header = ({
                 if (isCartOpen) {
                   onToggleCart();
                 }
-                // Scroll to products section
-                window.scrollTo({
-                  top: 0,
-                  behavior: 'smooth'
-                });
+                // Clear search and category to show all products
+                setSearchQuery('');
+                if (onSearch) {
+                  onSearch('');
+                }
+                if (onCategorySelect) {
+                  onCategorySelect('');
+                }
+                // Scroll to products section if available
+                const productsSection = document.getElementById('products');
+                if (productsSection) {
+                  productsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
               }}
               className="flex flex-col items-center px-1 text-gray-700 hover:text-primary-orange transition duration-200 w-full"
             >
