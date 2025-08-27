@@ -184,7 +184,7 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start md:items-center justify-center p-1 sm:p-2 md:p-4 overflow-y-auto">
       <div className="bg-white rounded-lg md:rounded-xl max-w-6xl w-full max-h-[99vh] sm:max-h-[98vh] md:max-h-[90vh] overflow-y-auto mt-1 sm:mt-2 md:mt-0 shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-3 md:p-4 flex items-center justify-between z-10 shadow-sm">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-3 md:p-4 flex items-center justify-between z-20 shadow-sm">
           <h2 className="text-sm md:text-base lg:text-lg font-medium text-gray-800 line-clamp-2 md:line-clamp-1 pr-2">{product.name}</h2>
           <button
             onClick={onClose}
@@ -464,12 +464,12 @@ const ProductDetail = ({ product, isOpen, onClose, onAddToCart }) => {
 
       {/* Success Notification - Kichik modal */}
       {showNotification && (
-        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-3 py-2 rounded-lg shadow-lg z-[60] transform transition-all duration-300">
+        <div className="fixed top-20 right-4 md:top-24 md:right-6 bg-green-500 text-white px-4 py-3 rounded-xl shadow-lg z-[60] transform transition-all duration-300 max-w-xs md:max-w-sm">
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-              <i className="fas fa-check text-white text-xs"></i>
-            </div>
-            <p className="font-medium text-sm">Savatga qo'shildi!</p>
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            <span className="font-medium text-sm md:text-base">Savatga qo'shildi!</span>
           </div>
         </div>
       )}

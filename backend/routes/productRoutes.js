@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
-const { getProducts, getProductById, getCategories, clearCache } = require('../controllers/productController');
+const { getProducts, getProductById, getCategories, clearCache, softDeleteProduct, restoreProduct, setArchiveStatus } = require('../controllers/productController');
 
 // GET /api/products - Get all products with optimized pagination and filtering
 router.get('/', getProducts);
@@ -112,26 +112,13 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/products/:id - Delete product
-router.delete('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
+// PATCH /api/products/:id/archive - Toggle archive status (inactive/active)
+router.patch('/:id/archive', setArchiveStatus);
 
-    const deletedProduct = await Product.findByIdAndDelete(id);
+// PATCH /api/products/:id/restore - Restore soft-deleted product
+router.patch('/:id/restore', restoreProduct);
 
-    if (!deletedProduct) {
-      return res.status(404).json({ message: 'Mahsulot topilmadi' });
-    }
-
-    console.log('✅ Product deleted:', deletedProduct._id);
-    res.json({ message: 'Mahsulot muvaffaqiyatli o\'chirildi' });
-  } catch (error) {
-    console.error('❌ Delete product error:', error);
-    res.status(500).json({ 
-      message: 'Mahsulotni o\'chirishda xatolik',
-      error: error.message 
-    });
-  }
-});
+// DELETE /api/products/:id - Soft delete (archive) product
+router.delete('/:id', softDeleteProduct);
 
 module.exports = router;

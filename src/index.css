@@ -80,6 +80,26 @@ code {
   }
 }
 
+/* Cart notification animations */
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  10%, 90% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.animate-fade-in-out {
+  animation: fadeInOut 3s ease-in-out;
+}
+
 /* Telegram-style shimmer animation */
 @keyframes telegram-shimmer {
   0% {
@@ -141,6 +161,75 @@ code {
 
 .border-primary {
   border-color: var(--primary-orange);
+}
+
+/* Stats Grid Layout - Matching index.html design */
+.stats-item {
+  transition: all 0.3s ease;
+  background: white;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f1f5f9;
+}
+
+.stats-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(246, 134, 34, 0.15);
+  border: 1px solid var(--primary-orange);
+}
+
+/* Mobile 2x2 Grid Layout */
+@media (max-width: 640px) {
+  .stats-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: transparent !important;
+  }
+  
+  .stats-item {
+    flex-direction: column !important;
+    text-align: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f5f9;
+    min-height: 100px;
+    justify-content: center;
+  }
+  
+  .stats-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(246, 134, 34, 0.12);
+    border: 1px solid var(--primary-orange);
+  }
+  
+  .stats-item .icon-container {
+    margin-right: 0 !important;
+    margin-bottom: 0.5rem;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    align-self: center;
+  }
+  
+  .stats-item .icon-container i {
+    font-size: 1rem !important;
+  }
+  
+  .stats-item p {
+    font-size: 0.75rem !important;
+    margin-bottom: 0.25rem;
+    color: #64748b;
+  }
+  
+  .stats-item .stat-number {
+    font-size: 1.25rem !important;
+    font-weight: 700;
+    color: #1e293b;
+  }
 }
 
 /* Responsive Container */

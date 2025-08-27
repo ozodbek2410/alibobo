@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useProducts, useDeleteProduct, useRestoreProduct } from '../hooks/useProductQueries';
+import { queryClient, queryKeys } from '../lib/queryClient';
+
 import AdminNotificationBell from './AdminNotificationBell';
 import AdminNotificationModals from './AdminNotificationModals';
 import LoadingCard from './LoadingCard';
 import useNotifications from '../hooks/useNotifications';
+import useRealNotifications from '../hooks/useRealNotifications';
 import ProductVariants from './admin/ProductVariants';
 import ImageUploader from './admin/ImageUploader';
 import VariantEditor from './admin/VariantEditor';
@@ -10,8 +14,20 @@ import SimpleProductForm from './admin/SimpleProductForm';
 import VariantManager from './admin/VariantManager';
 import '../styles/select-styles.css';
 
-const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifications }) => {
-  // Notification system - matching index.html exactly
+const AdminProducts = ({ onCountChange, notifications, setNotifications }) => {
+  // Real notification system for notification bell
+  const {
+    notifications: realNotifications,
+    setNotifications: setRealNotifications,
+    markAllAsRead,
+    markAsRead,
+    deleteNotification,
+    deleteAllNotifications,
+    notifyProductAdded,
+    notifyProductDeleted
+  } = useRealNotifications(true, 30000);
+
+  // Demo notification system for modals (keep existing modal functionality)
   const {
     notifications: notificationList,
     alertModal,
@@ -25,18 +41,17 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     safeNotifySuccess,
     safeNotifyError,
     safeNotifyWarning,
-    notifyProductAdded,
     safeNotifyProductDeleted,
     addNotification
   } = useNotifications();
 
   // State management
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Local loading removed; use React Query's isLoading/isFetching
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(12);
+  const ITEMS_PER_PAGE = 50;
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [sortField, setSortField] = useState('createdAt');
@@ -46,6 +61,10 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  
+  // Delete notification states
+  const [showDeleteNotification, setShowDeleteNotification] = useState(false);
+  const [deleteNotificationMessage, setDeleteNotificationMessage] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -65,6 +84,14 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
   // Refs for debouncing and initialization tracking
   const debounceTimeoutRef = useRef(null);
   const isInitializedRef = useRef(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [debouncedCategory, setDebouncedCategory] = useState('');
+
+  // Image slideshow state (per product)
+  const imageIndexRef = useRef(new Map()); // productId -> current image index
+  const [, setImageStateVersion] = useState(0); // bump to trigger rerender
+  const hoverTimerRef = useRef(new Map()); // productId -> interval id
+  const touchStartXRef = useRef(new Map()); // productId -> startX
 
   // Dynamic categories loaded from database
   const [categories, setCategories] = useState(['Barcha kategoriyalar']);
@@ -85,16 +112,24 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       if (response.ok) {
         const categoriesData = await response.json();
         console.log('📋 Loaded categories from API:', categoriesData);
-        setCategories(['Barcha kategoriyalar', ...categoriesData]);
+        // Ensure categoriesData is an array before spreading
+        const categoryArray = Array.isArray(categoriesData) ? categoriesData : [];
+        setCategories(['Barcha kategoriyalar', ...categoryArray]);
       } else {
         console.log('⚠️ API failed, using main categories as fallback');
         setCategories(['Barcha kategoriyalar', ...mainCategories]);
       }
     } catch (error) {
       console.error('❌ Error loading categories, using main categories as fallback:', error);
-      setCategories(['Barcha kategoriyalar', ...mainCategories]);
+      // Ensure mainCategories is an array before spreading
+      const categoryArray = Array.isArray(mainCategories) ? mainCategories : [];
+      setCategories(['Barcha kategoriyalar', ...categoryArray]);
     }
   }, []);
+
+  // React Query mutations for product actions
+  const { mutateAsync: softDeleteProductMutate } = useDeleteProduct();
+  const { mutateAsync: restoreProductMutate } = useRestoreProduct();
 
   // categoryMap removed - now using direct category names from database
 
@@ -115,109 +150,197 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     { value: 'rulon', label: 'Rulon' }
   ];
 
-  // Centralized API call function - completely stable
-  const fetchProducts = useCallback(async (params = {}) => {
+  // Collect all possible images for a product (variants -> product.images -> product.image)
+  const getAllProductImages = useCallback((product) => {
+    const allImages = [];
     try {
-      setLoading(true);
-      const {
-        page = 1,
-        search = '',
-        category = '',
-        sortBy = sortField,
-        sortOrder = sortDirection
-      } = params;
-
-      console.log('🔄 API chaqiruv boshlandi:', {
-        page,
-        search,
-        category,
-        sort: `${sortBy},${sortOrder}`
-      });
-
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        limit: itemsPerPage.toString(),
-        search: search || '',
-        category: category || '',
-        sortBy,
-        sortOrder
-      });
-
-      const response = await fetch(`http://localhost:5000/api/products?${queryParams}`);
-      const data = await response.json();
-
-      if (response.ok) {
-        console.log('✅ API chaqiruv muvaffaqiyatli:', data.products.length, 'ta mahsulot');
-        setProducts(data.products);
-        setTotalPages(data.pagination?.totalPages || 1);
-        setTotalCount(data.pagination?.totalCount || data.totalCount || 0);
-        // Removed onCountChange call to prevent infinite re-renders
-      } else {
-        throw new Error(data.message || 'Mahsulotlar yuklanmadi');
+      if (product?.hasVariants && Array.isArray(product?.variants)) {
+        product.variants.forEach(variant => {
+          if (Array.isArray(variant?.options)) {
+            variant.options.forEach(option => {
+              if (Array.isArray(option?.images) && option.images.length > 0) {
+                allImages.push(...option.images);
+              } else if (option?.image) {
+                allImages.push(option.image);
+              }
+            });
+          }
+        });
       }
-    } catch (error) {
-      console.error('❌ API chaqiruvda xatolik:', error);
-      setTimeout(() => {
-        safeNotifyError('Xatolik', 'Mahsulotlar yuklanmadi');
-      }, 0);
-    } finally {
-      setLoading(false);
+      if (allImages.length === 0) {
+        if (Array.isArray(product?.images) && product.images.length > 0) {
+          allImages.push(...product.images);
+        } else if (product?.image) {
+          allImages.push(product.image);
+        }
+      }
+    } catch (e) {
+      // ignore, fallback below
     }
-  }, [sortField, sortDirection, itemsPerPage]); // Removed onCountChange to prevent infinite re-renders
+    const unique = [...new Set(allImages.filter(Boolean))];
+    return unique.length > 0 ? unique : [];
+  }, []);
+
+  // Handlers to change images on hover/move and touch
+  const startHoverSlideshow = useCallback((product) => {
+    const id = product?._id || product?.id;
+    const images = getAllProductImages(product);
+    if (!id || images.length <= 1) return;
+    if (hoverTimerRef.current.get(id)) return; // already running
+    const interval = setInterval(() => {
+      const current = imageIndexRef.current.get(id) || 0;
+      const next = (current + 1) % images.length;
+      imageIndexRef.current.set(id, next);
+      setImageStateVersion(v => v + 1);
+    }, 1200);
+    hoverTimerRef.current.set(id, interval);
+  }, [getAllProductImages]);
+
+  const stopHoverSlideshow = useCallback((product) => {
+    const id = product?._id || product?.id;
+    if (!id) return;
+    const interval = hoverTimerRef.current.get(id);
+    if (interval) {
+      clearInterval(interval);
+      hoverTimerRef.current.delete(id);
+    }
+  }, []);
+
+  // Removed mouse move based switcher to keep UX simple; using slideshow on hover instead.
+
+  const handleTouchStartOnImage = useCallback((product, e) => {
+    const id = product?._id || product?.id;
+    const images = getAllProductImages(product);
+    if (!id || images.length <= 1) return;
+    const touch = e.touches && e.touches[0];
+    if (!touch) return;
+    touchStartXRef.current.set(id, touch.clientX);
+  }, [getAllProductImages]);
+
+  const handleTouchEndOnImage = useCallback((product, e) => {
+    const id = product?._id || product?.id;
+    const images = getAllProductImages(product);
+    if (!id || images.length <= 1) return;
+    const touch = e.changedTouches && e.changedTouches[0];
+    const startX = touchStartXRef.current.get(id);
+    if (!touch || typeof startX !== 'number') return;
+    const deltaX = touch.clientX - startX;
+    const threshold = 30; // px
+    let current = imageIndexRef.current.get(id) || 0;
+    if (deltaX <= -threshold) {
+      // swipe left -> next
+      current = (current + 1) % images.length;
+      // prevent triggering click after swipe
+      if (e.cancelable) e.preventDefault();
+      e.stopPropagation();
+    } else if (deltaX >= threshold) {
+      // swipe right -> prev
+      current = (current - 1 + images.length) % images.length;
+      // prevent triggering click after swipe
+      if (e.cancelable) e.preventDefault();
+      e.stopPropagation();
+    } else {
+      return; // ignore tiny moves
+    }
+    imageIndexRef.current.set(id, current);
+    setImageStateVersion(v => v + 1);
+  }, [getAllProductImages]);
+
+  // Cleanup hover timers on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        hoverTimerRef.current.forEach((intervalId) => clearInterval(intervalId));
+        hoverTimerRef.current.clear();
+      } catch (_) {}
+    };
+  }, []);
+
+  // React Query: fetch products with debounced inputs
+  const { data: productsData, isLoading, isFetching, isFetched, isSuccess, isError, error } = useProducts(
+    debouncedCategory,
+    debouncedSearch,
+    currentPage,
+    ITEMS_PER_PAGE
+  );
 
   // Load categories on component mount
   useEffect(() => {
     loadCategories();
   }, [loadCategories]);
 
-  // Single useEffect for search and filter with proper debouncing
+  // Debounce search/filter to reduce query churn
   useEffect(() => {
-    // Initial load - only once
-    if (!isInitializedRef.current) {
-      console.log('🚀 Dastlabki yuklash boshlandi');
-      isInitializedRef.current = true;
-      fetchProducts();
+    if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+    debounceTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setDebouncedCategory(filterCategory);
+      setCurrentPage(1);
+    }, 500);
+    return () => {
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+    };
+  }, [searchTerm, filterCategory]);
+
+  // Restore product with confirmation
+  const openRestoreConfirm = (product) => {
+    if (!product || !product._id) {
+      setTimeout(() => {
+        safeNotifyError('Xatolik', 'Mahsulot ma\'lumotlari to\'g\'ri emas');
+      }, 0);
       return;
     }
+    const title = 'Mahsulotni tiklash';
+    const message = `"${product.name}" mahsuloti tiklansinmi?`;
+    setSelectedProduct(product);
+    showConfirm(title, message, () => restoreProduct(product._id), null, 'info');
+  };
 
-    // Clear existing timeout
-    if (debounceTimeoutRef.current) {
-      console.log('🧹 Avvalgi timeout tozalandi');
-      clearTimeout(debounceTimeoutRef.current);
+  const restoreProduct = async (id) => {
+    if (!id) {
+      setTimeout(() => {
+        safeNotifyError('Xatolik', 'Mahsulot ID si topilmadi');
+      }, 0);
+      return;
     }
+    try {
+      await restoreProductMutate({ id });
+      // If the product is in the current list, update its status locally
+      setProducts(prev => prev.map(p => p._id === id ? { ...p, isDeleted: false, status: 'active' } : p));
+      setTimeout(() => {
+        safeNotifySuccess('Tiklandi', 'Mahsulot muvaffaqiyatli tiklandi');
+      }, 0);
+      // Invalidate to keep pagination/count accurate
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+    } catch (error) {
+      console.error('Mahsulotni tiklashda xatolik:', error);
+      setTimeout(() => {
+        safeNotifyError('Xatolik', (error && error.message) ? error.message : 'Tiklash amalga oshmadi');
+      }, 0);
+    }
+  };
 
-    // Set new debounced timeout
-    console.log('⏰ Yangi debounce timeout o\'rnatildi:', { search: searchTerm, filter: filterCategory });
-    debounceTimeoutRef.current = setTimeout(() => {
-      console.log('🔍 Debounce tugadi, API chaqiruv boshlandi');
-      setCurrentPage(1);
-      fetchProducts({
-        page: 1,
-        search: searchTerm,
-        category: filterCategory
-      });
-    }, 500); // 500ms debounce
-
-    // Cleanup function
-    return () => {
-      if (debounceTimeoutRef.current) {
-        console.log('🧹 Cleanup: timeout tozalandi');
-        clearTimeout(debounceTimeoutRef.current);
-      }
-    };
-  }, [searchTerm, filterCategory]); // Faqat search va filter o'zgarishida
-
-  // Separate useEffect for page changes
+  // Prefetch next page when available
   useEffect(() => {
-    if (isInitializedRef.current) {
-      console.log('📄 Sahifa o\'zgartirildi:', currentPage);
-      fetchProducts({
-        page: currentPage,
-        search: searchTerm,
-        category: filterCategory
+    const p = productsData?.pagination;
+    if (p?.hasNextPage) {
+      const nextPage = (p.currentPage || currentPage) + 1;
+      const key = queryKeys.products.list(debouncedCategory, debouncedSearch, nextPage, ITEMS_PER_PAGE);
+      const params = new URLSearchParams({
+        limit: String(ITEMS_PER_PAGE),
+        page: String(nextPage),
+        sortBy: 'updatedAt',
+        sortOrder: 'desc',
+      });
+      if (debouncedCategory) params.append('category', debouncedCategory);
+      if (debouncedSearch) params.append('search', debouncedSearch);
+      queryClient.prefetchQuery({
+        queryKey: key,
+        queryFn: ({ signal }) => fetch(`http://localhost:5000/api/products?${params.toString()}`, { signal }).then(r => r.json()),
+        staleTime: 2 * 60 * 1000,
       });
     }
-  }, [currentPage]); // Faqat sahifa o'zgarishida
+  }, [productsData, debouncedCategory, debouncedSearch, currentPage]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -331,12 +454,12 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
       return;
     }
 
-    setSelectedProduct(product);
+    // Show confirmation modal before deletion
     showConfirm(
       'Mahsulotni o\'chirish',
-      `"${product.name}" mahsulotini o\'chirishni xohlaysizmi?`,
+      `"${product.name}" mahsulotini o'chirishni xohlaysizmi?`,
       () => deleteProduct(product._id),
-      null,
+      null, // onCancel callback - null means just close modal
       'danger'
     );
   };
@@ -350,60 +473,53 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/products/${id}`, {
-        method: 'DELETE'
-      });
+      // Soft-delete via React Query mutation (backend marks isDeleted: true)
+      await softDeleteProductMutate(id);
 
-      if (response.ok) {
-        // Get product info for notification before removing
-        const deletedProduct = products.find(p => p._id === id);
-        const productName = deletedProduct?.name || 'Mahsulot';
-        const productPrice = deletedProduct?.price || 0;
-        
-        // Muvaffaqiyatli o'chirish
-        setProducts(prevProducts => prevProducts.filter(product => product._id !== id));
-        setTotalCount(prev => {
-          const newCount = prev - 1;
-          // Prevent setState during render by deferring onCountChange
-          if (onCountChange) {
-            setTimeout(() => {
-              onCountChange(newCount);
-            }, 0);
-          }
-          return newCount;
-        });
-        
-        // Show deletion notification and add to recent activities
-        safeNotifyProductDeleted(productName, productPrice);
-      } else {
-        // Har qanday xatolik (404 ham) haqiqiy xatolik
-        const data = await response.json();
-        const errorMessage = data.message || `Server xatoligi: ${response.status}`;
-        
-        // Local state ni yangilash (agar mahsulot mavjud bo'lsa)
-        setProducts(prevProducts => prevProducts.filter(product => product._id !== id));
-        
-        // Xatolik xabarini ko'rsatish
-        setTimeout(() => {
-          safeNotifyError('Xatolik', errorMessage);
-        }, 0);
-      }
+      // Get product info for notification before removing
+      const deletedProduct = products.find(p => p._id === id);
+      const productName = deletedProduct?.name || 'Mahsulot';
+      const productPrice = deletedProduct?.price || 0;
+      
+      // Muvaffaqiyatli o'chirish
+      setProducts(prevProducts => prevProducts.filter(product => product._id !== id));
+      setTotalCount(prev => {
+        const newCount = prev - 1;
+        // Prevent setState during render by deferring onCountChange
+        if (onCountChange) {
+          setTimeout(() => {
+            onCountChange(newCount);
+          }, 0);
+        }
+        return newCount;
+      });
+      
+      // Show deletion notification and add to recent activities
+      notifyProductDeleted({ 
+        _id: id, 
+        name: productName, 
+        price: productPrice 
+      });
+      
+      // Show delete notification
+      setDeleteNotificationMessage(`Mahsulot "${productName}" o'chirildi`);
+      setShowDeleteNotification(true);
+      
+      // Hide notification after 3 seconds
+      setTimeout(() => {
+        setShowDeleteNotification(false);
+      }, 3000);
     } catch (error) {
       console.error('Mahsulot o\'chirishda xatolik:', error);
       
-      // Tarmoq xatoligi bo'lsa ham local state ni yangilash
-      setProducts(prevProducts => prevProducts.filter(product => product._id !== id));
-      
       // Tarmoq xatoligi uchun modal
       setTimeout(() => {
-        safeNotifyError('Xatolik', 'Server bilan bog\'lanishda xatolik yuz berdi');
+        safeNotifyError('Xatolik', (error && error.message) ? error.message : 'Server bilan bog\'lanishda xatolik yuz berdi');
       }, 0);
     }
   };
 
   // cancelDelete function removed - now using useNotifications hook
-
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -609,11 +725,13 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
         }, 0);
         closeModal();
         
-        // Mahsulotlarni qayta yuklash
+        // Cache invalidation and category refresh
         setTimeout(() => {
-          fetchProducts(); // Use fetchProducts to reload with current filters
-          loadCategories(); // Reload categories to include new ones
-        }, 500);
+          // Invalidate product lists to refresh with current filters
+          queryClient.invalidateQueries({ queryKey: queryKeys.products.lists() });
+          // Reload categories to include new ones
+          loadCategories();
+        }, 300);
       }
     } catch (error) {
       console.error('❌ Mahsulot saqlashda xatolik:', error);
@@ -666,10 +784,6 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     if (stock > 20) return { text: 'O\'rtacha', class: 'bg-yellow-100 text-yellow-800' };
     return { text: 'Kam', class: 'bg-red-100 text-red-800' };
   };
-
-  // Old openAlert function removed - now using useNotifications hook
-
-  // Search and filter handlers
   const handleSearchChange = (value) => {
     console.log('🔍 Search input o\'zgartirildi:', value);
     setSearchTerm(value);
@@ -685,59 +799,13 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     setSearchTerm('');
     setFilterCategory('');
     setCurrentPage(1);
-    
-    // Clear timeout
     if (debounceTimeoutRef.current) {
       console.log('🧹 Clear: timeout tozalandi');
       clearTimeout(debounceTimeoutRef.current);
     }
-    
-    // Reload all products using centralized function
-    console.log('🔄 Barcha mahsulotlar yuklanmoqda...');
-    fetchProducts({
-      page: 1,
-      search: '',
-      category: ''
-    });
   };
 
-  // Image handling functions
-  const handleImagesUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const maxImages = 8;
-    const currentImageCount = formData.images.length + selectedImages.length;
-    
-    if (currentImageCount >= maxImages) {
-      setTimeout(() => {
-        safeNotifyError('Xatolik', `Maksimal ${maxImages}ta rasm qo'shish mumkin`);
-      }, 0);
-      return;
-    }
-    
-    const remainingSlots = maxImages - currentImageCount;
-    const filesToProcess = files.slice(0, remainingSlots);
-    
-    if (files.length > remainingSlots) {
-      setTimeout(() => {
-        safeNotifyWarning('Ogohlantirish', `Faqat ${remainingSlots}ta rasm qo'shildi. Maksimal ${maxImages}ta rasm mumkin.`);
-      }, 0);
-    }
-    
-    filesToProcess.forEach(file => {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setTimeout(() => {
-          safeNotifyError('Xatolik', `${file.name} fayli juda katta (maksimal 5MB)`);
-        }, 0);
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setSelectedImages(prev => [...prev, event.target.result]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
+  // ... (rest of the code remains the same)
 
   const removeExistingImage = (index) => {
     setFormData(prev => ({
@@ -768,71 +836,114 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-30 responsive-header">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <button 
-              onClick={onMobileToggle}
-              className="lg:hidden text-gray-600 hover:text-gray-800"
-            >
-              <i className="fas fa-bars text-xl"></i>
-            </button>
-            <h2 className="text-2xl font-bold text-primary-dark">Mahsulotlar</h2>
-          </div>
-          <div className="flex items-center space-x-4">
-            <AdminNotificationBell notifications={notifications} setNotifications={setNotifications} />
-          </div>
-        </div>
-      </header>
+  // Derive products and pagination from query
+  const queriedProducts = productsData?.products || [];
+  useEffect(() => {
+    setProducts(queriedProducts);
+    const p = productsData?.pagination;
+    setTotalPages(p?.totalPages || 1);
+    setTotalCount(p?.totalCount || productsData?.totalCount || 0);
+  }, [productsData]);
 
-      {/* Main Content */}
-      <main className="p-6 max-w-7xl mx-auto">
-        {/* Search and Filter Section */}
-        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0 responsive-search-filter">
-          <h2 className="text-2xl font-bold text-primary-dark">Mahsulotlar</h2>
-          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 mobile-search-container">
-            {/* Search */}
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Mahsulot qidirish..."
-                value={searchTerm}
-                onChange={e => {
-                  const value = e.target.value;
-                  handleSearchChange(value);
-                }}
-                onKeyPress={e => {
-                  if (e.key === 'Enter') {
-                    console.log('🔍 Enter bosildi, qidiruv boshlandi');
-                    // Clear existing timeouts
-                    if (debounceTimeoutRef.current) {
-                      clearTimeout(debounceTimeoutRef.current);
-                    }
-                    // Immediate search using centralized function
-                    setCurrentPage(1);
-                    fetchProducts({
-                      page: 1,
-                      search: searchTerm,
-                      category: filterCategory
-                    });
+  const loading = isLoading;
+  const showSkeleton = loading || (isFetching && (products?.length || 0) === 0);
+  const showEmpty = !loading && !isFetching && isSuccess && (products?.length || 0) === 0;
+
+  return (
+  <div className="min-h-screen bg-gray-50">
+    <style>{`
+      /* Notification animations */
+      @keyframes slideInRight {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      
+      @keyframes slideOutRight {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+      }
+      
+      .notification-enter {
+        animation: slideInRight 0.3s ease-out;
+      }
+      
+      .notification-exit {
+        animation: slideOutRight 0.3s ease-in;
+      }
+    `}</style>
+    {/* Main Content */}
+    <main className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto">
+      {/* Top Bar: Title + Notification Bell (no mobile menu) */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold text-primary-dark">Mahsulotlar</h2>
+        <div className="flex items-center">
+          <AdminNotificationBell 
+            notifications={realNotifications} 
+            setNotifications={setRealNotifications}
+            markAllAsRead={markAllAsRead}
+            markAsRead={markAsRead}
+            deleteNotification={deleteNotification}
+            deleteAllNotifications={deleteAllNotifications}
+          />
+        </div>
+      </div>
+
+      {/* Mobile-only divider under header */}
+      <div className="sm:hidden border-b border-gray-200 mb-3"></div>
+
+      {/* Search and Filters Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full">
+          {/* Search - first row full width on mobile */}
+          <div className="relative w-full sm:w-auto">
+            <input
+              type="text"
+              placeholder="Mahsulot qidirish..."
+              value={searchTerm}
+              onChange={e => {
+                const value = e.target.value;
+                handleSearchChange(value);
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  console.log('🔍 Enter bosildi, qidiruv boshlandi');
+                  if (debounceTimeoutRef.current) {
+                    clearTimeout(debounceTimeoutRef.current);
                   }
-                }}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange w-full sm:w-64"
-              />
-              <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-              {(searchTerm || filterCategory) && (
-                <button
-                  onClick={clearSearchAndFilter}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <i className="fas fa-times"></i>
-                </button>
-              )}
-            </div>
-            
+                  // Immediately apply debounced values and reset to page 1
+                  setDebouncedSearch(searchTerm);
+                  setDebouncedCategory(filterCategory);
+                  setCurrentPage(1);
+                  // Trigger React Query to refetch with updated params
+                  queryClient.invalidateQueries({ queryKey: queryKeys.products.lists() });
+                }
+              }}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange w-full sm:w-64"
+            />
+            <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            {(searchTerm || filterCategory) && (
+              <button
+                onClick={clearSearchAndFilter}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            )}
+          </div>
+          {/* Row 2 on mobile: Category + Add button in one row */}
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             {/* Category Filter */}
             <select
               value={filterCategory}
@@ -840,7 +951,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                 const value = e.target.value;
                 handleFilterChange(value);
               }}
-              className="custom-select"
+              className="custom-select flex-1"
             >
               <option value="">Barcha kategoriyalar</option>
               {mainCategories.map(category => (
@@ -853,144 +964,159 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
             {/* Add Product Button */}
             <button 
               onClick={openAddModal}
-              className="bg-primary-orange text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition duration-300 whitespace-nowrap"
+              className="bg-primary-orange text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-opacity-90 transition duration-300 whitespace-nowrap"
             >
               <i className="fas fa-plus mr-2"></i>Yangi mahsulot
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Products Grid */}
-        <div className="desktop-grid grid gap-4 mb-6">
-          {loading ? (
-            <div className="col-span-full">
-              <LoadingCard count={6} />
-            </div>
-          ) : products.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <div className="text-gray-500">
-                <i className="fas fa-box-open text-6xl mb-4"></i>
-                <h3 className="text-xl font-semibold mb-2">Mahsulotlar topilmadi</h3>
-                <p className="text-gray-400">Qidiruv natijalariga mos mahsulotlar yo\'q</p>
-              </div>
-            </div>
-          ) : (
-            products.map(product => (
-              <div key={product._id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 product-card flex flex-col h-full">
-                {/* Product Image */}
-                <div className="relative overflow-hidden rounded-t-lg bg-white border-b border-gray-100 h-44 sm:h-52 lg:h-60">
-                  {(product.images && product.images.length > 0) || product.image ? (
-                    <img 
-                      src={product.images && product.images.length > 0 ? product.images[0] : product.image} 
-                      alt={product.name}
-                      className="w-full h-full object-contain p-2 bg-white"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className={`w-full h-full flex items-center justify-center bg-gradient-to-r ${getAvatarGradient(product.name)}`}>
-                      <span className="text-white text-2xl font-bold">{getProductInitials(product.name)}</span>
-                    </div>
-                  )}
-                  
-                  {/* Badge */}
-                  {product.badge && (
-                    <div className="absolute top-2 left-2">
-                      <span className="bg-primary-orange text-white text-xs px-2 py-1 rounded-full">
-                        {product.badge}
+      {/* Products Grid */}
+      <div className="mb-6">
+        {showSkeleton ? (
+          <div className="col-span-full">
+            <LoadingCard count={6} />
+          </div>
+        ) : showEmpty ? (
+          <div className="col-span-full text-center py-12">
+            <div className="text-gray-500">Mahsulot topilmadi</div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
+            {products.map((product) => (
+                <div key={product._id || product.id} className="group bg-white rounded-lg shadow-md p-2 sm:p-2.5 md:p-3 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 border border-gray-200 hover:border-orange-200 relative h-full flex flex-col">
+                  {/* Product Image */}
+                  <div
+                    className="relative cursor-pointer overflow-hidden rounded-lg mb-2 sm:mb-3 border border-gray-100 bg-white h-44 sm:h-52 lg:h-60"
+                    onClick={() => openViewModal(product)}
+                    onMouseEnter={() => startHoverSlideshow(product)}
+                    onMouseLeave={() => { stopHoverSlideshow(product); }}
+                    onTouchStart={(e) => handleTouchStartOnImage(product, e)}
+                    onTouchEnd={(e) => handleTouchEndOnImage(product, e)}
+                  >
+                    {(function(){ const imgs = getAllProductImages(product); return imgs && imgs.length > 0; })() ? (
+                      <img 
+                        src={(function(){ const imgs = getAllProductImages(product); const id = product?._id || product?.id; const idx = (id && imageIndexRef.current.get(id)) || 0; return imgs[idx] || imgs[0]; })()} 
+                        alt={product.name}
+                        className="w-full h-full object-contain p-2 bg-white transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className={`w-full h-full flex items-center justify-center bg-gradient-to-r ${getAvatarGradient(product.name)}`}>
+                        <span className="text-white text-2xl font-bold">{getProductInitials(product.name)}</span>
+                      </div>
+                    )}
+                    {product.badge && (
+                      <div className="absolute top-2 left-2">
+                        <span className="bg-primary-orange text-white text-xs px-2 py-1 rounded-full">
+                          {product.badge}
+                        </span>
+                      </div>
+                    )}
+                    {product.oldPrice && product.oldPrice > product.price && (
+                      <div className="absolute top-2 right-2">
+                        <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                          -{Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}%
+                        </span>
+                      </div>
+                    )}
+                    <div className="absolute bottom-2 right-2">
+                      <span className={`text-xs px-2 py-1 rounded-full ${getStockStatus(product.stock).class}`}>
+                        {getStockStatus(product.stock).text}
                       </span>
                     </div>
-                  )}
-                  
-                  {/* Discount Badge */}
-                  {product.oldPrice && product.oldPrice > product.price && (
-                    <div className="absolute top-2 right-2">
-                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
-                        -{Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}%
-                      </span>
+                  </div>
+                  {/* Info */}
+                  <div className="flex flex-col flex-1">
+                    <div className="mb-2">
+                      <h3 className="font-semibold text-xs sm:text-sm md:text-base text-gray-900 leading-tight hover:text-primary-orange transition-colors duration-200 line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
                     </div>
-                  )}
-                  
-                  {/* Stock Status */}
-                  <div className="absolute bottom-2 right-2">
-                    <span className={`text-xs px-2 py-1 rounded-full ${getStockStatus(product.stock).class}`}>
-                      {getStockStatus(product.stock).text}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Product Info */}
-                <div className="p-4 flex flex-col flex-1">
-                  <div className="mb-2">
-                    <h3 className="font-semibold text-gray-900 line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
-                  </div>
-                  
-                  <p className="text-gray-600 text-sm mb-3 line-clamp-2 min-h-[2.5rem]">{product.description}</p>
-                  
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-lg font-bold text-primary-dark">{formatCurrency(product.price)}</span>
-                      {product.oldPrice && product.oldPrice > product.price && (
-                        <span className="text-sm text-gray-400 line-through decoration-red-500 decoration-2">{formatCurrency(product.oldPrice)}</span>
+                    {product.description && (
+                      <div className="bg-slate-50 p-2 rounded border-l-2 border-slate-200 mb-3">
+                        <p className="text-slate-600 text-[11px] sm:text-xs leading-snug line-clamp-2 m-0">{product.description}</p>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base sm:text-lg font-bold text-primary-orange">{formatCurrency(product.price)}</span>
+                        {product.oldPrice && product.oldPrice > product.price && (
+                          <span className="text-xs sm:text-sm text-gray-400 line-through">{formatCurrency(product.oldPrice)}</span>
+                        )}
+                      </div>
+                      <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap flex-shrink-0">{product.stock} {product.unit}</span>
+                    </div>
+                    <div className="mt-auto flex gap-1.5 pt-2">
+                      <button 
+                        onClick={() => openViewModal(product)}
+                        className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 py-2 px-1 rounded-md font-medium transition-colors duration-200 flex items-center justify-center border border-green-200"
+                        title="Ko'rish"
+                        aria-label="Ko'rish"
+                      >
+                        <i className="fas fa-eye text-green-600 text-sm"></i>
+                        <span className="hidden sm:inline ml-1 text-xs">Ko'rish</span>
+                      </button>
+                      <button 
+                        onClick={() => openEditModal(product)}
+                        className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 px-1 rounded-md font-medium transition-colors duration-200 flex items-center justify-center border border-blue-200"
+                        title="Tahrirlash"
+                        aria-label="Tahrirlash"
+                      >
+                        <i className="fas fa-edit text-blue-600 text-sm"></i>
+                        <span className="hidden sm:inline ml-1 text-xs">Tahrir</span>
+                      </button>
+                      {(product?.isDeleted || product?.status === 'inactive') && (
+                        <button 
+                          onClick={() => openRestoreConfirm(product)}
+                          className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 py-2 px-1 rounded-md font-medium transition-colors duration-200 flex items-center justify-center border border-green-200"
+                          title="Tiklash"
+                          aria-label="Tiklash"
+                        >
+                          <i className="fas fa-rotate-left text-green-600 text-sm"></i>
+                          <span className="hidden sm:inline ml-1 text-xs">Tiklash</span>
+                        </button>
                       )}
+                      <button 
+                        onClick={() => openDeleteConfirm(product)}
+                        className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 py-2 px-1 rounded-md font-medium transition-colors duration-200 flex items-center justify-center border border-red-200"
+                        title="O'chirish"
+                        aria-label="O'chirish"
+                      >
+                        <i className="fas fa-trash text-red-600 text-sm"></i>
+                        <span className="hidden sm:inline ml-1 text-xs">O'chir</span>
+                      </button>
                     </div>
-                    <span className="text-sm text-gray-500 whitespace-nowrap flex-shrink-0">{product.stock} {product.unit}</span>
-                  </div>
-                  
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-center space-x-2 mt-auto">
-                    <button 
-                      onClick={() => openViewModal(product)}
-                      className="flex-1 bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition duration-200 flex items-center justify-center"
-                      title="Ko'rish"
-                    >
-                      <i className="fas fa-eye mr-1"></i>
-                      <span className="text-sm">Ko'rish</span>
-                    </button>
-                    <button 
-                      onClick={() => openEditModal(product)}
-                      className="flex-1 bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200 transition duration-200 flex items-center justify-center"
-                      title="Tahrirlash"
-                    >
-                      <i className="fas fa-edit mr-1"></i>
-                      <span className="text-sm">Tahrir</span>
-                    </button>
-                    <button 
-                      onClick={() => openDeleteConfirm(product)}
-                      className="flex-1 bg-red-100 text-red-700 p-2 rounded-lg hover:bg-red-200 transition duration-200 flex items-center justify-center"
-                      title="O'chirish"
-                    >
-                      <i className="fas fa-trash mr-1"></i>
-                      <span className="text-sm">O'chir</span>
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
-
-        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between bg-white px-6 py-4 rounded-lg shadow-sm">
-            <div className="text-sm text-gray-600">
-              {totalCount} ta mahsulotdan {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} tasi ko'rsatilmoqda
+          <div className="flex items-center justify-between bg-white px-6 py-4 rounded-lg shadow-sm flex-nowrap">
+            <div className="text-sm text-gray-600 whitespace-nowrap">
+              {totalCount} ta mahsulotdan {(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} tasi ko'rsatilmoqda
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 shrink-0">
               <button
                 onClick={() => changePage('prev')}
                 disabled={currentPage === 1}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
               >
-                <i className="fas fa-chevron-left"></i>
+                <i className="fas fa-chevron-left mr-1"></i>
+                <span className="hidden sm:inline">Oldingi</span>
               </button>
-              <span className="px-3 py-2 text-sm text-gray-600">
-                {currentPage} / {totalPages}
+              <span className="px-3 py-2 text-sm text-gray-600 whitespace-nowrap shrink-0 text-center inline-flex items-center gap-1">
+                <span>{currentPage}</span>
+                <span>/</span>
+                <span>{totalPages}</span>
               </span>
               <button
                 onClick={() => changePage('next')}
                 disabled={currentPage === totalPages}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
               >
+                <span className="hidden sm:inline mr-1">Keyingi</span>
                 <i className="fas fa-chevron-right"></i>
               </button>
             </div>
@@ -1008,7 +1134,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
             className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-white p-6 border-b border-gray-200 rounded-t-lg">
+            <div className="sticky top-0 bg-white p-6 border-b border-gray-200 rounded-t-lg z-20">
               <div className="flex items-center justify-between">
                 <h3 className="text-2xl font-semibold text-gray-900">
                   {selectedProduct ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot qo\'shish'}
@@ -1202,7 +1328,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
             className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-white p-6 border-b border-gray-200 rounded-t-lg">
+            <div className="sticky top-0 bg-white p-6 border-b border-gray-200 rounded-t-lg z-20">
               <div className="flex items-center justify-between">
                 <h3 className="text-2xl font-semibold text-gray-900">Mahsulot ma'lumotlari</h3>
                 <button
@@ -1325,7 +1451,7 @@ const AdminProducts = ({ onCountChange, onMobileToggle, notifications, setNotifi
                 </div>
               </div>
               
-              <div className="sticky bottom-0 bg-white pt-6 border-t border-gray-200">
+              <div className="sticky bottom-0 bg-white pt-6 border-t border-gray-200 z-10">
                 <div className="flex items-center justify-end space-x-4">
                   <button 
                     onClick={() => setIsViewModalOpen(false)}

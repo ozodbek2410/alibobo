@@ -1,15 +1,30 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AdminNotificationBell from './AdminNotificationBell';
 import AdminNotificationModals from './AdminNotificationModals';
 import LoadingSpinner from './LoadingSpinner';
 import LoadingCard from './LoadingCard';
 import useNotifications from '../hooks/useNotifications';
+import useRealNotifications from '../hooks/useRealNotifications';
 
 const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
-  // Use notification system
+  // Real notification system for notification bell
   const {
-    notifications,
-    setNotifications,
+    notifications: realNotifications,
+    setNotifications: setRealNotifications,
+    unreadCount,
+    markAllAsRead,
+    markAsRead,
+    deleteNotification,
+    deleteAllNotifications,
+    notifyCraftsmanAdded,
+    notifyCraftsmanDeleted,
+    notifyCraftsmanEdited
+  } = useRealNotifications(true, 30000);
+
+  // Demo notification system for modals (keep existing modal functionality)
+  const {
+    notifications: demoNotifications,
     alertModal,
     confirmModal,
     promptModal,
@@ -19,9 +34,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
     showAlert,
     showConfirm,
     notifySuccess,
-    notifyError,
-    notifyCraftsmanAdded,
-    notifyCraftsmanDeleted
+    notifyError
   } = useNotifications();
 
   // Safe notification handlers to prevent setState during render
@@ -67,6 +80,9 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
   });
   const [showCustomSpecialty, setShowCustomSpecialty] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const path = (location && location.pathname) || '';
 
   const specialties = [
     "Barcha mutaxassisliklar",
@@ -413,8 +429,21 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
         // Trigger appropriate notification after state update
         if (selectedCraftsman) {
           safeNotifySuccess('Usta muvaffaqiyatli tahrirlandi');
+          
+          // Add real notification for notification bell
+          notifyCraftsmanEdited({
+            _id: data._id || data.id,
+            name: craftsmanData.name,
+            specialty: craftsmanData.specialty
+          }).catch(error => {
+            console.error('Failed to create edit notification:', error);
+          });
         } else {
-          safeNotifyCraftsmanAdded(craftsmanData.name, craftsmanData.specialty);
+          notifyCraftsmanAdded({
+            _id: data._id || data.id,
+            name: craftsmanData.name,
+            specialty: craftsmanData.specialty
+          });
         }
         closeModal();
       } else {
@@ -463,7 +492,11 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
         });
 
         // Show deletion notification with craftsman details
-        safeNotifyCraftsmanDeleted(craftsmanName, craftsmanSpecialty);
+        notifyCraftsmanDeleted({ 
+          _id: id, 
+          name: craftsmanName, 
+          specialty: craftsmanSpecialty 
+        });
       } else {
         // Har qanday xatolik (404 ham) haqiqiy xatolik
         const data = await response.json();
@@ -540,17 +573,17 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
   };
 
   const handleNotificationClick = (notificationId) => {
-    setNotifications(prev => prev.map(n =>
-      n.id === notificationId ? { ...n, read: true } : n
-    ));
+    // This functionality is handled by useRealNotifications hook
+    markAsRead(notificationId);
   };
 
   const markAllNotificationsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    // This functionality is handled by useRealNotifications hook
+    markAllAsRead();
   };
 
   const getUnreadCount = () => {
-    return notifications.filter(n => !n.read).length;
+    return unreadCount;
   };
 
   const getNotificationIcon = (type) => {
@@ -573,66 +606,73 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       {/* Fixed Top Header */}
       <header className="bg-white shadow-sm border-b sticky top-0 z-20">
         <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center space-x-2 sm:space-x-4">
             <button
               onClick={onMobileToggle}
-              className="lg:hidden text-gray-600 p-1"
+              className="hidden"
             >
               <i className="fas fa-bars text-lg sm:text-xl"></i>
             </button>
             <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-primary-dark">Ustalar</h2>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
-            <AdminNotificationBell notifications={notifications} setNotifications={setNotifications} />
+            <AdminNotificationBell 
+              notifications={realNotifications} 
+              setNotifications={setRealNotifications}
+              markAllAsRead={markAllAsRead}
+              markAsRead={markAsRead}
+              deleteNotification={deleteNotification}
+              deleteAllNotifications={deleteAllNotifications}
+            />
           </div>
         </div>
       </header>
 
       {/* Main content area */}
-      <main className="p-3 sm:p-4 lg:p-6">
-        <div className="max-w-7xl mx-auto">
+      <main className="p-3 sm:p-4 lg:p-6 pb-6">
+        <div className="max-w-7xl mx-auto min-w-0">
           {/* Fixed controls section */}
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-4 sm:mb-6 space-y-3 sm:space-y-4 lg:space-y-0">
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-primary-dark">Ustalar</h2>
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 lg:space-x-3">
-              {/* Search */}
-              <div className="relative">
+            <div className="w-full lg:grid lg:grid-cols-2 lg:gap-3">
+              {/* Row 1: Search */}
+              <div className="relative w-full mb-2 lg:mb-0">
                 <input
                   type="text"
                   placeholder="Usta qidirish..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange w-full sm:w-48 lg:w-64 text-sm sm:text-base"
+                  className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange text-sm sm:text-base"
                 />
                 <i className="fas fa-search absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
               </div>
-              {/* Specialty Filter */}
-              <select
-                value={filterSpecialty}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  console.log('🔄 Filter changed to:', newValue);
-                  setFilterSpecialty(newValue);
-                }}
-                className="px-2 sm:px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange text-sm sm:text-base"
-              >
-                <option value="">Barcha mutaxassisliklar</option>
-                {specialties.slice(1).map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-              <button
-                onClick={openAddModal}
-                className="bg-primary-orange text-white px-3 sm:px-4 lg:px-6 py-2 rounded-lg hover:bg-opacity-90 transition duration-300 whitespace-nowrap text-sm sm:text-base"
-              >
-                <i className="fas fa-plus mr-1 sm:mr-2"></i>
-                <span className="hidden sm:inline">Yangi usta</span>
-                <span className="sm:hidden">+</span>
-              </button>
+              {/* Row 2: Filter + Add in one row on mobile (use grid to avoid overflow) */}
+              <div className="w-full grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                <select
+                  value={filterSpecialty}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    console.log('🔄 Filter changed to:', newValue);
+                    setFilterSpecialty(newValue);
+                  }}
+                  className="col-span-1 sm:flex-1 min-w-0 px-2 sm:px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-orange text-sm sm:text-base"
+                >
+                  <option value="">Barcha mutaxassisliklar</option>
+                  {specialties.slice(1).map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={openAddModal}
+                  className="col-span-1 sm:w-auto flex-shrink-0 bg-primary-orange text-white px-3 sm:px-4 lg:px-6 py-2 rounded-lg hover:bg-opacity-90 transition duration-300 whitespace-nowrap text-sm sm:text-base"
+                >
+                  <i className="fas fa-plus mr-2"></i>
+                  <span>Yangi usta</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -676,118 +716,72 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
                   </div>
                 </div>
               ) : (
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th
-                        className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                        onClick={() => handleSort('name')}
-                      >
-                        <span className="hidden sm:inline">Usta</span>
-                        <span className="sm:hidden">Usta</span>
-                        <i className="fas fa-sort ml-1"></i>
-                      </th>
-                      <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase whitespace-nowrap">
-                        <span className="hidden sm:inline">Mutaxassislik</span>
-                        <span className="sm:hidden">Kasb</span>
-                      </th>
-                      <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase whitespace-nowrap">
-                        <span className="hidden sm:inline">Telefon</span>
-                        <span className="sm:hidden">Tel</span>
-                      </th>
-                      <th
-                        className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                        onClick={() => handleSort('price')}
-                      >
-                        <span className="hidden sm:inline">Narx</span>
-                        <span className="sm:hidden">Narx</span>
-                        <i className="fas fa-sort ml-1"></i>
-                      </th>
-                      <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-gray-600 font-medium text-sm sm:text-base whitespace-nowrap">
-                        <span className="hidden lg:inline">Tavsif</span>
-                        <span className="lg:hidden">Tavsif</span>
-                      </th>
-                      <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <span className="hidden sm:inline">Status</span>
-                        <span className="sm:hidden">Status</span>
-                      </th>
-                      <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <span className="hidden sm:inline">Amallar</span>
-                        <span className="sm:hidden">Amal</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
+                <div className="p-3 sm:p-6">
+                  <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 min-w-0">
                     {craftsmen.map((c) => (
-                      <tr key={c._id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-2 sm:space-x-3">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-primary-orange rounded-full flex items-center justify-center shadow-lg border-2 border-white ring-2 ring-gray-100 flex-shrink-0">
-                              <i className="fas fa-user text-white text-sm sm:text-base lg:text-xl"></i>
+                      <div key={c._id} className="bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-shadow duration-200 overflow-hidden h-full">
+                        <div className="p-3 sm:p-4 h-full flex flex-col">
+                          {/* Profile and Name */}
+                          <div className="flex items-center mb-3">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg mr-3 flex-shrink-0">
+                              <i className="fas fa-user text-white text-sm sm:text-base"></i>
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-gray-800 text-sm sm:text-base hover:text-primary-orange transition-colors cursor-pointer truncate">{c.name}</div>
-                              <div className="text-xs sm:text-sm text-gray-500 flex items-center mt-0.5">
-                                <i className="fas fa-calendar-alt text-xs mr-1 sm:mr-1.5 text-gray-400 flex-shrink-0"></i>
-                                <span className="whitespace-nowrap">{formatDate(c.joinDate)}</span>
-                              </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-1 truncate">{c.name}</h3>
+                              <span className="text-orange-600 font-bold text-sm sm:text-base">{c.price ? formatCurrency(c.price) : 'Narx belgilanmagan'}</span>
                             </div>
                           </div>
-                        </td>
-                        <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
-                          <span className="px-1 sm:px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full inline-block leading-tight max-w-full overflow-hidden text-ellipsis" title={c.specialty}>{c.specialty}</span>
-                        </td>
-                        <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-primary-orange whitespace-nowrap">
-                          <a href={`tel:${c.phone}`} className="hover:underline text-sm sm:text-base truncate block">{c.phone}</a>
-                        </td>
-                        <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-gray-600 font-medium text-sm sm:text-base whitespace-nowrap">
-                          {c.price ? formatCurrency(c.price) : 'Narx belgilanmagan'}
-                        </td>
-                        <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
-                          <div className="max-w-xs">
-                            <p className="text-xs sm:text-sm text-gray-600 line-clamp-2" title={c.description}>
-                              {c.description || 'Tavsif mavjud emas'}
+
+                          {/* Status Badge */}
+                          <div className="flex items-center mb-2">
+                            <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-2 ${c.status === 'inactive' ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                            <span className={`text-xs font-medium ${c.status === 'inactive' ? 'text-red-600' : 'text-green-600'}`}>
+                              {statusMap[c.status]?.text || statusMap.active.text}
+                            </span>
+                          </div>
+
+                          {/* Specialty */}
+                          <p className="text-xs text-gray-600 mb-2 truncate" title={c.specialty}>{c.specialty}</p>
+
+                          {/* Phone */}
+                          <div className="flex items-center text-xs text-gray-600 mb-3">
+                            <i className="fas fa-phone text-green-600 mr-2 w-3"></i>
+                            <a href={`tel:${c.phone}`} className="truncate hover:underline">{c.phone}</a>
+                          </div>
+
+                          {/* Description - hide on mobile */}
+                          {c.description && (
+                            <p className="hidden sm:block text-xs text-gray-600 mb-3 line-clamp-2">
+                              {c.description}
                             </p>
-                          </div>
-                        </td>
-                        <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
-                          <span className={`status-badge ${statusMap[c.status]?.class || statusMap.active.class}`}>{statusMap[c.status]?.text || statusMap.active.text}</span>
-                        </td>
-                        <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
-                          <div className="flex space-x-1 sm:space-x-2">
-                            <button
-                              onClick={() => openViewModal(c)}
-                              className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-50"
-                              title="Ko'rish"
-                            >
-                              <i className="fas fa-eye text-sm sm:text-base"></i>
+                          )}
+
+                          {/* Admin Action Buttons - always at bottom */}
+                          <div className="mt-auto flex gap-1.5 pt-2">
+                            <button onClick={() => openViewModal(c)} className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 py-2 px-1 rounded-md font-medium transition-colors duration-200 flex items-center justify-center border border-green-200" title="Ko'rish">
+                              <i className="fas fa-eye text-green-600 text-sm"></i>
+                              <span className="hidden sm:inline ml-1 text-xs">Ko'rish</span>
                             </button>
-                            <button
-                              onClick={() => openEditModal(c)}
-                              className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
-                              title="Tahrirlash"
-                            >
-                              <i className="fas fa-edit text-sm sm:text-base"></i>
+                            <button onClick={() => openEditModal(c)} className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 px-1 rounded-md font-medium transition-colors duration-200 flex items-center justify-center border border-blue-200" title="Tahrir">
+                              <i className="fas fa-edit text-blue-600 text-sm"></i>
+                              <span className="hidden sm:inline ml-1 text-xs">Tahrir</span>
                             </button>
-                            <button
-                              onClick={() => openDeleteConfirm(c)}
-                              className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
-                              title="O'chirish"
-                            >
-                              <i className="fas fa-trash text-sm sm:text-base"></i>
+                            <button onClick={() => openDeleteConfirm(c)} className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 py-2 px-1 rounded-md font-medium transition-colors duration-200 flex items-center justify-center border border-red-200" title="O'chir">
+                              <i className="fas fa-trash text-red-600 text-sm"></i>
+                              <span className="hidden sm:inline ml-1 text-xs">O'chir</span>
                             </button>
                           </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                </div>
               )}
             </div>
 
             {/* Fixed pagination section */}
-            <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t bg-gray-50 flex flex-col sm:flex-row items-center justify-between space-y-2 sm:space-y-0">
-              <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
+            <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t bg-gray-50 flex items-center justify-between flex-nowrap">
+              <div className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">
                 Ko'rsatilmoqda <span>{(currentPage - 1) * itemsPerPage + 1}</span> dan <span>{Math.min(currentPage * itemsPerPage, totalCount)}</span> gacha, jami <span>{totalCount}</span> ta
               </div>
               <div className="flex space-x-1 sm:space-x-2">
@@ -1101,6 +1095,7 @@ const AdminCraftsmen = ({ onCountChange, onMobileToggle }) => {
         onConfirmResponse={handleConfirmResponse}
         onPromptResponse={handlePromptResponse}
       />
+
     </div>
   );
 };

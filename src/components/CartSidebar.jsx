@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { queryClient } from '../lib/queryClient';
 
 const CartSidebar = ({ isOpen, onClose, cart, onRemoveFromCart, onUpdateQuantity, onCheckout }) => {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -140,9 +141,11 @@ const CartSidebar = ({ isOpen, onClose, cart, onRemoveFromCart, onUpdateQuantity
         customerPhone: customerData.phone.trim(),
         customerAddress: customerData.address.trim(),
         items: cart.map(item => ({
+          productId: item._id || item.id, // Product ID for inventory tracking
           name: item.name,
           quantity: parseInt(item.quantity) || 1,
-          price: parseInt(item.price?.toString().replace(/[^\d]/g, '') || '0')
+          price: parseInt(item.price?.toString().replace(/[^\d]/g, '') || '0'),
+          variantOption: item.selectedVariants ? Object.values(item.selectedVariants).join(', ') : undefined
         })),
         totalAmount: calculateTotal(),
         status: 'pending',
@@ -150,6 +153,12 @@ const CartSidebar = ({ isOpen, onClose, cart, onRemoveFromCart, onUpdateQuantity
       };
 
       console.log('Buyurtma ma\'lumotlari yuborilmoqda:', orderData);
+      console.log('Cart items with productIds:', cart.map(item => ({ 
+        name: item.name, 
+        productId: item._id || item.id, 
+        quantity: item.quantity,
+        selectedVariants: item.selectedVariants 
+      })));
 
       // Send order to backend API with timeout
       const controller = new AbortController();
@@ -178,6 +187,14 @@ const CartSidebar = ({ isOpen, onClose, cart, onRemoveFromCart, onUpdateQuantity
       const savedOrder = await response.json();
       
       console.log('Buyurtma muvaffaqiyatli saqlandi:', savedOrder);
+      
+      // Invalidate products cache to refresh inventory on main page
+      try {
+        await queryClient.invalidateQueries({ queryKey: ['products'] });
+        console.log('✅ Products cache invalidated - inventory will refresh');
+      } catch (cacheError) {
+        console.warn('⚠️ Cache invalidation failed:', cacheError);
+      }
 
       // Reset form data
       setCustomerData({
@@ -302,7 +319,7 @@ const CartSidebar = ({ isOpen, onClose, cart, onRemoveFromCart, onUpdateQuantity
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
                         Mahsulot
                       </span>
-                      <p className="text-xs sm:text-sm text-gray-500 mt-2 truncate">{item.price} / dona</p>
+                      <p className="text-xs sm:text-sm text-gray-500 mt-2 truncate">{item.price} / {item.unit || 'dona'}</p>
                       <div className="flex items-center space-x-2 mt-3">
                         <button
                           onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}

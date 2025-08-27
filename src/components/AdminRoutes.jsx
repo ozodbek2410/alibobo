@@ -1,21 +1,114 @@
-import React, { Suspense, lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { ErrorBoundary } from 'react-error-boundary';
+
 import AdminLoadingLayout from './skeletons/AdminLoadingLayout';
 import AdminSidebar from './AdminSidebar';
+import AdminBottomNav from './AdminBottomNav';
 
-// Lazy load all admin components to keep them out of main bundle
-const AdminDashboard = lazy(() => import('./AdminDashboard'));
-const AdminCraftsmen = lazy(() => import('./AdminCraftsmen'));
-const AdminProducts = lazy(() => import('./AdminProducts'));
-const AdminOrders = lazy(() => import('./AdminOrders'));
-const AdminAnalytics = lazy(() => import('./AdminAnalytics'));
+// Lazy load all admin components with retry functionality and error handling
+const loadComponentWithRetry = (componentImport, retries = 2) => {
+  return new Promise((resolve, reject) => {
+    componentImport()
+      .then(resolve)
+      .catch((error) => {
+        // Retry logic for network failures
+        if (retries > 0) {
+          setTimeout(() => {
+            loadComponentWithRetry(componentImport, retries - 1)
+              .then(resolve)
+              .catch(reject);
+          }, 1500); // 1.5 second delay between retries
+        } else {
+          reject(error);
+        }
+      });
+  });
+};
 
-// Preload admin components on user interaction
-const preloadAdminComponents = () => {
-  // Preload most commonly used admin components
-  import('./AdminDashboard');
-  import('./AdminProducts');
-  import('./AdminOrders');
+const AdminDashboard = lazy(() => loadComponentWithRetry(() => import(
+  /* webpackChunkName: "admin-dashboard" */
+  /* webpackPrefetch: true */
+  './AdminDashboard'
+)));
+
+const AdminCraftsmen = lazy(() => loadComponentWithRetry(() => import(
+  /* webpackChunkName: "admin-craftsmen" */
+  './AdminCraftsmen'
+)));
+
+const AdminProducts = lazy(() => loadComponentWithRetry(() => import(
+  /* webpackChunkName: "admin-products" */
+  /* webpackPrefetch: true */
+  './AdminProducts'
+)));
+
+const AdminOrders = lazy(() => loadComponentWithRetry(() => import(
+  /* webpackChunkName: "admin-orders" */
+  /* webpackPrefetch: true */
+  './AdminOrders'
+)));
+
+const AdminAnalytics = lazy(() => loadComponentWithRetry(() => import(
+  /* webpackChunkName: "admin-analytics" */
+  './AdminAnalytics'
+)));
+
+const ErrorFallback = ({ error, resetErrorBoundary }) => {
+  const navigate = useNavigate();
+  
+  return (
+    <div className="flex justify-center items-center h-screen">
+      <div className="text-center p-6 bg-white shadow-xl rounded-lg max-w-lg">
+        <h2 className="text-2xl font-bold text-red-600 mb-4">Xatolik yuz berdi</h2>
+        <p className="text-gray-700 mb-6">{error.message || 'Sahifani yuklashda muammo yuzaga keldi'}</p>
+        <div className="space-x-4">
+          <button 
+            onClick={() => {
+              resetErrorBoundary();
+              navigate('/admin');
+            }}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors">
+            Bosh sahifaga qaytish
+          </button>
+          <button 
+            onClick={() => {
+              resetErrorBoundary();
+              window.location.reload();
+            }}
+            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-colors">
+            Qayta yuklash
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Intelligent preloading based on user behavior
+const preloadAdminComponents = (section) => {
+  switch(section) {
+    case 'dashboard':
+      import(/* webpackChunkName: "admin-products" */ './AdminProducts');
+      import(/* webpackChunkName: "admin-orders" */ './AdminOrders');
+      break;
+    case 'products':
+      import(/* webpackChunkName: "admin-dashboard" */ './AdminDashboard');
+      import(/* webpackChunkName: "admin-analytics" */ './AdminAnalytics');
+      break;
+    case 'orders':
+      import(/* webpackChunkName: "admin-dashboard" */ './AdminDashboard');
+      import(/* webpackChunkName: "admin-products" */ './AdminProducts');
+      break;
+    case 'craftsmen':
+      import(/* webpackChunkName: "admin-dashboard" */ './AdminDashboard');
+      break;
+    case 'analytics':
+      import(/* webpackChunkName: "admin-orders" */ './AdminOrders');
+      break;
+    default:
+      import(/* webpackChunkName: "admin-dashboard" */ './AdminDashboard');
+  }
 };
 
 const AdminRoutes = ({ 
@@ -30,74 +123,97 @@ const AdminRoutes = ({
   onProductsCountChange,
   onOrdersCountChange
 }) => {
-  // Preload components on first render
-  React.useEffect(() => {
-    // Preload after a short delay to not block initial render
-    const timer = setTimeout(preloadAdminComponents, 1000);
+  // Track loading state
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Determine active sidebar section from current path
+  const location = useLocation();
+  const pathname = location.pathname || '';
+  let activeSection = 'dashboard';
+  if (pathname.startsWith('/admin')) {
+    const rest = pathname.slice('/admin'.length); // e.g., "/orders" or ""
+    const first = rest.split('/').filter(Boolean)[0];
+    activeSection = first || 'dashboard';
+  }
+  
+  // Preload components on first render and when route changes
+  useEffect(() => {
+    const timer = setTimeout(() => preloadAdminComponents(activeSection), 800);
     return () => clearTimeout(timer);
-  }, []);
+  }, [activeSection]);
 
   return (
-    <div className="flex">
-      <AdminSidebar
-        onLogout={onLogout}
-        isMobileOpen={isMobileOpen}
-        onMobileToggle={onMobileToggle}
-        counts={counts}
-      />
-      <div className="flex-1 lg:ml-64">
-        <Suspense fallback={<AdminLoadingLayout />}>
-          <Routes>
-            <Route 
-              path="/" 
-              element={
-                <AdminDashboard
-                  onMobileToggle={onMobileToggle}
-                  craftsmenCount={craftsmenCount}
-                  productsCount={productsCount}
-                  ordersCount={ordersCount}
-                />
-              } 
-            />
-            <Route 
-              path="/craftsmen" 
-              element={
-                <AdminCraftsmen
-                  onCountChange={onCraftsmenCountChange}
-                  onMobileToggle={onMobileToggle}
-                />
-              } 
-            />
-            <Route 
-              path="/products" 
-              element={
-                <AdminProducts
-                  onMobileToggle={onMobileToggle}
-                  onCountChange={onProductsCountChange}
-                />
-              } 
-            />
-            <Route 
-              path="/orders" 
-              element={
-                <AdminOrders
-                  onMobileToggle={onMobileToggle}
-                  onCountChange={onOrdersCountChange}
-                />
-              } 
-            />
-            <Route 
-              path="/analytics" 
-              element={
-                <AdminAnalytics
-                  onMobileToggle={onMobileToggle}
-                />
-              } 
-            />
-          </Routes>
-        </Suspense>
+    <>
+      <div className="flex">
+        <AdminSidebar
+          onLogout={onLogout}
+          isMobileOpen={isMobileOpen}
+          onMobileToggle={onMobileToggle}
+          counts={counts}
+          active={activeSection}
+        />
+        <div className="flex-1 lg:ml-64 pb-16 lg:pb-0 min-h-screen">
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={
+              <AdminLoadingLayout 
+                isLoading={true} 
+                message={`${activeSection.charAt(0).toUpperCase() + activeSection.slice(1)} sahifasi yuklanmoqda...`}
+              />
+            }>
+              <Routes>
+              <Route 
+                path="/" 
+                element={
+                  <AdminDashboard
+                    onMobileToggle={onMobileToggle}
+                    craftsmenCount={craftsmenCount}
+                    productsCount={productsCount}
+                    ordersCount={ordersCount}
+                  />
+                } 
+              />
+              <Route 
+                path="/craftsmen" 
+                element={
+                  <AdminCraftsmen
+                    onCountChange={onCraftsmenCountChange}
+                    onMobileToggle={onMobileToggle}
+                  />
+                } 
+              />
+              <Route 
+                path="/products" 
+                element={
+                  <AdminProducts
+                    onMobileToggle={onMobileToggle}
+                    onCountChange={onProductsCountChange}
+                  />
+                } 
+              />
+              <Route 
+                path="/orders" 
+                element={
+                  <AdminOrders
+                    onMobileToggle={onMobileToggle}
+                    onCountChange={onOrdersCountChange}
+                  />
+                } 
+              />
+              <Route 
+                path="/analytics" 
+                element={
+                  <AdminAnalytics
+                    onMobileToggle={onMobileToggle}
+                  />
+                } 
+              />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
+        </div>
       </div>
-    </div>
+      <AdminBottomNav counts={counts} />
+    </>
   );
 };
 

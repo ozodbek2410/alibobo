@@ -134,6 +134,12 @@ const productSchema = new mongoose.Schema({
     type: String,
     enum: ['active', 'inactive', 'draft'],
     default: 'active'
+  },
+  // Soft delete flag (never hard delete products)
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true
   }
 }, {
   timestamps: true // This adds createdAt and updatedAt automatically
@@ -293,6 +299,10 @@ productSchema.index({
   stock: 1, 
   category: 1 
 }); // Available products by category
+
+// 7.1 Soft-delete aware compound indexes
+productSchema.index({ isDeleted: 1, status: 1, createdAt: -1 });
+productSchema.index({ isDeleted: 1, status: 1, category: 1, price: 1 });
 
 // 8. Variant-specific indexes
 productSchema.index({ hasVariants: 1, status: 1 });

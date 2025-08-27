@@ -4,18 +4,26 @@ import AdminRecentActivities from './AdminRecentActivities';
 import AdminNotificationBell from './AdminNotificationBell';
 import AdminNotificationModals from './AdminNotificationModals';
 import useNotifications from '../hooks/useNotifications';
+import useRealNotifications from '../hooks/useRealNotifications';
 import useStatistics from '../hooks/useStatistics';
 
-const AdminDashboard = ({ onMobileToggle, onNavigate }) => {
-  const [craftsmenData, setCraftsmenData] = useState([]);
-  const [productsData, setProductsData] = useState([]);
-  const [ordersData, setOrdersData] = useState([]);
-  const [activitiesLoading, setActivitiesLoading] = useState(true);
+const AdminDashboard = ({ onNavigate }) => {
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
   
-  // Use notification system
+  // Use real notification system
   const {
     notifications,
     setNotifications,
+    markAllAsRead,
+    markAsRead,
+    deleteNotification,
+    deleteAllNotifications,
+    loading: notificationsLoading,
+    error: notificationsError
+  } = useRealNotifications(true, 30000); // Auto-refresh every 30 seconds
+
+  // Use demo notifications for modals (keep existing modal functionality)
+  const {
     alertModal,
     confirmModal,
     promptModal,
@@ -37,42 +45,6 @@ const AdminDashboard = ({ onMobileToggle, onNavigate }) => {
     formatNumber
   } = useStatistics(true, 300000); // Auto-refresh every 5 minutes
 
-  // Fetch data for activities (separate from statistics)
-  const fetchActivitiesData = useCallback(async () => {
-    setActivitiesLoading(true);
-    try {
-      // Fetch craftsmen for activities
-      const craftsmenResponse = await fetch('/api/craftsmen');
-      if (craftsmenResponse.ok) {
-        const craftsmenResult = await craftsmenResponse.json();
-        setCraftsmenData(craftsmenResult.craftsmen || []);
-      }
-
-      // Fetch products for activities
-      const productsResponse = await fetch('/api/products');
-      if (productsResponse.ok) {
-        const productsResult = await productsResponse.json();
-        setProductsData(productsResult.products || []);
-      }
-
-      // Fetch orders for activities
-      const ordersResponse = await fetch('/api/orders');
-      if (ordersResponse.ok) {
-        const ordersResult = await ordersResponse.json();
-        setOrdersData(ordersResult.orders || []);
-      }
-    } catch (error) {
-      console.error('Ma\'lumotlarni yuklashda xatolik:', error);
-      console.error('Xatolik: Ma\'lumotlarni yuklashda xatolik yuz berdi');
-    } finally {
-      setActivitiesLoading(false);
-    }
-  }, []); // Empty dependency array
-
-  useEffect(() => {
-    fetchActivitiesData();
-  }, [fetchActivitiesData]);
-
   // Handle statistics errors
   useEffect(() => {
     if (statsError) {
@@ -90,30 +62,26 @@ const AdminDashboard = ({ onMobileToggle, onNavigate }) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Sticky header */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-30">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <button 
-              onClick={onMobileToggle}
-              className="lg:hidden text-gray-600 hover:text-primary-orange transition-colors"
-            >
-              <i className="fas fa-bars text-xl"></i>
-            </button>
-            <h2 className="text-2xl font-bold text-primary-dark">Dashboard</h2>
-          </div>
-          
-          <div className="flex items-center space-x-4">
+      {/* Main content */}
+      <main className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto min-h-screen flex flex-col">
+        {/* Top Bar: Title + Notification Bell (responsive) */}
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-primary-dark">Dashboard</h2>
+          <div className="flex items-center">
             <AdminNotificationBell 
               notifications={notifications} 
-              setNotifications={setNotifications} 
+              setNotifications={setNotifications}
+              markAllAsRead={markAllAsRead}
+              markAsRead={markAsRead}
+              deleteNotification={deleteNotification}
+              deleteAllNotifications={deleteAllNotifications}
             />
           </div>
         </div>
-      </header>
 
-      {/* Main content */}
-      <main className="p-6 max-w-7xl mx-auto">
+        {/* Mobile-only divider under header */}
+        <div className="sm:hidden border-b border-gray-200 mb-4"></div>
+
         {/* Stats Cards - Always show, with individual loading */}
         <AdminStatsCards 
           statistics={statistics}
@@ -124,13 +92,12 @@ const AdminDashboard = ({ onMobileToggle, onNavigate }) => {
         />
         
         {/* Recent Activities - Always show, with Telegram-style skeleton */}
-        <AdminRecentActivities 
-          craftsmen={craftsmenData}
-          products={productsData}
-          orders={ordersData}
-          onNavigate={handleNavigateFromActivity}
-          isLoading={activitiesLoading}
-        />
+        <div className="flex-1 flex flex-col">
+          <AdminRecentActivities 
+            onNavigate={handleNavigateFromActivity}
+            isLoading={activitiesLoading}
+          />
+        </div>
       </main>
 
       {/* Notification Modals */}
@@ -144,7 +111,7 @@ const AdminDashboard = ({ onMobileToggle, onNavigate }) => {
       />
 
       {/* Custom CSS for animations matching index.html */}
-      <style jsx="true">{`
+      <style>{`
         /* Fade in animation */
         @keyframes fadeIn {
           from { opacity: 0; }

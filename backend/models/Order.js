@@ -18,6 +18,11 @@ const orderSchema = new mongoose.Schema({
     required: false
   },
   items: [{
+    productId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product',
+      required: true
+    },
     name: {
       type: String,
       required: true
@@ -30,6 +35,10 @@ const orderSchema = new mongoose.Schema({
     price: {
       type: Number,
       required: true
+    },
+    variantOption: {
+      type: String,
+      required: false
     }
   }],
   totalAmount: {
@@ -47,6 +56,9 @@ const orderSchema = new mongoose.Schema({
     default: Date.now
   },
   completedDate: {
+    type: Date
+  },
+  cancelledDate: {
     type: Date
   },
   notes: {

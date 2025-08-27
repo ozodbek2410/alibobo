@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
-import { useOptimizedFetch } from '../hooks/useOptimizedFetch';
+import { useInfiniteProducts } from '../hooks/useProductQueries';
+
 import CartSidebar from './CartSidebar';
 import CategoryNavigation from './CategoryNavigation';
 
@@ -27,11 +28,8 @@ const ProductsGrid = ({
   // console.log('ProductsGrid rendered with props:', { selectedCategory, searchQuery });
 
 
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(true);
-  const [minLoadingTime, setMinLoadingTime] = useState(true);
   const [currentCategory, setCurrentCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -51,7 +49,7 @@ const ProductsGrid = ({
   const [appliedMinPrice, setAppliedMinPrice] = useState('');
   const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
   // const [appliedMinRating, setAppliedMinRating] = useState('');
-  const [displayedProducts, setDisplayedProducts] = useState(20);
+  // Infinite pagination handled by backend; we no longer slice locally
 
   const selectRef = useRef(null);
 
@@ -69,118 +67,95 @@ const ProductsGrid = ({
     return categoryMapping[frontendCategory] || frontendCategory;
   };
 
-  // Build API URL with parameters
-  const apiUrl = useMemo(() => {
-    const params = new URLSearchParams();
-    params.append('limit', '1000');
-    params.append('page', '1');
-    params.append('sortBy', 'updatedAt');
-    params.append('sortOrder', 'desc');
+  // Backend infinite pagination via React Query
+  const mappedCategory = useMemo(() => (
+    selectedCategory && selectedCategory !== 'all' && selectedCategory !== ''
+      ? getCategoryApiValue(selectedCategory)
+      : ''
+  ), [selectedCategory]);
 
-    if (selectedCategory && selectedCategory !== '') {
-      params.append('category', getCategoryApiValue(selectedCategory));
-    }
-
-    // Note: do NOT send search to backend; fetch all (up to limit) and filter locally with
-    // normalization and fuzzy fallback to better handle typos and partial inputs on mobile.
-
-    return `http://localhost:5000/api/products?${params.toString()}`;
-  }, [selectedCategory, searchQuery]);
-
-  // Use optimized fetch hook with faster settings for better UX
   const {
-    data: apiResponse,
-    loading: apiLoading,
+    data,
+    isLoading,
+    isFetching,
+    isSuccess,
     error: apiError,
-    refetch,
-    isInitialFetch
-  } = useOptimizedFetch(apiUrl, {
-    debounceMs: 100, // Reduced debounce for faster response
-    throttleMs: 500, // Reduced throttle
-    cacheTime: 10 * 60 * 1000, // 10 minutes cache - longer cache
-    refetchOnFocus: false, // Disable focus refetch to reduce requests
-    enabled: true
-  });
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch
+  } = useInfiniteProducts(mappedCategory, searchQuery || '', 60);
 
-  // Remove minimum loading time - show data immediately when available
+  // Flatten pages into a single list
+  const fetchedProducts = useMemo(() => {
+    if (!data || !data.pages) return [];
+    return data.pages.flatMap(p => Array.isArray(p?.products) ? p.products : []);
+  }, [data]);
+
+
+  // Hide skeleton once the first response arrives (even if empty)
   useEffect(() => {
-    setMinLoadingTime(false);
-    // If we have data, hide skeleton immediately
-    if (apiResponse && apiResponse.products) {
+    if (data) {
       setIsInitialLoad(false);
-      setShowSkeleton(false);
-      setLoading(false);
+      if (!isLoading && !isFetching) setShowSkeleton(false);
     }
-  }, [apiResponse]);
+  }, [data, isLoading, isFetching]);
 
-  // Update products when API response changes - fixed for correct API structure
+  // Background prefetch: after first success, prefetch more pages to reach ~600 items
   useEffect(() => {
-    if (apiResponse) {
-      // API returns: { products: [...], pagination: {...} }
-      if (apiResponse.products && Array.isArray(apiResponse.products)) {
-        setProducts(apiResponse.products);
-        setDisplayedProducts(Math.min(apiResponse.products.length, 20));
+    // Only run when we have first page and there are more pages
+    if (!data || !hasNextPage || !fetchNextPage) return;
 
-        // Only hide skeleton after minimum loading time has passed
-        if (!minLoadingTime) {
-          setIsInitialLoad(false); // Mark initial load as complete
-          setShowSkeleton(false); // Hide skeleton when data loads
-          setLoading(false);
-        }
+    let cancelled = false;
+    const start = Date.now();
+    const MAX_TIME_MS = 2000; // do not spend more than 2s prefetching
+    const MAX_PAGES = 12; // 12 pages * 60 ≈ 720 items cap
 
-        // Call initial products loaded callback
-        if (typeof onInitialProductsLoaded === 'function') {
-          onInitialProductsLoaded();
+    // Helper to fetch next pages sequentially with micro-delays to yield to UI
+    const prefetchMore = async () => {
+      try {
+        let pagesFetched = 0;
+        while (!cancelled && hasNextPage && pagesFetched < MAX_PAGES && (Date.now() - start) < MAX_TIME_MS) {
+          // small delay to keep UI responsive
+          await new Promise((r) => setTimeout(r, 50));
+          const res = await fetchNextPage();
+          pagesFetched += 1;
+          // If react-query indicates no more next page after fetch, break
+          if (!res?.hasNextPage) break;
         }
-      } else {
-        // API javob bo'lsa ham mahsulotlar bo'sh bo'lsa
-        // console.log('API javob bor, lekin mahsulotlar yo\'q:', apiResponse);
-        setProducts([]);
-        if (!minLoadingTime) {
-          setIsInitialLoad(false);
-          setShowSkeleton(false);
-          setLoading(false);
-        }
+      } catch (_) {
+        // ignore background prefetch errors
       }
-    } else {
-      // API javob yo'q
-      // console.log('API javob yo\'q', { apiResponse, apiLoading, apiError });
-    }
-  }, [apiResponse, onInitialProductsLoaded, minLoadingTime]);
+    };
 
-  // Update loading state - show loading when API is loading and no products exist
-  useEffect(() => {
-    if (products.length > 0) {
-      setLoading(false); // Never show loading when products exist
+    // Schedule prefetch during idle if available, else immediate
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const idleId = window.requestIdleCallback(prefetchMore, { timeout: 1500 });
+      return () => {
+        cancelled = true;
+        try { window.cancelIdleCallback && window.cancelIdleCallback(idleId); } catch {}
+      };
     } else {
-      setLoading(apiLoading);
+      prefetchMore();
+      return () => { cancelled = true; };
     }
-  }, [apiLoading, products.length]);
+  }, [data, hasNextPage, fetchNextPage]);
 
-  // Handle API loading state changes
-  useEffect(() => {
-    if (apiLoading && products.length === 0) {
-      setShowSkeleton(true);
-    }
-  }, [apiLoading, products.length]);
 
   // Handle API errors - hide skeleton and show error state
   useEffect(() => {
-    if (apiError && !minLoadingTime) {
+    if (apiError) {
       setShowSkeleton(false);
       setIsInitialLoad(false);
-      setLoading(false);
     }
-  }, [apiError, minLoadingTime]);
+  }, [apiError]);
+
 
   // Initial loading state - ensure loading is true on first render
-  useEffect(() => {
-    if (products.length === 0 && !apiResponse) {
-      setLoading(true);
-    }
-  }, [products.length, apiResponse]);
+  // no-op
 
-  // Detect filter changes and show skeleton
+
+  // Detect filter changes and show skeleton (only during active fetch)
   useEffect(() => {
     const currentFilters = {
       selectedCategory: selectedCategory || '',
@@ -191,16 +166,16 @@ const ProductsGrid = ({
 
     if (filtersChanged && !isInitialLoad) {
       setShowSkeleton(true);
-      setDisplayedProducts(20);
+      // Reset to first page by refetching
+      if (refetch) refetch();
     }
 
     setPreviousFilters(currentFilters);
   }, [selectedCategory, searchQuery, isInitialLoad]);
 
-  // Reset displayed products when filters change (optimized fetch handles the API calls)
-  useEffect(() => {
-    setDisplayedProducts(20);
-  }, [selectedCategory, searchQuery]);
+
+  // no-op
+
 
   // Scroll event listener to close select dropdown
   useEffect(() => {
@@ -216,18 +191,20 @@ const ProductsGrid = ({
     };
   }, []);
 
-  // Reset displayed products when filters change
-  useEffect(() => {
-    setDisplayedProducts(20);
-  }, [quickFilter, appliedMinPrice, appliedMaxPrice]);
+
+  // no-op
+
 
   // Filter products directly without using the hook for now
   const filteredProducts = useMemo(() => {
-    const productsToFilter = products;
+    const productsToFilter = fetchedProducts;
+
 
     if (!productsToFilter || productsToFilter.length === 0) return [];
 
+
     let filtered = [...productsToFilter];
+
 
     // Enhanced search filter - normalized substring match across multiple fields
     if (searchQuery && searchQuery.trim()) {
@@ -251,10 +228,11 @@ const ProductsGrid = ({
 
       // If no direct substring matches, fallback to fuzzy matches as primary results
       if (filtered.length === 0) {
-        const matches = getFuzzyMatches(productsToFilter, searchQuery, 20);
+        const matches = getFuzzyMatches(fetchedProducts, searchQuery, 20);
         filtered = matches.map(m => m.product);
       }
     }
+
 
     // Category filter - API dan kelgan kategoriyalar bilan to'g'ri solishtirish
     if (selectedCategory && selectedCategory !== 'all' && selectedCategory !== '') {
@@ -266,6 +244,7 @@ const ProductsGrid = ({
       });
     }
 
+
     // Price filter
     if (appliedMinPrice || appliedMaxPrice) {
       filtered = filtered.filter(product => {
@@ -275,6 +254,7 @@ const ProductsGrid = ({
         return price >= min && price <= max;
       });
     }
+
 
     // Sort based on quickFilter
     filtered.sort((a, b) => {
@@ -326,18 +306,21 @@ const ProductsGrid = ({
     });
 
     return filtered;
-  }, [products, searchQuery, quickFilter, appliedMinPrice, appliedMaxPrice]);
+  }, [fetchedProducts, searchQuery, quickFilter, appliedMinPrice, appliedMaxPrice]);
+
 
   // Fuzzy suggestions when exact filter yields no results
   const fuzzyMatches = useMemo(() => {
     if (!searchQuery) return [];
-    return getFuzzyMatches(products, searchQuery, 12);
-  }, [products, searchQuery]);
+    return getFuzzyMatches(fetchedProducts, searchQuery, 12);
+  }, [fetchedProducts, searchQuery]);
+
 
   const didYouMeanTerms = useMemo(() => {
     if (!searchQuery) return [];
     return getDidYouMeanTerms(fuzzyMatches, 5);
   }, [fuzzyMatches, searchQuery]);
+
 
   // Use centralized addToCart function
   const addToCart = (product) => {
@@ -345,7 +328,6 @@ const ProductsGrid = ({
       onAddToCart(product);
     }
   };
-
 
 
   // Manual refresh function
@@ -362,7 +344,6 @@ const ProductsGrid = ({
 
     setAppliedMinPrice(min === '' ? '' : String(min));
     setAppliedMaxPrice(max === '' ? '' : String(max));
-    setDisplayedProducts(20);
   };
 
   const clearPriceFilter = () => {
@@ -370,7 +351,6 @@ const ProductsGrid = ({
     setMaxPrice('');
     setAppliedMinPrice('');
     setAppliedMaxPrice('');
-    setDisplayedProducts(20);
   };
 
   // Open bottom sheet for Narx/Baho filtering
@@ -398,8 +378,6 @@ const ProductsGrid = ({
       setMinPrice(min);
       setMaxPrice(max);
     }
-    setDisplayedProducts(20);
-    setIsPriceRatingSheetOpen(false);
   };
 
   const calculateDiscount = (currentPrice, oldPrice) => {
@@ -428,13 +406,13 @@ const ProductsGrid = ({
   }, [refetch, setShowSkeleton, setIsInitialLoad]);
 
   // Determine when to show skeleton
+  // Use explicit showSkeleton flag to avoid brief empty-state flicker before data arrives
   const shouldShowSkeleton = (
-    (isInitialLoad && products.length === 0) ||
-    (apiLoading && products.length === 0) ||
-    (showSkeleton && products.length === 0) ||
-    (isInitialFetch && products.length === 0) ||
-    minLoadingTime // Always show skeleton during minimum loading time
+    showSkeleton ||
+    (isInitialLoad && isLoading) ||
+    ((isLoading || isFetching || isFetchingNextPage) && fetchedProducts.length === 0)
   );
+
 
   // Debug logging - disabled to prevent infinite loop
   // console.log('=== ProductsGrid Debug ===');
@@ -447,7 +425,7 @@ const ProductsGrid = ({
   }
 
   // Show error state if there's an API error and no products
-  if (apiError && products.length === 0) {
+  if (apiError && fetchedProducts.length === 0) {
     return (
       <div className="container mx-auto px-4 lg:px-6 py-4 lg:py-6">
         <div className="text-center py-16">
@@ -479,7 +457,7 @@ const ProductsGrid = ({
   }
 
   return (
-    <div className="container mx-auto px-4 lg:px-6 py-4 lg:py-6 pb-24 lg:pb-6">
+    <div className="container mx-auto px-4 lg:px-6 py-4 lg:py-6 pb-28 lg:pb-6">
 
       {/* Category Navigation - Mobile and Desktop */}
       <div className="mb-2">
@@ -600,19 +578,20 @@ const ProductsGrid = ({
         <>
           {/* Modern Product Grid with enhanced design */}
           <ModernProductGrid
-            products={filteredProducts.slice(0, displayedProducts)}
+            products={filteredProducts}
             onAddToCart={addToCart}
-            loading={loading}
+            loading={isLoading && filteredProducts.length === 0}
           />
 
           {/* Load More Button */}
-          {displayedProducts < filteredProducts.length && (
+          {(hasNextPage || isFetchingNextPage) && (
             <div className="flex justify-start mt-8">
               <button
-                onClick={() => setDisplayedProducts(prev => Math.min(prev + 20, filteredProducts.length))}
-                className="px-8 py-3 bg-primary-orange hover:bg-orange-600 text-white rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="px-8 py-3 bg-primary-orange hover:bg-orange-600 disabled:bg-orange-300 text-white rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
-                Ko'proq ko'rish
+                {isFetchingNextPage ? "Yuklanmoqda..." : "Ko'proq ko'rish"}
               </button>
             </div>
           )}

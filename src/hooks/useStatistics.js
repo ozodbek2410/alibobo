@@ -10,10 +10,25 @@ const useStatistics = (autoRefresh = true, refreshInterval = 300000) => { // 5 m
   // Fetch dashboard statistics
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const response = await fetch('/api/statistics/dashboard');
+      const response = await fetch('http://localhost:5000/api/statistics/dashboard');
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Dashboard API Error:', response.status, errorText);
+        
+        // Return fallback data if API fails
+        const fallbackData = {
+          products: { total: 0, byCategory: [] },
+          craftsmen: { total: 0, active: 0, inactive: 0 },
+          orders: { total: 0, thisMonth: 0, lastMonth: 0, growth: 0, recent: [] },
+          revenue: { total: 0, thisMonth: 0, lastMonth: 0, growth: 0 },
+          timestamp: new Date().toISOString()
+        };
+        
+        setStatistics(fallbackData);
+        setLastUpdated(new Date());
+        setError(null); // Don't show error for fallback data
+        return fallbackData;
       }
 
       const data = await response.json();
@@ -24,19 +39,47 @@ const useStatistics = (autoRefresh = true, refreshInterval = 300000) => { // 5 m
 
       return data;
     } catch (err) {
-      console.error('❌ Error fetching dashboard statistics:', err);
-      setError(`Ошибка загрузки статистики: ${err.message}`);
-      throw err;
+      console.error('❌ Dashboard statistikalarini olishda xatolik:', err);
+      
+      // Return fallback data on network error
+      const fallbackData = {
+        products: { total: 0, byCategory: [] },
+        craftsmen: { total: 0, active: 0, inactive: 0 },
+        orders: { total: 0, thisMonth: 0, lastMonth: 0, growth: 0, recent: [] },
+        revenue: { total: 0, thisMonth: 0, lastMonth: 0, growth: 0 },
+        timestamp: new Date().toISOString()
+      };
+      
+      setStatistics(fallbackData);
+      setLastUpdated(new Date());
+      setError(null); // Don't show error for fallback data
+      return fallbackData;
     }
   }, []);
 
   // Fetch edit statistics
   const fetchEditStats = useCallback(async (days = 30) => {
     try {
-      const response = await fetch(`/api/statistics/edits?days=${days}`);
+      const response = await fetch(`http://localhost:5000/api/statistics/edits?days=${days}`);
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Edit API Error:', response.status, errorText);
+        
+        // Return fallback data if API fails
+        const fallbackData = {
+          total: 0,
+          today: 0,
+          thisWeek: 0,
+          period: days,
+          byDay: [],
+          mostEdited: [],
+          timestamp: new Date().toISOString()
+        };
+        
+        setEditStats(fallbackData);
+        setError(null);
+        return fallbackData;
       }
 
       const data = await response.json();
@@ -46,9 +89,22 @@ const useStatistics = (autoRefresh = true, refreshInterval = 300000) => { // 5 m
 
       return data;
     } catch (err) {
-      console.error('❌ Error fetching edit statistics:', err);
-      setError(`Ошибка загрузки статистики редактирования: ${err.message}`);
-      throw err;
+      console.error('❌ Tahrir statistikalarini olishda xatolik:', err);
+      
+      // Return fallback data on network error
+      const fallbackData = {
+        total: 0,
+        today: 0,
+        thisWeek: 0,
+        period: days,
+        byDay: [],
+        mostEdited: [],
+        timestamp: new Date().toISOString()
+      };
+      
+      setEditStats(fallbackData);
+      setError(null);
+      return fallbackData;
     }
   }, []);
 

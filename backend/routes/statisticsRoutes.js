@@ -8,6 +8,7 @@ const Order = require('../models/Order');
 
 // GET /api/statistics/dashboard - Dashboard statistics
 router.get('/dashboard', async (req, res) => {
+  console.log('📊 Dashboard statistics request received');
   try {
     // Get current date info
     const now = new Date();
@@ -15,7 +16,10 @@ router.get('/dashboard', async (req, res) => {
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
+    console.log('📅 Date ranges calculated');
+
     // Count totals
+    console.log('🔢 Counting documents...');
     const [
       totalProducts,
       totalCraftsmen,
@@ -35,8 +39,17 @@ router.get('/dashboard', async (req, res) => {
       })
     ]);
 
-    // Calculate revenue (if orders have totalAmount field)
+    console.log(`📊 Counts: ${totalProducts} products, ${totalCraftsmen} craftsmen, ${totalOrders} orders`);
+
+    // Calculate revenue (only from completed orders)
+    console.log('💰 Calculating revenue from completed orders only...');
     const revenueAggregation = await Order.aggregate([
+      {
+        $match: {
+          status: 'completed', // Only include completed orders
+          totalAmount: { $exists: true, $ne: null, $type: "number" }
+        }
+      },
       {
         $group: {
           _id: null,
@@ -47,7 +60,11 @@ router.get('/dashboard', async (req, res) => {
 
     const thisMonthRevenueAgg = await Order.aggregate([
       {
-        $match: { createdAt: { $gte: startOfMonth } }
+        $match: { 
+          createdAt: { $gte: startOfMonth },
+          status: 'completed', // Only include completed orders
+          totalAmount: { $exists: true, $ne: null, $type: "number" }
+        }
       },
       {
         $group: {
@@ -63,7 +80,9 @@ router.get('/dashboard', async (req, res) => {
           createdAt: { 
             $gte: startOfLastMonth, 
             $lte: endOfLastMonth 
-          } 
+          },
+          status: 'completed', // Only include completed orders
+          totalAmount: { $exists: true, $ne: null, $type: "number" }
         }
       },
       {
@@ -103,11 +122,17 @@ router.get('/dashboard', async (req, res) => {
       }
     ]);
 
-    // Recent orders
-    const recentOrders = await Order.find()
+    // Recent orders (handle missing fields gracefully)
+    const recentOrders = await Order.find({
+      $or: [
+        { customerName: { $exists: true, $ne: null } },
+        { _id: { $exists: true } }
+      ]
+    })
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('_id customerName totalAmount status createdAt');
+      .select('_id customerName totalAmount status createdAt orderNumber')
+      .lean(); // Use lean() for better performance
 
     const statistics = {
       products: {
@@ -135,6 +160,7 @@ router.get('/dashboard', async (req, res) => {
       timestamp: new Date().toISOString()
     };
 
+    console.log('✅ Statistics calculated successfully');
     res.json(statistics);
   } catch (error) {
     console.error('❌ Dashboard statistics error:', error);
@@ -156,26 +182,22 @@ router.get('/edits', async (req, res) => {
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfWeek = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
 
-    // Count updates (assuming updatedAt field exists)
-    const [
-      totalEdits,
-      todayEdits,
-      weeklyEdits
-    ] = await Promise.all([
-      // Count products updated in the specified period
-      Product.countDocuments({ 
+    // Count updates (check if updatedAt is different from createdAt)
+    const [totalEdits, todayEdits, weeklyEdits] = await Promise.all([
+      // Count products updated in the specified period (exclude new creations)
+      Product.countDocuments({
         updatedAt: { $gte: startDate },
-        createdAt: { $ne: '$updatedAt' } // Only count actual edits, not new creations
+        $expr: { $ne: ['$createdAt', '$updatedAt'] }
       }),
       // Today's edits
-      Product.countDocuments({ 
+      Product.countDocuments({
         updatedAt: { $gte: startOfToday },
-        createdAt: { $ne: '$updatedAt' }
+        $expr: { $ne: ['$createdAt', '$updatedAt'] }
       }),
       // This week's edits
-      Product.countDocuments({ 
+      Product.countDocuments({
         updatedAt: { $gte: startOfWeek },
-        createdAt: { $ne: '$updatedAt' }
+        $expr: { $ne: ['$createdAt', '$updatedAt'] }
       })
     ]);
 

@@ -6,6 +6,7 @@ const {
   createOrder,
   updateOrder,
   updateOrderStatus,
+  cancelOrder,
   deleteOrder,
   getOrderStats
 } = require('../controllers/ordersController');
@@ -27,6 +28,9 @@ router.put('/:id', updateOrder);
 
 // PUT /api/orders/:id/status - Update order status
 router.put('/:id/status', updateOrderStatus);
+
+// PUT /api/orders/:id/cancel - Cancel order and restore inventory
+router.put('/:id/cancel', cancelOrder);
 
 // DELETE /api/orders/:id - Delete order
 router.delete('/:id', deleteOrder);

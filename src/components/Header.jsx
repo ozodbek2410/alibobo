@@ -31,7 +31,7 @@ const Header = ({
   // Typeahead state
   const [isFocused, setIsFocused] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
-  const debouncedQuery = useDebounce(searchQuery, 250);
+  const [debouncedQuery] = useDebounce(searchQuery, 250);
 
   // Fetch and filter close-match suggestions based on debounced input
   useEffect(() => {
@@ -78,7 +78,11 @@ const Header = ({
   // Removed close-on-scroll logic (no suggestions panel)
 
   const handleLogoInteraction = (e) => {
-    e.preventDefault();
+    // Only prevent default for click events, not touch events
+    if (e.type === 'click') {
+      e.preventDefault();
+    }
+    
     const currentTime = new Date().getTime();
     const tapLength = currentTime - lastTap;
 
@@ -339,7 +343,7 @@ const Header = ({
 
       {/* Mobile Bottom Navigation - Orqa fon bilan */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white border-t border-gray-200 shadow-lg" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px))' }}>
-        <ul className="flex items-center justify-around py-3">
+        <ul className="flex items-center justify-around py-4">
           {/* 1. Akademiya */}
           <li className="flex-1">
             <button

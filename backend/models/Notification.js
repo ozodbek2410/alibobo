@@ -49,7 +49,31 @@ const notificationSchema = new mongoose.Schema({
 });
 
 // Index for efficient queries
-notificationSchema.index({ createdAt: -1 });
-notificationSchema.index({ read: 1 });
+notificationSchema.index({ createdAt: -1 }); // Sort by creation time
+notificationSchema.index({ read: 1, createdAt: -1 }); // Most common query pattern: unread first, then by date
+
+// Compound indexes for filtered queries
+notificationSchema.index({ entityType: 1, createdAt: -1 }); // Filter by type and date
+notificationSchema.index({ entityId: 1 }); // Quick lookup by related entity
+notificationSchema.index({ action: 1, entityType: 1, createdAt: -1 }); // Filter by action type
+
+// TTL index to automatically delete old notifications after 30 days
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
+
+// Text search index for notification content
+notificationSchema.index({ title: 'text', message: 'text' });
+
+// Optimize query for notification counts
+notificationSchema.statics.getUnreadCount = function() {
+  return this.countDocuments({ read: false });
+};
+
+// Method to mark multiple notifications as read efficiently
+notificationSchema.statics.markAllAsRead = function() {
+  return this.updateMany(
+    { read: false },
+    { $set: { read: true } }
+  );
+};
 
 module.exports = mongoose.model('Notification', notificationSchema);

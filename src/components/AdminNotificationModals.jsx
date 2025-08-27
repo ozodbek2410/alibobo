@@ -61,7 +61,7 @@ const AdminNotificationModals = ({
   return (
     <>
       {/* Custom CSS Animations - matching index.html exactly */}
-      <style jsx="true">{`
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
@@ -266,7 +266,7 @@ const AdminNotificationModals = ({
       )}
 
       {/* Custom CSS for animations */}
-      <style jsx="true">{`
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

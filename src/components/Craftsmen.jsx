@@ -249,7 +249,7 @@ const Craftsmen = ({ craftsmenData = [], loading = false }) => {
       </header>
 
       {/* Main Content - Mobile Responsive Grid */}
-      <main className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-20 lg:pb-12">
+      <main className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24 lg:pb-12">
         {/* Search input with clear (x) */}
         <div className="mb-4">
           <div className="relative max-w-xl mx-auto">

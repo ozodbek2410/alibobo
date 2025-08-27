@@ -10,28 +10,26 @@ const AdminStatsCards = ({
   
   // Loading skeleton component
   const LoadingSkeleton = () => (
-    <div className="stats-card rounded-xl p-6 animate-pulse">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-          <div className="h-8 bg-gray-200 rounded w-16"></div>
-        </div>
-        <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+    <div className="stats-item flex items-center flex-1 p-4 animate-pulse">
+      <div className="icon-container w-12 h-12 bg-gray-200 rounded-lg mr-4"></div>
+      <div>
+        <div className="h-3 bg-gray-200 rounded w-16 sm:w-20 mb-2"></div>
+        <div className="h-6 bg-gray-200 rounded w-12 sm:w-16"></div>
       </div>
     </div>
   );
 
-  // Error component
+  // Error component (neutral style, no red underline/text)
   const ErrorCard = ({ label, icon, iconBg, iconColor }) => (
-    <div className="stats-card rounded-xl p-6 border-red-200 bg-red-50">
+    <div className="stats-card rounded-xl p-4 sm:p-6 card-hover bg-white shadow-sm border border-gray-100">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-gray-600 text-sm">{label}</p>
-          <p className="text-3xl font-bold text-red-500">—</p>
-          <p className="text-xs text-red-400 mt-1">Ошибка загрузки</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-gray-600 text-xs sm:text-sm">{label}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-primary-dark">—</p>
+          {/* No explicit error text to avoid visual noise */}
         </div>
-        <div className={`w-12 h-12 ${iconBg} rounded-lg flex items-center justify-center opacity-50`}>
-          <i className={`${icon} ${iconColor} text-xl`}></i>
+        <div className={`w-10 h-10 sm:w-12 sm:h-12 ${iconBg} rounded-lg flex items-center justify-center opacity-50 ml-3`}>
+          <i className={`${icon} ${iconColor} text-lg sm:text-xl`}></i>
         </div>
       </div>
     </div>
@@ -73,7 +71,7 @@ const AdminStatsCards = ({
 
   const stats = [
     {
-      label: 'Jami ustalar',
+      label: 'Ustalar',
       value: loading ? '...' : formatNumber(statistics?.craftsmen?.total),
       subValue: statistics?.craftsmen?.recentlyAdded ? `+${statistics.craftsmen.recentlyAdded} (7 kun)` : null,
       icon: 'fas fa-users',
@@ -81,7 +79,7 @@ const AdminStatsCards = ({
       iconColor: 'text-blue-600',
     },
     {
-      label: 'Jami mahsulotlar',
+      label: 'Mahsulotlar',
       value: loading ? '...' : formatNumber(statistics?.products?.total),
       subValue: statistics?.products?.recentlyAdded ? `+${statistics.products.recentlyAdded} (7 kun)` : null,
       icon: 'fas fa-box',
@@ -93,14 +91,13 @@ const AdminStatsCards = ({
       value: loading ? '...' : formatNumber(statistics?.orders?.total),
       subValue: statistics?.orders?.recentlyCreated ? `+${statistics.orders.recentlyCreated} (7 kun)` : null,
       icon: 'fas fa-shopping-cart',
-      iconBg: 'bg-orange-300 bg-opacity-20',
+      iconBg: 'bg-orange-100',
       iconColor: 'text-primary-orange',
     },
-
     {
       label: 'Daromad',
       value: loading ? '...' : formatRevenue(statistics?.revenue?.total),
-      subValue: statistics?.revenue?.thisMonth ? `${formatRevenue(statistics.revenue.thisMonth)} (bu oy)` : null,
+      subValue: statistics?.revenue?.thisMonth ? `${formatRevenue(statistics.revenue.thisMonth)}` : null,
       growth: statistics?.revenue?.growth,
       icon: 'fas fa-chart-line',
       iconBg: 'bg-purple-100',
@@ -108,48 +105,56 @@ const AdminStatsCards = ({
     },
   ];
 
-  if (loading) {
+  if (loading || error) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-8">
         {[...Array(4)].map((_, idx) => (
-          <LoadingSkeleton key={idx} />
+          <div key={idx} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 animate-pulse">
+            <div className="flex items-center space-x-3">
+              {/* Icon placeholder */}
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-200 rounded-lg flex-shrink-0"></div>
+              {/* Text placeholder */}
+              <div className="flex-1 min-w-0">
+                <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
+                <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-8">
       {stats.map((item, idx) => {
-        if (error) {
-          return <ErrorCard key={idx} {...item} />;
-        }
-
         return (
-          <div key={idx} className="stats-card rounded-xl p-6 card-hover bg-white shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-gray-600 text-sm font-medium">{item.label}</p>
-                <p className="text-3xl font-bold text-primary-dark mt-1">{item.value}</p>
-                
-                {/* Sub-value (recent additions) */}
-                {item.subValue && (
-                  <p className="text-xs text-gray-500 mt-1">{item.subValue}</p>
-                )}
-                
-                {/* Breakdown for edits */}
-                {item.breakdown && (
-                  <p className="text-xs text-gray-500 mt-1" title="Mahsulotlar: M, Ustalar: U, Buyurtmalar: B">
-                    {item.breakdown}
-                  </p>
-                )}
-                
-                {/* Growth indicator */}
-                {item.growth !== undefined && getGrowthIndicator(item.growth)}
+          <div key={idx} className="bg-white rounded-xl p-3 sm:p-4 lg:p-5 shadow-sm border border-gray-100 hover:shadow-lg hover:border-primary-orange/20 transition-all duration-300 group hover:-translate-y-1">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              {/* Part 1: Icon - Left Side */}
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 ${item.iconBg} rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                <i className={`${item.icon} ${item.iconColor} text-sm sm:text-lg lg:text-xl`}></i>
               </div>
               
-              <div className={`w-12 h-12 ${item.iconBg} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                <i className={`${item.icon} ${item.iconColor} text-xl`}></i>
+              {/* Part 2: Text Content - Right Side (divided into 2 parts) */}
+              <div className="flex-1 min-w-0">
+                {/* Top Part: Label (what it is - ustalar, mahsulotlar, etc.) */}
+                <p className="text-gray-500 text-xs sm:text-sm font-medium leading-tight truncate">{item.label}</p>
+                
+                {/* Bottom Part: Number/Amount */}
+                <p className="stat-number text-sm sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 group-hover:text-primary-orange transition-colors duration-300 truncate">{item.value}</p>
+                
+                {/* Sub-value (recent additions) - hidden on mobile */}
+                {item.subValue && (
+                  <p className="text-xs text-gray-500 mt-1 truncate hidden sm:block">{item.subValue}</p>
+                )}
+                
+                {/* Growth indicator - hidden on mobile */}
+                {item.growth !== undefined && (
+                  <div className="hidden lg:block">
+                    {getGrowthIndicator(item.growth)}
+                  </div>
+                )}
               </div>
             </div>
           </div>

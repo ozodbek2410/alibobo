@@ -66,9 +66,10 @@ export const useInfiniteProducts = (category, search, limit = 20) => {
     queryKey: queryKeys.products.list(category, search, 'infinite', limit),
     queryFn: ({ pageParam = 1, signal }) => 
       fetchProducts({ category, search, page: pageParam, limit, signal }),
-    getNextPageParam: (lastPage, pages) => {
-      if (lastPage.hasNextPage) {
-        return lastPage.currentPage + 1;
+    getNextPageParam: (lastPage) => {
+      const p = lastPage?.pagination;
+      if (p?.hasNextPage) {
+        return (p.currentPage || 1) + 1;
       }
       return undefined;
     },
@@ -181,6 +182,39 @@ export const useDeleteProduct = () => {
       // Remove from cache
       queryClient.removeQueries({ queryKey: queryKeys.products.detail(id) });
       // Invalidate products list
+      invalidateQueries.products();
+    },
+  });
+};
+
+export const useArchiveProduct = () => {
+  return useMutation({
+    mutationFn: async ({ id, archived }) => {
+      const response = await fetch(`${API_BASE}/products/${id}/archive`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archived }),
+      });
+      if (!response.ok) throw new Error('Failed to update archive status');
+      return response.json();
+    },
+    onSuccess: () => {
+      invalidateQueries.products();
+    },
+  });
+};
+
+export const useRestoreProduct = () => {
+  return useMutation({
+    mutationFn: async (id) => {
+      const response = await fetch(`${API_BASE}/products/${id}/restore`, {
+        method: 'PATCH',
+      });
+      if (!response.ok) throw new Error('Failed to restore product');
+      return response.json();
+    },
+    onSuccess: (data, id) => {
+      queryClient.removeQueries({ queryKey: queryKeys.products.detail(id) });
       invalidateQueries.products();
     },
   });

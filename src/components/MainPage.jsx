@@ -35,14 +35,15 @@ const MainPage = ({ onSuccessfulLogin }) => {
   const [activeSection, setActiveSection] = useState('products');
 
   // Parallel data loading for initial page load
-  const { data: parallelData } = useParallelFetch([
-    'http://localhost:5000/api/craftsmen?limit=100&status=active',
-    'http://localhost:5000/api/products?limit=1000&page=1'
+  const craftsmenUrl = 'http://localhost:5000/api/craftsmen?limit=100&status=active';
+  const productsUrl = 'http://localhost:5000/api/products?limit=1000&page=1';
+  const { data: parallelData, loading: parallelLoading } = useParallelFetch([
+    craftsmenUrl,
+    productsUrl
   ]);
 
   // Update craftsmen data when parallel fetch completes
   useEffect(() => {
-    const craftsmenUrl = 'http://localhost:5000/api/craftsmen?limit=100&status=active';
     if (parallelData[craftsmenUrl]) {
       const craftsmenResponse = parallelData[craftsmenUrl];
       setCraftsmenData(craftsmenResponse.craftsmen || []);
@@ -58,27 +59,30 @@ const MainPage = ({ onSuccessfulLogin }) => {
   const addToCart = useCallback((product) => {
     // Use cartId for variants, otherwise use regular id
     const productIdentifier = product.cartId || product._id || product.id;
-    const existingItem = cart.find(item => {
-      const itemIdentifier = item.cartId || item._id || item.id;
-      return itemIdentifier === productIdentifier;
-    });
-
-    if (existingItem) {
-      setCart(cart.map(item => {
+    
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => {
         const itemIdentifier = item.cartId || item._id || item.id;
-        return itemIdentifier === productIdentifier
-          ? { ...item, quantity: item.quantity + (product.quantity || 1) }
-          : item;
-      }));
-    } else {
-      const productToAdd = {
-        ...product,
-        id: productIdentifier,
-        quantity: product.quantity || 1
-      };
-      setCart([...cart, productToAdd]);
-    }
-  }, [cart]);
+        return itemIdentifier === productIdentifier;
+      });
+
+      if (existingItem) {
+        return prevCart.map(item => {
+          const itemIdentifier = item.cartId || item._id || item.id;
+          return itemIdentifier === productIdentifier
+            ? { ...item, quantity: item.quantity + (product.quantity || 1) }
+            : item;
+        });
+      } else {
+        const productToAdd = {
+          ...product,
+          id: productIdentifier,
+          quantity: product.quantity || 1
+        };
+        return [...prevCart, productToAdd];
+      }
+    });
+  }, []);
 
   const removeFromCart = useCallback((productId) => {
     setCart(prev => prev.filter(item => {
@@ -163,7 +167,10 @@ const MainPage = ({ onSuccessfulLogin }) => {
         />
       </div>
       <div id="craftsmen">
-        <Craftsmen craftsmenData={craftsmenData} />
+        <Craftsmen
+          craftsmenData={craftsmenData}
+          loading={parallelLoading || !parallelData[craftsmenUrl]}
+        />
       </div>
       <Services />
       <Footer />
