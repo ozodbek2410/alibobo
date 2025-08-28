@@ -19,25 +19,4 @@
   },
   "scripts": {
     "start": "cross-env DISABLE_ESLINT_PLUGIN=true ESLINT_NO_DEV_ERRORS=true concurrently \"npm run client\" \"npm run server\"",
-    "client": "cross-env DISABLE_ESLINT_PLUGIN=true ESLINT_NO_DEV_ERRORS=true react-scripts start",
-    "server": "cd backend && npm start",
-    "build": "cross-env CI=false react-scripts build",
-    "analyze": "npm run build && npx webpack-bundle-analyzer build/static/js/*.js",
-    "analyze-bundle": "node scripts/analyze-bundle.js",
-    "build:analyze": "npm run build && npm run analyze-bundle",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "dev": "cross-env DISABLE_ESLINT_PLUGIN=true ESLINT_NO_DEV_ERRORS=true concurrently \"npm run client\" \"cd backend && npm run dev\""
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
+    "client": "cross-
