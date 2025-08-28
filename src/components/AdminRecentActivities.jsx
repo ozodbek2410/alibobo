@@ -3,87 +3,22 @@ import { useState, useEffect, useCallback } from 'react';
 import '../styles/select-styles.css';
 import RecentActivitiesSkeleton from './skeletons/RecentActivitiesSkeleton';
 import FadeInTransition from './transitions/FadeInTransition';
-import useRealNotifications from '../hooks/useRealNotifications';
+import { useRecentActivities, useDeleteRecentActivity, useDeleteAllRecentActivities, useRecentActivitiesCache } from '../hooks/useRecentActivities';
 
 const AdminRecentActivities = ({ onNavigate, isLoading = false }) => {
   const [filter, setFilter] = useState('all');
-  const [activities, setActivities] = useState([]);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedActivities, setSelectedActivities] = useState(new Set());
   
-  // Use real notification system to get actual activities
-  const {
-    notifications: realNotifications,
-    loading: notificationsLoading,
-    markAllAsRead,
-    markAsRead,
-    deleteNotification,
-    deleteAllNotifications,
-    fetchNotifications // Add fetchNotifications for manual refresh
-  } = useRealNotifications(true, 30000);
-
-  // Force refresh notifications every 30 seconds to ensure dashboard stays updated
-  useEffect(() => {
-    if (fetchNotifications) {
-      const interval = setInterval(() => {
-        fetchNotifications(true); // Force refresh
-      }, 30000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [fetchNotifications]);
-
-  // Convert real notifications to activities format
-  const generateActivitiesFromNotifications = useCallback(() => {
-    if (!realNotifications || realNotifications.length === 0) {
-      return [];
-    }
-
-    return realNotifications
-      .slice(0, 10) // Limit to 10 most recent
-      .map(notification => {
-        // Map notification types to activity categories
-        let category = 'boshqa';
-        if (notification.entityType === 'craftsman') {
-          category = 'ustalar';
-        } else if (notification.entityType === 'product') {
-          category = 'mahsulotlar';
-        } else if (notification.entityType === 'order') {
-          category = 'buyurtmalar';
-        }
-
-        return {
-          id: notification.id, // Add notification ID for selection
-          category,
-          icon: notification.icon?.replace('fas ', '') || 'fa-bell',
-          iconBg: notification.color?.includes('green') ? 'bg-green-100' :
-                  notification.color?.includes('red') ? 'bg-red-100' :
-                  notification.color?.includes('blue') ? 'bg-blue-100' :
-                  notification.color?.includes('orange') ? 'bg-orange-100' :
-                  'bg-gray-100',
-          iconColor: notification.color?.includes('green') ? 'text-green-600' :
-                     notification.color?.includes('red') ? 'text-red-600' :
-                     notification.color?.includes('blue') ? 'text-blue-600' :
-                     notification.color?.includes('orange') ? 'text-orange-600' :
-                     'text-gray-600',
-          title: notification.title,
-          desc: notification.message,
-          time: notification.time || 'Hozir',
-          timestamp: notification.timestamp || Date.now(),
-          clickAction: () => {
-            if (onNavigate) {
-              if (category === 'ustalar') {
-                onNavigate('craftsmen', notification.entityName);
-              } else if (category === 'mahsulotlar') {
-                onNavigate('products', notification.entityName);
-              } else if (category === 'buyurtmalar') {
-                onNavigate('orders', notification.entityName);
-              }
-            }
-          }
-        };
-      });
-  }, [realNotifications, onNavigate]);
+  // Use React Query hooks for recent activities
+  const { data: activitiesData, isLoading: activitiesLoading, error } = useRecentActivities(1, 20, filter);
+  const deleteActivityMutation = useDeleteRecentActivity();
+  const deleteAllActivitiesMutation = useDeleteAllRecentActivities();
+  const activitiesCache = useRecentActivitiesCache();
+  
+  // Extract activities from the API response
+  const activities = activitiesData?.activities || [];
+  const totalCount = activitiesData?.totalCount || 0;
 
   // Selection functions
   const toggleSelectionMode = () => {
@@ -92,7 +27,7 @@ const AdminRecentActivities = ({ onNavigate, isLoading = false }) => {
   };
 
   const selectAll = () => {
-    setSelectedActivities(new Set(filteredActivities.map(a => a.id)));
+    setSelectedActivities(new Set(activities.map(a => a.id)));
   };
 
   const handleActivityClick = (activity) => {
@@ -106,9 +41,15 @@ const AdminRecentActivities = ({ onNavigate, isLoading = false }) => {
       }
       setSelectedActivities(newSelected);
     } else {
-      // Normal mode: navigate
-      if (activity.clickAction) {
-        activity.clickAction();
+      // Normal mode: navigate based on entity type
+      if (onNavigate && activity.entityType && activity.entityName) {
+        if (activity.entityType === 'product') {
+          onNavigate('products', activity.entityName);
+        } else if (activity.entityType === 'order') {
+          onNavigate('orders', activity.entityName);
+        } else if (activity.entityType === 'craftsman') {
+          onNavigate('craftsmen', activity.entityName);
+        }
       }
     }
   };
@@ -116,45 +57,63 @@ const AdminRecentActivities = ({ onNavigate, isLoading = false }) => {
   const handleDeleteSelected = async () => {
     if (selectedActivities.size === 0) return;
     
-    // Delete selected notifications
-    for (const activityId of selectedActivities) {
-      if (deleteNotification) {
-        await deleteNotification(activityId);
+    try {
+      // Delete selected activities
+      for (const activityId of selectedActivities) {
+        await deleteActivityMutation.mutateAsync(activityId);
       }
+      
+      setSelectedActivities(new Set());
+      setSelectionMode(false);
+    } catch (error) {
+      console.error('Error deleting selected activities:', error);
     }
-    
-    setSelectedActivities(new Set());
-    setSelectionMode(false);
   };
 
   const handleDeleteAll = async () => {
-    if (deleteAllNotifications) {
-      await deleteAllNotifications();
+    try {
+      await deleteAllActivitiesMutation.mutateAsync();
+      setSelectedActivities(new Set());
+      setSelectionMode(false);
+    } catch (error) {
+      console.error('Error deleting all activities:', error);
     }
-    setSelectedActivities(new Set());
-    setSelectionMode(false);
   };
 
-  // Update activities when real notifications change
-  useEffect(() => {
-    setActivities(generateActivitiesFromNotifications());
-  }, [generateActivitiesFromNotifications]);
-
-  // Filter activities
-  const filteredActivities = filter === 'all' ? activities : activities.filter(a => a.category === filter);
+  // Filter activities - now filter is applied on the server side via API
+  const filteredActivities = activities;
 
   const filterOptions = [
     { value: 'all', label: 'Barcha amallar' },
-    { value: 'ustalar', label: 'Ustalar' },
-    { value: 'mahsulotlar', label: 'Mahsulotlar' },
-    { value: 'buyurtmalar', label: 'Buyurtmalar' },
-    { value: 'tolovlar', label: 'To\'lovlar' },
-    { value: 'boshqa', label: 'Boshqalar' },
+    { value: 'products', label: 'Mahsulotlar' },
+    { value: 'orders', label: 'Buyurtmalar' },
+    { value: 'craftsmen', label: 'Ustalar' },
+    { value: 'system', label: 'Tizim' },
   ];
 
   // Show Telegram-style skeleton while loading
-  if (isLoading || notificationsLoading) {
+  if (isLoading || activitiesLoading) {
     return <RecentActivitiesSkeleton itemCount={5} />;
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex-1 flex flex-col h-full">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <i className="fas fa-exclamation-triangle text-red-500 text-2xl mb-2"></i>
+            <p className="text-gray-600">Amallar yuklanmadi</p>
+            <button 
+              onClick={() => activitiesCache.refreshAll()}
+              className="mt-2 text-sm text-primary-orange hover:text-opacity-80"
+            >
+              Qayta urinish
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

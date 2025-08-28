@@ -5,6 +5,8 @@ import AdminNotificationModals from './AdminNotificationModals';
 import LoadingSpinner from './LoadingSpinner';
 import useNotifications from '../hooks/useNotifications';
 import useRealNotifications from '../hooks/useRealNotifications';
+import { useOrders, useUpdateOrderStatus, useCancelOrder, useDeleteOrder, useOrderCache } from '../hooks/useOrderQueries';
+import { queryClient } from '../lib/queryClient';
 
 const AdminOrders = ({ onCountChange, notifications, setNotifications, onMobileToggle }) => {
   // Real notification system for notification bell
@@ -34,6 +36,12 @@ const AdminOrders = ({ onCountChange, notifications, setNotifications, onMobileT
     safeNotifyError,
     addNotification
   } = useNotifications();
+
+  // React Query hooks for order operations
+  const updateOrderStatusMutation = useUpdateOrderStatus();
+  const cancelOrderMutation = useCancelOrder();
+  const deleteOrderMutation = useDeleteOrder();
+  const orderCache = useOrderCache();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -267,57 +275,49 @@ const AdminOrders = ({ onCountChange, notifications, setNotifications, onMobileT
 
   const deleteOrder = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/orders/${id}`, {
-        method: 'DELETE',
+      // Get order info for notification before removing
+      const deletedOrder = orders.find(o => o._id === id);
+      
+      // Use React Query mutation for automatic cache invalidation
+      await deleteOrderMutation.mutateAsync(id);
+      
+      // Update local state for immediate UI feedback
+      setOrders(prevOrders => prevOrders.filter(order => order._id !== id));
+      
+      // Update count
+      setTotalCount(prevCount => {
+        const newCount = prevCount - 1;
+        onCountChange(newCount); // Dashboard update
+        return newCount;
       });
-
-      if (response.ok) {
-        // Get order info for notification before removing
-        const deletedOrder = orders.find(o => o._id === id);
+      
+      // Notification with order details
+      setTimeout(() => {
+        const orderIndex = orders.findIndex(o => o._id === id);
+        const orderNumber = String(orderIndex + 1).padStart(4, '0');
+        safeNotifySuccess("Buyurtma o'chirildi", `Buyurtma #${orderNumber} muvaffaqiyatli o'chirildi`);
         
-        // Ro'yxatdan buyurtmani olib tashlash (real-time yangilanish)
-        setOrders(prevOrders => prevOrders.filter(order => order._id !== id));
-        
-        // Umumiy sonni kamaytirish
-        setTotalCount(prevCount => {
-          const newCount = prevCount - 1;
-          onCountChange(newCount); // Dashboard'ni yangilash
-          return newCount;
-        });
-        
-        // Notification with order details - matching index.html
-        setTimeout(() => {
-          const orderIndex = orders.findIndex(o => o._id === id);
-          const orderNumber = String(orderIndex + 1).padStart(4, '0');
-          safeNotifySuccess("Buyurtma o'chirildi", `Buyurtma #${orderNumber} muvaffaqiyatli o'chirildi`);
-          
-          // Add real notification for notification bell
-          if (deletedOrder) {
-            notifyOrderDeleted(deletedOrder);
-          }
-          
-          // Keep demo notification for modals
-          addNotification({
-            title: "Buyurtma o'chirildi",
-            message: `Buyurtma #${orderNumber} - ${formatCurrency(deletedOrder?.totalAmount || 0)}`,
-            type: 'order'
-          });
-        }, 0);
-        
-        // Agar joriy sahifada buyurtma qolmasa, oldingi sahifaga o'tish
-        const remainingOrders = orders.filter(order => order._id !== id).length;
-        if (remainingOrders === 0 && currentPage > 1) {
-          setCurrentPage(currentPage - 1);
+        // Add real notification for notification bell
+        if (deletedOrder) {
+          notifyOrderDeleted(deletedOrder);
         }
-
-        // Reload orders to get updated list
-        loadOrders();
-      } else {
-        const data = await response.json();
-        setTimeout(() => {
-          safeNotifyError('Xatolik', data.message || "O'chirishda xatolik");
-        }, 0);
+        
+        // Keep demo notification for modals
+        addNotification({
+          title: "Buyurtma o'chirildi",
+          message: `Buyurtma #${orderNumber} - ${formatCurrency(deletedOrder?.totalAmount || 0)}`,
+          type: 'order'
+        });
+      }, 0);
+      
+      // Auto-pagination adjustment
+      const remainingOrders = orders.filter(order => order._id !== id).length;
+      if (remainingOrders === 0 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
       }
+
+      // Reload orders to get updated list
+      loadOrders();
     } catch (error) {
       console.error("Order o'chirishda xatolik:", error);
       setTimeout(() => {
@@ -337,59 +337,38 @@ const AdminOrders = ({ onCountChange, notifications, setNotifications, onMobileT
         )
       );
 
-      const response = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      // Use React Query mutation for automatic cache invalidation
+      const result = await updateOrderStatusMutation.mutateAsync({ id: orderId, status: newStatus });
+      
+      // Update the order in the local state
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order._id === orderId 
+            ? { ...order, status: newStatus, isUpdating: false }
+            : order
+        )
+      );
 
-      if (response.ok) {
-        // Update the order in the local state
-        setOrders(prevOrders => 
-          prevOrders.map(order => 
-            order._id === orderId 
-              ? { ...order, status: newStatus, isUpdating: false }
-              : order
-          )
-        );
-
-        // Also update selectedOrder if it's currently being viewed in modal
-        if (selectedOrder && selectedOrder._id === orderId) {
-          setSelectedOrder(prev => ({ ...prev, status: newStatus }));
-        }
-
-        setTimeout(() => {
-          safeNotifySuccess('Status yangilandi', 'Buyurtma statusi muvaffaqiyatli yangilandi');
-          
-          // Show status change notification
-          setStatusNotificationMessage(`Status "${statusMap[newStatus]?.text}" ga o'zgartirildi`);
-          setShowStatusNotification(true);
-          
-          // Hide notification after 3 seconds
-          setTimeout(() => {
-            setShowStatusNotification(false);
-          }, 3000);
-        }, 0);
-
-        // Reload orders to get updated list
-        loadOrders();
-      } else {
-        // Revert the change if failed
-        setOrders(prevOrders => 
-          prevOrders.map(order => 
-            order._id === orderId 
-              ? { ...order, isUpdating: false }
-              : order
-          )
-        );
-
-        const data = await response.json();
-        setTimeout(() => {
-          safeNotifyError('Xatolik', data.message || 'Status yangilashda xatolik');
-        }, 0);
+      // Also update selectedOrder if it's currently being viewed in modal
+      if (selectedOrder && selectedOrder._id === orderId) {
+        setSelectedOrder(prev => ({ ...prev, status: newStatus }));
       }
+
+      setTimeout(() => {
+        safeNotifySuccess('Status yangilandi', 'Buyurtma statusi muvaffaqiyatli yangilandi');
+        
+        // Show status change notification
+        setStatusNotificationMessage(`Status "${statusMap[newStatus]?.text}" ga o'zgartirildi`);
+        setShowStatusNotification(true);
+        
+        // Hide notification after 3 seconds
+        setTimeout(() => {
+          setShowStatusNotification(false);
+        }, 3000);
+      }, 0);
+
+      // Reload orders to get updated list
+      loadOrders();
     } catch (error) {
       // Revert the change if failed
       setOrders(prevOrders => 

@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const NotificationService = require('../services/NotificationService');
 
 // Performance constants
 const MAX_LIMIT = 1000; // Maximum items per page
@@ -422,8 +423,13 @@ const softDeleteProduct = async (req, res) => {
     ).lean();
 
     if (!updated) return res.status(404).json({ message: 'Mahsulot topilmadi' });
+    
     // Invalidate simple cache
     cache.clear();
+    
+    // Generate notification and recent activity
+    await NotificationService.createProductNotification('deleted', updated, 'Admin');
+    
     res.json({ message: 'Mahsulot arxivlandi (soft-delete)', product: updated });
   } catch (error) {
     console.error('❌ Soft delete product error:', error);
@@ -442,7 +448,12 @@ const restoreProduct = async (req, res) => {
     ).lean();
 
     if (!updated) return res.status(404).json({ message: 'Mahsulot topilmadi' });
+    
     cache.clear();
+    
+    // Generate notification and recent activity
+    await NotificationService.createProductNotification('restored', updated, 'Admin');
+    
     res.json({ message: 'Mahsulot tiklandi', product: updated });
   } catch (error) {
     console.error('❌ Restore product error:', error);
@@ -462,11 +473,166 @@ const setArchiveStatus = async (req, res) => {
     ).lean();
 
     if (!updated) return res.status(404).json({ message: 'Mahsulot topilmadi' });
+    
     cache.clear();
+    
+    // Generate notification and recent activity
+    const action = archived ? 'archived' : 'restored';
+    await NotificationService.createProductNotification(action, updated, 'Admin');
+    
     res.json({ message: archived ? 'Mahsulot arxivlandi' : 'Mahsulot faollashtirildi', product: updated });
   } catch (error) {
     console.error('❌ Set archive status error:', error);
     res.status(500).json({ message: 'Arxiv holatini o\'zgartirishda xatolik', error: error.message });
+  }
+};
+
+// Update product with cache invalidation
+const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Validate ObjectId format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        error: 'Invalid product ID format',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Find and update product
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      { ...updateData, updatedAt: new Date() },
+      { 
+        new: true, // Return updated document
+        runValidators: true // Run schema validators
+      }
+    ).lean();
+
+    if (!updatedProduct) {
+      return res.status(404).json({ 
+        error: 'Product not found',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Clear cache to ensure fresh data
+    cache.clear();
+    
+    // Generate notification and recent activity
+    await NotificationService.createProductNotification('updated', updatedProduct, 'Admin');
+    
+    console.log('✅ Product updated:', updatedProduct._id);
+    
+    // Return the updated product for frontend cache updates
+    res.json({
+      ...updatedProduct,
+      message: 'Product updated successfully',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Update product error:', error);
+    
+    // Handle duplicate key error for unique slug
+    if (
+      (error && error.code === 11000) ||
+      (error && error.name === 'MongoServerError' && error.message && error.message.includes('E11000'))
+    ) {
+      const isSlugConflict = error.keyPattern?.slug || (error.message && /index:\s*slug_\d+/.test(error.message));
+      if (isSlugConflict) {
+        return res.status(409).json({
+          code: 'DUPLICATE_SLUG',
+          message: 'Slug allaqachon mavjud. Iltimos mahsulot nomini o\'zgartiring.',
+          field: 'slug',
+          conflictValue: error.keyValue?.slug,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+    
+    // Validation error
+    if (error && error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        message: 'Yaroqsiz ma\'lumotlar',
+        details: error.errors,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Generic server error
+    res.status(500).json({ 
+      error: 'Failed to update product',
+      message: 'Mahsulotni yangilashda xatolik',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+// Create product with cache invalidation
+const createProduct = async (req, res) => {
+  try {
+    const productData = req.body;
+    
+    // Create new product
+    const product = new Product(productData);
+    const savedProduct = await product.save();
+
+    // Clear cache to ensure fresh data
+    cache.clear();
+    
+    // Generate notification and recent activity
+    await NotificationService.createProductNotification('created', savedProduct, 'Admin');
+    
+    console.log('✅ Product created:', savedProduct._id);
+    
+    res.status(201).json({
+      ...savedProduct.toObject(),
+      message: 'Product created successfully',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Create product error:', error);
+    
+    // Handle duplicate key error for unique slug
+    if (
+      (error && error.code === 11000) ||
+      (error && error.name === 'MongoServerError' && error.message && error.message.includes('E11000'))
+    ) {
+      const isSlugConflict = error.keyPattern?.slug || (error.message && /index:\s*slug_\d+/.test(error.message));
+      if (isSlugConflict) {
+        return res.status(409).json({
+          code: 'DUPLICATE_SLUG',
+          message: 'Slug allaqachon mavjud. Iltimos mahsulot nomini o\'zgartiring.',
+          field: 'slug',
+          conflictValue: error.keyValue?.slug,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+    
+    // Validation error
+    if (error && error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        message: 'Yaroqsiz ma\'lumotlar',
+        details: error.errors,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Generic server error
+    res.status(500).json({ 
+      error: 'Failed to create product',
+      message: 'Mahsulot yaratishda xatolik',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 };
 
@@ -475,6 +641,8 @@ module.exports = {
   getProductById,
   getCategories,
   clearCache,
+  updateProduct,
+  createProduct,
   softDeleteProduct,
   restoreProduct,
   setArchiveStatus

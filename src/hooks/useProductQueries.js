@@ -52,11 +52,11 @@ export const useProducts = (category, search, page = 1, limit = 20) => {
     queryKey: queryKeys.products.list(category, search, page, limit),
     queryFn: ({ signal }) => fetchProducts({ category, search, page, limit, signal }),
     keepPreviousData: true, // Keep previous data while fetching new data
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 30 * 1000, // OPTIMIZED: 30 seconds cache - balance between freshness and performance
     cacheTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
-    // Enable background refetch when data becomes stale
-    refetchOnMount: 'always',
+    refetchOnWindowFocus: true, // Enable for stock updates
+    refetchOnReconnect: true, // Enable for real-time updates
+    // Socket.IO provides instant updates, so we don't need aggressive polling
   });
 };
 
@@ -74,8 +74,10 @@ export const useInfiniteProducts = (category, search, limit = 20) => {
       return undefined;
     },
     keepPreviousData: true,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000, // FIXED: Same as regular products - 30 seconds for real-time updates
     cacheTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true, // ADDED: Enable for stock updates
+    refetchOnReconnect: true, // ADDED: Enable for real-time updates
   });
 };
 
@@ -131,9 +133,10 @@ export const useCreateProduct = () => {
       
       return response.json();
     },
-    onSuccess: () => {
-      // Invalidate and refetch products list
-      invalidateQueries.products();
+    onSuccess: async () => {
+      // OPTIMIZED: Less aggressive - let Socket.IO handle most updates
+      await queryClient.invalidateQueries({ queryKey: queryKeys.products.all, exact: false });
+      // Don't force immediate refetch - let staleTime handle it
     },
   });
 };
@@ -153,14 +156,15 @@ export const useUpdateProduct = () => {
       
       return response.json();
     },
-    onSuccess: (data, variables) => {
+    onSuccess: async (data, variables) => {
       // Update the specific product in cache
       queryClient.setQueryData(
         queryKeys.products.detail(variables.id),
         data
       );
-      // Invalidate products list to reflect changes
-      invalidateQueries.products();
+      // OPTIMIZED: Less aggressive - let Socket.IO handle most updates
+      await queryClient.invalidateQueries({ queryKey: queryKeys.products.all, exact: false });
+      // Don't force immediate refetch - let staleTime handle it
     },
   });
 };

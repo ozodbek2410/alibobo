@@ -92,18 +92,22 @@ export const productsAPI = {
 
   // Create new product
   create: async (data) => {
-    return apiCall('/products', {
+    const response = await apiCall('/products', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    // Return the product data, extracting from response if needed
+    return response.product || response;
   },
 
   // Update product
   update: async (id, data) => {
-    return apiCall(`/products/${id}`, {
+    const response = await apiCall(`/products/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+    // Return the product data, extracting from response if needed
+    return response.product || response;
   },
 
   // Delete product
@@ -194,4 +198,56 @@ export const healthCheck = async () => {
     console.error('Health check failed:', error);
     return false;
   }
+};
+
+// Recent Activities API
+export const recentActivitiesAPI = {
+  // Get all recent activities with pagination and filters
+  getAll: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== '') {
+        queryParams.append(key, params[key]);
+      }
+    });
+    
+    return apiCall(`/recent-activities?${queryParams}`);
+  },
+
+  // Get single activity
+  getById: async (id) => {
+    return apiCall(`/recent-activities/${id}`);
+  },
+
+  // Get activity statistics
+  getStats: async () => {
+    return apiCall('/recent-activities/stats');
+  },
+
+  // Delete activity
+  delete: async (id) => {
+    return apiCall(`/recent-activities/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Delete all activities
+  deleteAll: async () => {
+    return apiCall('/recent-activities/all', {
+      method: 'DELETE',
+    });
+  },
+
+  // Cleanup old activities
+  cleanup: async (daysOld = 90) => {
+    return apiCall('/recent-activities/cleanup', {
+      method: 'POST',
+      body: JSON.stringify({ daysOld }),
+    });
+  },
+
+  // Clear cache
+  clearCache: async () => {
+    return apiCall('/recent-activities/cache/clear');
+  },
 }; 

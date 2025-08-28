@@ -6,7 +6,6 @@ import CategoryNavigation from './CategoryNavigation';
 
 import ModernProductGrid from './ModernProductGrid';
 import { getFuzzyMatches, getDidYouMeanTerms, normalizeText } from '../hooks/useFuzzySearch';
-// import { useOptimizedFilters } from '../hooks/useOptimizedFilters';
 import { SearchIcon, TimesIcon } from './Icons';
 import ProductGridSkeleton from './skeleton/ProductGridSkeleton';
 import '../styles/select-styles.css';

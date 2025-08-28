@@ -48,31 +48,6 @@ class ComponentPreloader {
 // Create singleton instance
 export const componentPreloader = new ComponentPreloader();
 
-// Preload strategies
-export const preloadStrategies = {
-  // Preload on user interaction (hover, focus)
-  onInteraction: (componentImport, componentName) => {
-    return () => componentPreloader.preload(componentImport, componentName);
-  },
-
-  // Preload after initial page load
-  afterPageLoad: (componentImport, componentName, delay = 2000) => {
-    setTimeout(() => {
-      componentPreloader.preload(componentImport, componentName);
-    }, delay);
-  },
-
-  // Preload on route change
-  onRouteChange: (componentImport, componentName) => {
-    componentPreloader.preload(componentImport, componentName);
-  },
-
-  // Preload critical components immediately
-  immediate: (componentImport, componentName) => {
-    componentPreloader.preload(componentImport, componentName);
-  }
-};
-
 // Common component imports for preloading
 export const componentImports = {
   // Admin components
@@ -88,8 +63,7 @@ export const componentImports = {
   CartSidebar: () => import('../components/CartSidebar'),
   
   // Heavy components
-  ProductsGrid: () => import('../components/ProductsGridOptimized'),
-  OptimizedImageUploader: () => import('../components/OptimizedImageUploader'),
+  ProductsGrid: () => import('../components/ProductsGrid'),
 };
 
 // Preload configurations for different scenarios
@@ -111,26 +85,4 @@ export const preloadConfigs = {
   critical: [
     { importFn: componentImports.ProductsGrid, name: 'ProductsGrid' },
   ]
-};
-
-// Hook for using component preloader in React components
-export const useComponentPreloader = () => {
-  const preloadComponent = (componentImport, componentName) => {
-    return componentPreloader.preload(componentImport, componentName);
-  };
-
-  const preloadMultiple = (components) => {
-    return componentPreloader.preloadMultiple(components);
-  };
-
-  const isPreloaded = (componentName) => {
-    return componentPreloader.isPreloaded(componentName);
-  };
-
-  return {
-    preloadComponent,
-    preloadMultiple,
-    isPreloaded,
-    getStatus: () => componentPreloader.getPreloadStatus()
-  };
 };

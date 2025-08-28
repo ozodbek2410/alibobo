@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useProducts, useDeleteProduct, useRestoreProduct } from '../hooks/useProductQueries';
+import { useProducts, useDeleteProduct, useRestoreProduct, useUpdateProduct, useCreateProduct } from '../hooks/useProductQueries';
+import { useRecentActivitiesCache } from '../hooks/useRecentActivities';
 import { queryClient, queryKeys } from '../lib/queryClient';
 
 import AdminNotificationBell from './AdminNotificationBell';
@@ -45,6 +46,13 @@ const AdminProducts = ({ onCountChange, notifications, setNotifications }) => {
     addNotification
   } = useNotifications();
 
+  // React Query hooks for product operations
+  const createProductMutation = useCreateProduct();
+  const updateProductMutation = useUpdateProduct();
+  
+  // Recent activities cache management
+  const activitiesCache = useRecentActivitiesCache();
+  
   // State management
   const [products, setProducts] = useState([]);
   // Local loading removed; use React Query's isLoading/isFetching
@@ -627,117 +635,66 @@ const AdminProducts = ({ onCountChange, notifications, setNotifications }) => {
       }
 
       console.log(' Yuborilayotgan ma\'lumotlar:', productData);
-      console.log(' Rasmlar soni:', allImages.length);
-      console.log(' Eski narx:', productData.oldPrice);
 
-      const url = selectedProduct && selectedProduct._id 
-        ? `http://localhost:5000/api/products/${selectedProduct._id}`
-        : 'http://localhost:5000/api/products';
-      
-      const method = selectedProduct && selectedProduct._id ? 'PUT' : 'POST';
-
-      console.log('🌐 URL:', url, 'Method:', method);
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(productData)
-      });
-
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response ok:', response.ok);
-
-      if (!response.ok) {
-        // Try to parse JSON error for better UX
-        let errorData = null;
-        let rawText = '';
-        try {
-          const contentType = response.headers.get('content-type') || '';
-          if (contentType.includes('application/json')) {
-            errorData = await response.json();
-          } else {
-            rawText = await response.text();
-          }
-        } catch (parseErr) {
-          console.error('❌ Xato javobni parse qilishda muammo:', parseErr);
-        }
-
-        // Duplicate slug (unique index) -> 409 Conflict
-        if (response.status === 409 && (errorData?.code === 'DUPLICATE_SLUG' || errorData?.field === 'slug')) {
-          const msg = errorData?.message || "Slug allaqachon mavjud. Iltimos mahsulot nomini o'zgartiring.";
-          setTimeout(() => {
-            safeNotifyError('Slug xatosi', msg);
-          }, 0);
-          // Keep modal open so user can adjust the name and resubmit
-          return;
-        }
-
-        // Validation errors
-        if (response.status === 400) {
-          const msg = errorData?.message || "Yaroqsiz ma'lumotlar";
-          setTimeout(() => {
-            safeNotifyError('Xatolik', msg);
-          }, 0);
-          return;
-        }
-
-        // Generic server/network error
-        const genericMsg = errorData?.message || rawText || `Server xatoligi: ${response.status}`;
-        console.error('❌ Backend xatolik response:', genericMsg);
-        setTimeout(() => {
-          safeNotifyError('Xatolik', genericMsg);
-        }, 0);
-        return;
-      }
-
-      const data = await response.json();
-      console.log('📥 Response data:', data);
-      console.log('💰 Qaytgan eski narx:', data.oldPrice);
-
-      if (response.ok) {
-        console.log('✅ Muvaffaqiyatli saqlandi');
-        if (selectedProduct) {
-          // Tahrirlash - local state ni yangilash
-          setProducts(prevProducts => 
-            prevProducts.map(product => 
-              product._id === selectedProduct._id 
-                ? { ...product, ...data }
-                : product
-            )
-          );
-        } else {
-          // Yangi qo'shish - local state ga qo'shish
-          setProducts(prevProducts => [...prevProducts, data]);
-          setTotalCount(prev => prev + 1);
-        }
-
-        // Notification with product details - matching index.html
-        setTimeout(() => {
-          if (selectedProduct) {
-            safeNotifySuccess('Mahsulot yangilandi', `${data.name} muvaffaqiyatli yangilandi`);
-          } else {
-            safeNotifySuccess('Mahsulot qo\'shildi', `${data.name} muvaffaqiyatli qo\'shildi`);
-            // Add to recent activities
-            notifyProductAdded(data);
-          }
-        }, 0);
-        closeModal();
+      // Use React Query mutations for automatic cache invalidation
+      if (selectedProduct && selectedProduct._id) {
+        // Update existing product using React Query mutation
+        const updatedProduct = await updateProductMutation.mutateAsync({
+          id: selectedProduct._id,
+          ...productData
+        });
         
-        // Cache invalidation and category refresh
+        console.log('✅ Muvaffaqiyatli yangilandi:', updatedProduct);
+        
         setTimeout(() => {
-          // Invalidate product lists to refresh with current filters
-          queryClient.invalidateQueries({ queryKey: queryKeys.products.lists() });
-          // Reload categories to include new ones
-          loadCategories();
-        }, 300);
+          safeNotifySuccess('Mahsulot yangilandi', `${productData.name} muvaffaqiyatli yangilandi`);
+        }, 0);
+      } else {
+        // Create new product using React Query mutation
+        const newProduct = await createProductMutation.mutateAsync(productData);
+        
+        console.log('✅ Muvaffaqiyatli qo\'shildi:', newProduct);
+        
+        setTimeout(() => {
+          safeNotifySuccess('Mahsulot qo\'shildi', `${productData.name} muvaffaqiyatli qo\'shildi`);
+          // Add to recent activities
+          notifyProductAdded(newProduct);
+        }, 0);
       }
+
+      // Close modal after successful operation
+      closeModal();
+      
+      // Refresh notifications and recent activities
+      setTimeout(() => {
+        // Invalidate notifications to show new notification
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        // Refresh recent activities to show new activity
+        activitiesCache.refreshAll();
+        // Reload categories to include new ones (if any)
+        loadCategories();
+      }, 300);
+
     } catch (error) {
       console.error('❌ Mahsulot saqlashda xatolik:', error);
-      setTimeout(() => {
-        safeNotifyError('Xatolik', 'Mahsulot saqlanmadi');
-      }, 0);
+      
+      // Handle specific error types from React Query mutations
+      if (error?.response?.status === 409 || error?.code === 'DUPLICATE_SLUG') {
+        setTimeout(() => {
+          safeNotifyError('Slug xatosi', "Slug allaqachon mavjud. Iltimos mahsulot nomini o'zgartiring.");
+        }, 0);
+        // Keep modal open so user can adjust the name and resubmit
+        return;
+      } else if (error?.response?.status === 400) {
+        setTimeout(() => {
+          safeNotifyError('Xatolik', "Yaroqsiz ma'lumotlar");
+        }, 0);
+        return;
+      } else {
+        setTimeout(() => {
+          safeNotifyError('Xatolik', 'Mahsulot saqlanmadi');
+        }, 0);
+      }
     } finally {
       setIsSubmitting(false);
     }

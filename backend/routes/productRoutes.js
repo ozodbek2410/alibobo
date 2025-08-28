@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
-const { getProducts, getProductById, getCategories, clearCache, softDeleteProduct, restoreProduct, setArchiveStatus } = require('../controllers/productController');
+const { getProducts, getProductById, getCategories, clearCache, updateProduct, createProduct, softDeleteProduct, restoreProduct, setArchiveStatus } = require('../controllers/productController');
 
 // GET /api/products - Get all products with optimized pagination and filtering
 router.get('/', getProducts);
@@ -16,101 +16,10 @@ router.get('/cache/clear', clearCache);
 router.get('/:id', getProductById);
 
 // POST /api/products - Create new product
-router.post('/', async (req, res) => {
-  try {
-    const productData = req.body;
-    
-    // Create new product
-    const product = new Product(productData);
-    const savedProduct = await product.save();
-
-    console.log('✅ Product created:', savedProduct._id);
-    res.status(201).json(savedProduct);
-  } catch (error) {
-    console.error('❌ Create product error:', error);
-    // Handle duplicate key error for unique slug
-    if (
-      (error && error.code === 11000) ||
-      (error && error.name === 'MongoServerError' && error.message && error.message.includes('E11000'))
-    ) {
-      const isSlugConflict = error.keyPattern?.slug || (error.message && /index:\s*slug_\d+/.test(error.message));
-      if (isSlugConflict) {
-        return res.status(409).json({
-          code: 'DUPLICATE_SLUG',
-          message: 'Slug allaqachon mavjud. Iltimos mahsulot nomini o\'zgartiring.',
-          field: 'slug',
-          conflictValue: error.keyValue?.slug
-        });
-      }
-    }
-    // Validation error
-    if (error && error.name === 'ValidationError') {
-      return res.status(400).json({ 
-        message: 'Yaroqsiz ma\'lumotlar',
-        details: error.errors 
-      });
-    }
-    // Generic server error
-    res.status(500).json({ 
-      message: 'Mahsulot yaratishda xatolik',
-      error: error.message 
-    });
-  }
-});
+router.post('/', createProduct);
 
 // PUT /api/products/:id - Update product
-router.put('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updateData = req.body;
-
-    // Find and update product
-    const updatedProduct = await Product.findByIdAndUpdate(
-      id,
-      updateData,
-      { 
-        new: true, // Return updated document
-        runValidators: true // Run schema validators
-      }
-    );
-
-    if (!updatedProduct) {
-      return res.status(404).json({ message: 'Mahsulot topilmadi' });
-    }
-
-    console.log('✅ Product updated:', updatedProduct._id);
-    res.json(updatedProduct);
-  } catch (error) {
-    console.error('❌ Update product error:', error);
-    // Handle duplicate key error for unique slug
-    if (
-      (error && error.code === 11000) ||
-      (error && error.name === 'MongoServerError' && error.message && error.message.includes('E11000'))
-    ) {
-      const isSlugConflict = error.keyPattern?.slug || (error.message && /index:\s*slug_\d+/.test(error.message));
-      if (isSlugConflict) {
-        return res.status(409).json({
-          code: 'DUPLICATE_SLUG',
-          message: 'Slug allaqachon mavjud. Iltimos mahsulot nomini o\'zgartiring.',
-          field: 'slug',
-          conflictValue: error.keyValue?.slug
-        });
-      }
-    }
-    // Validation error
-    if (error && error.name === 'ValidationError') {
-      return res.status(400).json({ 
-        message: 'Yaroqsiz ma\'lumotlar',
-        details: error.errors 
-      });
-    }
-    // Generic server error
-    res.status(500).json({ 
-      message: 'Mahsulotni yangilashda xatolik',
-      error: error.message 
-    });
-  }
-});
+router.put('/:id', updateProduct);
 
 // PATCH /api/products/:id/archive - Toggle archive status (inactive/active)
 router.patch('/:id/archive', setArchiveStatus);

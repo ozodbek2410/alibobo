@@ -24,9 +24,9 @@
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
     
-    <!-- Critical CSS inlined for above-the-fold content -->
+    <!-- Critical CSS for initial load -->
     <style>
-      /* Critical above-the-fold styles */
+      /* Essential loading and layout styles */
       body { 
         margin: 0; 
         font-family: Inter, system-ui, sans-serif; 
@@ -40,14 +40,6 @@
         min-height: 100vh; 
         font-size: 1.125rem; 
       }
-      /* Header critical styles */
-      .header-container {
-        background-color: #ffffff;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-        position: sticky;
-        top: 0;
-        z-index: 50;
-      }
       /* Primary button styles */
       .btn-primary {
         background-color: #F68622;
@@ -56,32 +48,6 @@
         border-radius: 0.5rem;
         border: none;
         cursor: pointer;
-        transition: background-color 0.2s;
-      }
-      .btn-primary:hover {
-        background-color: rgba(246, 134, 34, 0.9);
-      }
-      /* Grid layout for products */
-      .products-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-      }
-      @media (min-width: 768px) {
-        .products-grid {
-          grid-template-columns: repeat(2, 1fr);
-          gap: 1.5rem;
-        }
-      }
-      @media (min-width: 1024px) {
-        .products-grid {
-          grid-template-columns: repeat(3, 1fr);
-        }
-      }
-      @media (min-width: 1280px) {
-        .products-grid {
-          grid-template-columns: repeat(4, 1fr);
-        }
       }
     </style>
     

@@ -114,37 +114,3 @@ export function useDebouncedSearch(initialQuery = '', delay = 500, onSearch = nu
 
   return [query, setQuery, debouncedQuery, isDebouncing];
 }
-
-/**
- * A hook for throttling function calls
- * 
- * @param {Function} callback - The function to throttle
- * @param {number} delay - The delay in milliseconds
- * @returns {Function} - The throttled function
- */
-export function useThrottle(callback, delay = 300) {
-  const lastRan = useRef(Date.now());
-  const timeoutRef = useRef(null);
-  
-  return useCallback((...args) => {
-    const handler = () => {
-      if (Date.now() - lastRan.current >= delay) {
-        callback(...args);
-        lastRan.current = Date.now();
-      }
-    };
-    
-    // Clear existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    
-    // Schedule new timeout
-    timeoutRef.current = setTimeout(() => {
-      if (Date.now() - lastRan.current >= delay) {
-        callback(...args);
-        lastRan.current = Date.now();
-      }
-    }, delay - (Date.now() - lastRan.current));
-  }, [callback, delay]);
-}

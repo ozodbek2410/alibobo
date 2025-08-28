@@ -9,6 +9,8 @@ const mongoSanitize = require('express-mongo-sanitize');
 const hpp = require('hpp');
 const cluster = require('cluster');
 const os = require('os');
+const http = require('http'); // For Socket.IO integration
+const socketService = require('./services/SocketService'); // Real-time updates
 
 // Use clustering to take advantage of multi-core systems
 const enableClustering = process.env.ENABLE_CLUSTERING === 'true';
@@ -148,6 +150,20 @@ app.use('/api', limiter);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// CRITICAL: Add cache control headers for real-time updates
+app.use((req, res, next) => {
+  // Prevent HTTP caching of API responses that contain real-time data
+  if (req.path.startsWith('/api/products') || req.path.startsWith('/api/orders')) {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'ETag': `"${Date.now()}"` // Force ETag rotation
+    });
+  }
+  next();
+});
+
 // Static file serving for uploads
 app.use('/uploads', express.static('uploads', {
   maxAge: '7d', // 7 days cache for uploaded files
@@ -164,6 +180,7 @@ const notificationsRoutes = require('./routes/notificationsRoutes');
 const ordersRoutes = require('./routes/ordersRoutes');
 const statisticsRoutes = require('./routes/statisticsRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const recentActivitiesRoutes = require('./routes/recentActivitiesRoutes');
 
 app.use('/api/products', productRoutes);
 app.use('/api/craftsmen', craftsmenRoutes);
@@ -171,6 +188,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/statistics', statisticsRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/recent-activities', recentActivitiesRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -193,6 +211,7 @@ app.get('/', (req, res) => {
       orders: '/api/orders',
       statistics: '/api/statistics',
       upload: '/api/upload',
+      recentActivities: '/api/recent-activities',
       health: '/api/health'
     }
   });
@@ -276,9 +295,33 @@ let server; // Global reference to server for graceful shutdown
 const startServer = async () => {
   await connectDB();
   
-  server = app.listen(PORT, () => {
+  // Create HTTP server for Socket.IO integration
+  const httpServer = http.createServer(app);
+  
+  // Initialize Socket.IO for real-time stock updates
+  socketService.initialize(httpServer);
+  
+  console.log(`📡 Socket.IO initialized with standardized events:`);
+  console.log(`  - stock:updated (productId, delta, newQuantity, orderId, ts)`);
+  console.log(`  - order:updated (orderId, status, ts)`);
+  console.log(`  - stock:bulk_updated (updates[], orderId, ts)`);
+  console.log(`  - product:availability_changed (productId, isAvailable, reason, ts)`);
+  console.log(`  - admin:notification (notification data + ts)`);
+  
+  if (process.env.REDIS_URL && process.env.NODE_ENV === 'production') {
+    console.log(`⚠️  Redis adapter available for clustering: ${process.env.REDIS_URL}`);
+    console.log(`⚠️  Uncomment Redis adapter code in server.js for production clustering`);
+  }
+  
+  server = httpServer.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT} (${process.pid})`);
     console.log(`📡 API endpoints available`);
+    console.log(`🔗 Socket.IO ready for real-time updates`);
+    console.log(`📊 Cache-Control: API responses set to no-cache for real-time data`);
+    
+    if (enableClustering) {
+      console.log(`📏 Worker ${process.pid} ready in cluster mode`);
+    }
   });
 
   // Graceful shutdown handler

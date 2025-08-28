@@ -4,14 +4,14 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Longer staleTime to significantly reduce unnecessary fetching
-      staleTime: 10 * 60 * 1000, // 10 minutes for regular data
+      // CRITICAL FIX: Shorter staleTime for real-time stock updates
+      staleTime: 30 * 1000, // 30 seconds - enables real-time updates
       // Data stays in cache longer before garbage collection
       gcTime: 30 * 60 * 1000, // 30 minutes
-      // Only refetch on window focus when needed (better UX)
-      refetchOnWindowFocus: false,
-      // Refetch on reconnect only for critical data
-      refetchOnReconnect: false,
+      // Enable refetch on window focus for stock updates
+      refetchOnWindowFocus: true,
+      // Enable refetch on reconnect for real-time data
+      refetchOnReconnect: true,
       // Smart retry strategy to avoid wasting bandwidth
       retry: (failureCount, error) => {
         // Don't retry on 404 or 400 errors (client errors)
@@ -95,6 +95,25 @@ export const queryKeys = {
   statistics: {
     all: ['statistics'],
     dashboard: () => [...queryKeys.statistics.all, 'dashboard'],
+    orders: () => [...queryKeys.statistics.all, 'orders'],
+  },
+
+  // Stock management queries (NEW for real-time updates)
+  stock: {
+    all: ['stock'],
+    product: (id) => [...queryKeys.stock.all, 'product', id],
+    levels: () => [...queryKeys.stock.all, 'levels'],
+  },
+
+  // Recent Activities queries
+  recentActivities: {
+    all: ['recent-activities'],
+    lists: () => [...queryKeys.recentActivities.all, 'list'],
+    list: (page = 1, limit = 20, filter = 'all') => 
+      [...queryKeys.recentActivities.lists(), { page, limit, filter }],
+    details: () => [...queryKeys.recentActivities.all, 'detail'],
+    detail: (id) => [...queryKeys.recentActivities.details(), id],
+    stats: () => [...queryKeys.recentActivities.all, 'stats'],
   },
 };
 
@@ -106,6 +125,17 @@ export const invalidateQueries = {
   categories: () => queryClient.invalidateQueries({ queryKey: queryKeys.categories.all }),
   craftsmen: () => queryClient.invalidateQueries({ queryKey: queryKeys.craftsmen.all }),
   orders: () => queryClient.invalidateQueries({ queryKey: queryKeys.orders.all }),
+  recentActivities: () => queryClient.invalidateQueries({ queryKey: queryKeys.recentActivities.all }),
+  recentActivityDetail: (id) => queryClient.invalidateQueries({ queryKey: queryKeys.recentActivities.detail(id) }),
+  // NEW: Real-time stock invalidation
+  stock: () => queryClient.invalidateQueries({ queryKey: queryKeys.stock.all }),
+  productStock: (id) => queryClient.invalidateQueries({ queryKey: queryKeys.stock.product(id) }),
+  // CRITICAL: Invalidate everything for immediate stock updates
+  allProductData: () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.stock.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.search.all });
+  },
 };
 
 // Enhanced prefetch helpers for intelligent data preloading

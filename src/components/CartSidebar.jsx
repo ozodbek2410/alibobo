@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { queryClient } from '../lib/queryClient';
+import { useCreateOrder } from '../hooks/useOrderQueries';
 
 const CartSidebar = ({ isOpen, onClose, cart, onRemoveFromCart, onUpdateQuantity, onCheckout }) => {
+  // React Query mutation for order creation
+  const createOrderMutation = useCreateOrder();
+  
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [customerData, setCustomerData] = useState({
     name: '',
@@ -160,41 +164,10 @@ const CartSidebar = ({ isOpen, onClose, cart, onRemoveFromCart, onUpdateQuantity
         selectedVariants: item.selectedVariants 
       })));
 
-      // Send order to backend API with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orderData),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      // Check if response is ok
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || 
-          `Server xatoligi: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const savedOrder = await response.json();
+      // Use React Query mutation for automatic cache invalidation
+      const savedOrder = await createOrderMutation.mutateAsync(orderData);
       
       console.log('Buyurtma muvaffaqiyatli saqlandi:', savedOrder);
-      
-      // Invalidate products cache to refresh inventory on main page
-      try {
-        await queryClient.invalidateQueries({ queryKey: ['products'] });
-        console.log('✅ Products cache invalidated - inventory will refresh');
-      } catch (cacheError) {
-        console.warn('⚠️ Cache invalidation failed:', cacheError);
-      }
 
       // Reset form data
       setCustomerData({

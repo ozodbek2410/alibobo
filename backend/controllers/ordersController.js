@@ -1,5 +1,7 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const NotificationService = require('../services/NotificationService');
+const socketService = require('../services/SocketService'); // Real-time updates
 const mongoose = require('mongoose');
 
 // Simple in-memory cache with TTL
@@ -172,56 +174,98 @@ const getOrderById = async (req, res) => {
   }
 };
 
-// POST create new order with inventory synchronization
+// POST create new order with optimized inventory synchronization
 const createOrder = async (req, res) => {
   const session = await mongoose.startSession();
   
   try {
-    await session.withTransaction(async () => {
+    // CRITICAL: Store events to emit after successful commit
+    let postCommitEvents = [];
+    
+    const result = await session.withTransaction(async () => {
       const orderData = req.body;
       
-      // Validate that all items have productId
+      // Enhanced validation
       if (!orderData.items || !Array.isArray(orderData.items) || orderData.items.length === 0) {
         throw new Error('Buyurtmada hech bo\'lmaganda bitta mahsulot bo\'lishi kerak');
       }
       
-      // Check each item has required productId
+      if (!orderData.customerName || !orderData.customerPhone) {
+        throw new Error('Mijoz nomi va telefon raqami kiritilishi shart');
+      }
+      
+      // Validate items and extract product IDs for batch fetch
+      const productIds = [];
       for (const item of orderData.items) {
         if (!item.productId) {
-          throw new Error(`Mahsulot ID kiritilmagan: ${item.name}`);
+          throw new Error(`Mahsulot ID kiritilmagan: ${item.name || 'Noma\'lum mahsulot'}`);
         }
         if (!mongoose.Types.ObjectId.isValid(item.productId)) {
           throw new Error(`Noto\'g\'ri mahsulot ID: ${item.productId}`);
         }
+        if (!item.quantity || item.quantity <= 0) {
+          throw new Error(`Noto\'g\'ri miqdor: ${item.name || 'Noma\'lum mahsulot'}`);
+        }
+        productIds.push(item.productId);
       }
       
-      // Step 1: Check product availability and prepare stock updates
-      const stockChecks = orderData.items.map(async (item) => {
-        const product = await Product.findById(item.productId).session(session);
+      // Step 1: Batch fetch all products for better performance
+      const products = await Product.find({
+        _id: { $in: productIds },
+        status: 'active',
+        isDeleted: { $ne: true }
+      }).session(session);
+      
+      // Create product lookup map
+      const productMap = new Map();
+      products.forEach(product => {
+        productMap.set(product._id.toString(), product);
+      });
+      
+      // Step 2: Validate stock availability and prepare updates
+      const stockUpdates = [];
+      let totalOrderAmount = 0;
+      
+      for (const item of orderData.items) {
+        const product = productMap.get(item.productId.toString());
         
         if (!product) {
-          throw new Error(`Mahsulot topilmadi: ${item.name}`);
+          throw new Error(`Mahsulot topilmadi yoki mavjud emas: ${item.name}`);
         }
         
-        if (product.status !== 'active' || product.isDeleted) {
-          throw new Error(`Mahsulot mavjud emas: ${product.name}`);
-        }
+        let availableStock = 0;
+        let stockUpdateQuery = null;
         
-        // Check if product has variants
+        // Handle variant products
         if (product.hasVariants && product.variants && product.variants.length > 0) {
-          // For variant products, check specific variant stock
           if (!item.variantOption) {
             throw new Error(`Variant tanlanmagan: ${product.name}`);
           }
           
           let variantFound = false;
-          let variantStock = 0;
-          
           for (const variant of product.variants) {
             const option = variant.options.find(opt => opt.value === item.variantOption);
             if (option) {
               variantFound = true;
-              variantStock = option.stock || 0;
+              availableStock = option.stock || 0;
+              
+              // Prepare variant stock update
+              stockUpdateQuery = {
+                filter: { 
+                  _id: product._id,
+                  'variants.options.value': item.variantOption 
+                },
+                update: { 
+                  $inc: { 'variants.$[variant].options.$[option].stock': -item.quantity } 
+                },
+                options: {
+                  arrayFilters: [
+                    { 'variant.options.value': item.variantOption },
+                    { 'option.value': item.variantOption }
+                  ],
+                  session
+                }
+              };
               break;
             }
           }
@@ -229,76 +273,140 @@ const createOrder = async (req, res) => {
           if (!variantFound) {
             throw new Error(`Variant topilmadi: ${item.variantOption} - ${product.name}`);
           }
-          
-          if (variantStock < item.quantity) {
-            throw new Error(`Yetarli miqdor yo\'q: ${product.name} (${item.variantOption}). Mavjud: ${variantStock}, Talab: ${item.quantity}`);
-          }
         } else {
-          // For regular products, check main stock
-          if (product.stock < item.quantity) {
-            throw new Error(`Yetarli miqdor yo\'q: ${product.name}. Mavjud: ${product.stock}, Talab: ${item.quantity}`);
-          }
+          // Handle regular products
+          availableStock = product.stock || 0;
+          
+          // Prepare regular stock update
+          stockUpdateQuery = {
+            filter: { _id: product._id },
+            update: { $inc: { stock: -item.quantity } },
+            options: { session }
+          };
         }
         
-        return { product, item };
-      });
-      
-      // Wait for all stock checks to complete
-      const checkedItems = await Promise.all(stockChecks);
-      
-      // Step 2: Update product quantities atomically in parallel
-      const stockUpdates = checkedItems.map(({ product, item }) => {
-        if (product.hasVariants && product.variants && product.variants.length > 0) {
-          // Update variant stock
-          return Product.updateOne(
-            { 
-              _id: product._id,
-              'variants.options.value': item.variantOption 
-            },
-            { 
-              $inc: { 'variants.$[variant].options.$[option].stock': -item.quantity } 
-            },
-            {
-              arrayFilters: [
-                { 'variant.options.value': item.variantOption },
-                { 'option.value': item.variantOption }
-              ],
-              session
-            }
-          );
-        } else {
-          // Update main product stock
-          return Product.updateOne(
-            { _id: product._id },
-            { $inc: { stock: -item.quantity } },
-            { session }
-          );
+        // Check stock availability
+        if (availableStock < item.quantity) {
+          throw new Error(`Yetarli miqdor yo\'q: ${product.name}${item.variantOption ? ` (${item.variantOption})` : ''}. Mavjud: ${availableStock}, Talab: ${item.quantity}`);
         }
+        
+        // Verify price consistency (optional security check)
+        const expectedPrice = product.hasVariants ? 
+          product.variants.flatMap(v => v.options).find(o => o.value === item.variantOption)?.price || product.price :
+          product.price;
+        
+        if (Math.abs(item.price - expectedPrice) > 0.01) {
+          console.warn(`Price mismatch for ${product.name}: expected ${expectedPrice}, got ${item.price}`);
+        }
+        
+        totalOrderAmount += item.price * item.quantity;
+        stockUpdates.push({
+          query: stockUpdateQuery,
+          productId: product._id,
+          productName: product.name,
+          delta: -item.quantity, // Negative for stock decrease
+          newStock: availableStock - item.quantity,
+          variantOption: item.variantOption
+        });
+      }
+      
+      // Verify total amount (optional security check)
+      if (orderData.totalAmount && Math.abs(orderData.totalAmount - totalOrderAmount) > 0.01) {
+        console.warn(`Total amount mismatch: expected ${totalOrderAmount}, got ${orderData.totalAmount}`);
+      }
+      
+      // Step 3: Execute all stock updates atomically in parallel
+      const updatePromises = stockUpdates.map(({ query }) => {
+        const { filter, update, options } = query;
+        return Product.updateOne(filter, update, options);
       });
       
-      // Execute all stock updates in parallel
-      await Promise.all(stockUpdates);
+      const updateResults = await Promise.all(updatePromises);
       
-      // Step 3: Create the order
-      const order = new Order(orderData);
+      // Verify all updates succeeded
+      for (let i = 0; i < updateResults.length; i++) {
+        const result = updateResults[i];
+        if (result.matchedCount === 0) {
+          throw new Error(`Stock update failed for item: ${orderData.items[i].name}`);
+        }
+        if (result.modifiedCount === 0) {
+          // This might happen if the stock was already 0 and we're trying to decrease it further
+          throw new Error(`Unable to update stock for item: ${orderData.items[i].name}`);
+        }
+      }
+      
+      // Step 4: Create the order
+      const order = new Order({
+        ...orderData,
+        totalAmount: totalOrderAmount // Use calculated amount
+      });
+      
       const savedOrder = await order.save({ session });
       
-      // Invalidate cache after successful order creation
-      invalidateCache();
+      // CRITICAL: Prepare post-commit events (but don't emit yet)
+      postCommitEvents = [
+        { type: 'order:updated', data: { orderId: savedOrder._id, status: 'created' } },
+        ...stockUpdates.map(({ productId, delta, newStock }) => ({
+          type: 'stock:updated',
+          data: { productId, delta, newQuantity: newStock, orderId: savedOrder._id }
+        })),
+        { 
+          type: 'stock:bulk_updated', 
+          data: { 
+            updates: stockUpdates.map(({ productId, delta, newStock }) => ({ productId, delta, newQuantity: newStock })),
+            orderId: savedOrder._id 
+          } 
+        }
+      ];
       
-      // Return the saved order for the transaction result
+      console.log(`✅ TX_COMMIT: Order created successfully: ${savedOrder._id}`);
+      
       return savedOrder;
+    }, {
+      readConcern: { level: 'snapshot' },
+      writeConcern: { w: 'majority' },
+      maxCommitTimeMS: 10000 // 10 second timeout
     });
     
-    // Transaction completed successfully, respond with the created order
+    // CRITICAL: EMIT EVENTS ONLY AFTER SUCCESSFUL COMMIT
+    console.log(`📡 EMIT_START: Broadcasting ${postCommitEvents.length} real-time events`);
+    postCommitEvents.forEach(({ type, data }) => {
+      switch (type) {
+        case 'order:updated':
+          socketService.emitOrderUpdate(data.orderId, data.status, data.ts);
+          break;
+        case 'stock:updated':
+          socketService.emitStockUpdate(data.productId, data.delta, data.newQuantity, data.orderId);
+          break;
+        case 'stock:bulk_updated':
+          socketService.emitBulkStockUpdate(data.updates, data.orderId);
+          break;
+      }
+    });
+    console.log(`✅ EMIT_COMPLETE: Real-time updates sent for order ${result._id}`);
+    
+    // Step 5: Generate notification and clear cache (outside transaction)
+    try {
+      await NotificationService.createOrderNotification('created', result, 'Admin');
+    } catch (notificationError) {
+      console.error('Failed to create order notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
+
+    
+    // Invalidate cache after successful order creation
+    invalidateCache();
+    
     res.status(201).json({
       success: true,
-      message: 'Buyurtma muvaffaqiyatli yaratildi',
-      order: session.result || session.transaction.result
+      message: 'Buyurtma muvaffaqiyatli yaratildi va mahsulot miqdorlari yangilandi',
+      order: result
     });
+    
   } catch (error) {
     console.error('Error creating order:', error);
     res.status(400).json({ 
+      success: false,
       error: 'Buyurtma yaratishda xatolik',
       message: error.message 
     });
@@ -334,12 +442,12 @@ const updateOrder = async (req, res) => {
   }
 };
 
-// PUT update order status
+// PUT update order status with optimized stock management
 const updateOrderStatus = async (req, res) => {
   const session = await mongoose.startSession();
   
   try {
-    await session.withTransaction(async () => {
+    const result = await session.withTransaction(async () => {
       const { status } = req.body;
       const orderId = req.params.id;
       
@@ -350,75 +458,136 @@ const updateOrderStatus = async (req, res) => {
         throw new Error('Buyurtma topilmadi');
       }
       
+      // Prevent invalid status transitions
+      if (currentOrder.status === 'completed' && status === 'cancelled') {
+        throw new Error('Yakunlangan buyurtmani bekor qilish mumkin emas');
+      }
+      
+      if (currentOrder.status === 'cancelled' && status !== 'cancelled') {
+        throw new Error('Bekor qilingan buyurtma holatini o\'zgartirib bo\'lmaydi');
+      }
+      
       const updateData = { status };
       
       if (status === 'completed') {
         updateData.completedDate = new Date();
       } else if (status === 'cancelled' && currentOrder.status !== 'cancelled') {
-        // If changing to cancelled, restore inventory
+        // If changing to cancelled, restore inventory using optimized approach
         updateData.cancelledDate = new Date();
         
-        // Restore product quantities in parallel
-        const stockRestorations = currentOrder.items.map(async (item) => {
-          const product = await Product.findById(item.productId).session(session);
-          
-          if (!product) {
-            console.warn(`Mahsulot topilmadi inventory qaytarish uchun: ${item.name}`);
-            return; // Skip if product not found
-          }
-          
-          // Check if product has variants
-          if (product.hasVariants && product.variants && product.variants.length > 0 && item.variantOption) {
-            // Restore variant stock
-            return Product.updateOne(
-              { 
-                _id: product._id,
-                'variants.options.value': item.variantOption 
-              },
-              { 
-                $inc: { 'variants.$[variant].options.$[option].stock': item.quantity } 
-              },
-              {
-                arrayFilters: [
-                  { 'variant.options.value': item.variantOption },
-                  { 'option.value': item.variantOption }
-                ],
-                session
-              }
-            );
-          } else {
-            // Restore main product stock
-            return Product.updateOne(
-              { _id: product._id },
-              { $inc: { stock: item.quantity } },
-              { session }
-            );
-          }
+        // Batch fetch all products for efficiency
+        const productIds = currentOrder.items.map(item => item.productId);
+        const products = await Product.find({
+          _id: { $in: productIds }
+        }).session(session);
+        
+        // Create product lookup map
+        const productMap = new Map();
+        products.forEach(product => {
+          productMap.set(product._id.toString(), product);
         });
         
+        // Prepare stock restoration updates
+        const stockRestorations = [];
+        
+        for (const item of currentOrder.items) {
+          const product = productMap.get(item.productId.toString());
+          
+          if (!product) {
+            console.warn(`Product not found for inventory restoration: ${item.name} (ID: ${item.productId})`);
+            continue;
+          }
+          
+          let stockUpdateQuery = null;
+          
+          // Handle variant products
+          if (product.hasVariants && product.variants && product.variants.length > 0 && item.variantOption) {
+            // Verify variant exists
+            let variantFound = false;
+            for (const variant of product.variants) {
+              if (variant.options.find(opt => opt.value === item.variantOption)) {
+                variantFound = true;
+                break;
+              }
+            }
+            
+            if (variantFound) {
+              stockUpdateQuery = {
+                filter: { 
+                  _id: product._id,
+                  'variants.options.value': item.variantOption 
+                },
+                update: { 
+                  $inc: { 'variants.$[variant].options.$[option].stock': item.quantity } 
+                },
+                options: {
+                  arrayFilters: [
+                    { 'variant.options.value': item.variantOption },
+                    { 'option.value': item.variantOption }
+                  ],
+                  session
+                }
+              };
+            }
+          } else {
+            // Handle regular products
+            stockUpdateQuery = {
+              filter: { _id: product._id },
+              update: { $inc: { stock: item.quantity } },
+              options: { session }
+            };
+          }
+          
+          if (stockUpdateQuery) {
+            stockRestorations.push(stockUpdateQuery);
+          }
+        }
+        
         // Execute all stock restorations in parallel
-        await Promise.all(stockRestorations.filter(Boolean));
+        if (stockRestorations.length > 0) {
+          const restorationPromises = stockRestorations.map(({ filter, update, options }) => {
+            return Product.updateOne(filter, update, options);
+          });
+          
+          await Promise.all(restorationPromises);
+        }
       }
       
-      const order = await Order.findByIdAndUpdate(
+      const updatedOrder = await Order.findByIdAndUpdate(
         orderId,
         updateData,
         { new: true, session }
       );
       
-      // Invalidate cache
-      invalidateCache();
+      console.log(`✅ Order status updated: ${updatedOrder._id} -> ${status}`);
       
-      return order;
+      return updatedOrder;
+    }, {
+      readConcern: { level: 'snapshot' },
+      writeConcern: { w: 'majority' },
+      maxCommitTimeMS: 10000
     });
+    
+    // Generate notification (outside transaction)
+    try {
+      await NotificationService.createOrderNotification('updated', result, 'Admin');
+    } catch (notificationError) {
+      console.error('Failed to create order status update notification:', notificationError);
+    }
+    
+    // Invalidate cache
+    invalidateCache();
     
     res.json({
       success: true,
-      message: 'Buyurtma holati muvaffaqiyatli yangilandi'
+      message: 'Buyurtma holati muvaffaqiyatli yangilandi',
+      order: result
     });
+    
   } catch (error) {
     console.error('Error updating order status:', error);
     res.status(400).json({ 
+      success: false,
       error: 'Buyurtma holatini yangilashda xatolik',
       message: error.message 
     });
@@ -496,15 +665,15 @@ const getOrderStats = async (req, res) => {
   }
 };
 
-// PUT cancel order and restore inventory
+// PUT cancel order and restore inventory with optimized synchronization
 const cancelOrder = async (req, res) => {
   const session = await mongoose.startSession();
   
   try {
-    await session.withTransaction(async () => {
+    const result = await session.withTransaction(async () => {
       const orderId = req.params.id;
       
-      // Step 1: Find the order to cancel
+      // Step 1: Find and validate the order
       const order = await Order.findById(orderId).session(session);
       
       if (!order) {
@@ -519,48 +688,95 @@ const cancelOrder = async (req, res) => {
         throw new Error('Yakunlangan buyurtmani bekor qilish mumkin emas');
       }
       
-      // Step 2: Restore product quantities in parallel
-      const stockRestorations = order.items.map(async (item) => {
-        const product = await Product.findById(item.productId).session(session);
-        
-        if (!product) {
-          console.warn(`Mahsulot topilmadi inventory qaytarish uchun: ${item.name}`);
-          return; // Skip if product not found, but don't fail the cancellation
-        }
-        
-        // Check if product has variants
-        if (product.hasVariants && product.variants && product.variants.length > 0 && item.variantOption) {
-          // Restore variant stock
-          return Product.updateOne(
-            { 
-              _id: product._id,
-              'variants.options.value': item.variantOption 
-            },
-            { 
-              $inc: { 'variants.$[variant].options.$[option].stock': item.quantity } 
-            },
-            {
-              arrayFilters: [
-                { 'variant.options.value': item.variantOption },
-                { 'option.value': item.variantOption }
-              ],
-              session
-            }
-          );
-        } else {
-          // Restore main product stock
-          return Product.updateOne(
-            { _id: product._id },
-            { $inc: { stock: item.quantity } },
-            { session }
-          );
-        }
+      // Step 2: Batch fetch all products for efficiency
+      const productIds = order.items.map(item => item.productId);
+      const products = await Product.find({
+        _id: { $in: productIds }
+      }).session(session);
+      
+      // Create product lookup map
+      const productMap = new Map();
+      products.forEach(product => {
+        productMap.set(product._id.toString(), product);
       });
       
-      // Execute all stock restorations in parallel
-      await Promise.all(stockRestorations.filter(Boolean)); // Filter out undefined promises
+      // Step 3: Prepare stock restoration updates
+      const stockRestorations = [];
       
-      // Step 3: Update order status to cancelled
+      for (const item of order.items) {
+        const product = productMap.get(item.productId.toString());
+        
+        if (!product) {
+          console.warn(`Product not found for inventory restoration: ${item.name} (ID: ${item.productId})`);
+          continue; // Skip missing products but don't fail the cancellation
+        }
+        
+        let stockUpdateQuery = null;
+        
+        // Handle variant products
+        if (product.hasVariants && product.variants && product.variants.length > 0 && item.variantOption) {
+          // Verify variant exists before restoration
+          let variantFound = false;
+          for (const variant of product.variants) {
+            if (variant.options.find(opt => opt.value === item.variantOption)) {
+              variantFound = true;
+              break;
+            }
+          }
+          
+          if (variantFound) {
+            stockUpdateQuery = {
+              filter: { 
+                _id: product._id,
+                'variants.options.value': item.variantOption 
+              },
+              update: { 
+                $inc: { 'variants.$[variant].options.$[option].stock': item.quantity } 
+              },
+              options: {
+                arrayFilters: [
+                  { 'variant.options.value': item.variantOption },
+                  { 'option.value': item.variantOption }
+                ],
+                session
+              }
+            };
+          } else {
+            console.warn(`Variant not found for restoration: ${item.variantOption} - ${product.name}`);
+          }
+        } else {
+          // Handle regular products
+          stockUpdateQuery = {
+            filter: { _id: product._id },
+            update: { $inc: { stock: item.quantity } },
+            options: { session }
+          };
+        }
+        
+        if (stockUpdateQuery) {
+          stockRestorations.push(stockUpdateQuery);
+        }
+      }
+      
+      // Step 4: Execute all stock restorations atomically in parallel
+      if (stockRestorations.length > 0) {
+        const restorationPromises = stockRestorations.map(({ filter, update, options }) => {
+          return Product.updateOne(filter, update, options);
+        });
+        
+        const restorationResults = await Promise.all(restorationPromises);
+        
+        // Log any failed restorations for monitoring
+        restorationResults.forEach((result, index) => {
+          if (result.matchedCount === 0) {
+            console.warn(`Stock restoration failed - product not found: ${order.items[index].name}`);
+          } else if (result.modifiedCount === 0) {
+            console.warn(`Stock restoration had no effect: ${order.items[index].name}`);
+          }
+        });
+      }
+      
+      // Step 5: Update order status to cancelled
       const updatedOrder = await Order.findByIdAndUpdate(
         orderId,
         { 
@@ -570,19 +786,37 @@ const cancelOrder = async (req, res) => {
         { new: true, session }
       );
       
-      // Invalidate cache after successful cancellation
-      invalidateCache();
+      console.log(`✅ Order cancelled successfully: ${updatedOrder._id}`);
       
       return updatedOrder;
+    }, {
+      readConcern: { level: 'snapshot' },
+      writeConcern: { w: 'majority' },
+      maxCommitTimeMS: 10000 // 10 second timeout
     });
+    
+    // Step 6: Generate notification and clear cache (outside transaction)
+    try {
+      await NotificationService.createOrderNotification('deleted', result, 'Admin');
+    } catch (notificationError) {
+      console.error('Failed to create order cancellation notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
+
+    
+    // Invalidate cache after successful cancellation
+    invalidateCache();
     
     res.json({
       success: true,
-      message: 'Buyurtma muvaffaqiyatli bekor qilindi va mahsulot miqdorlari qaytarildi'
+      message: 'Buyurtma muvaffaqiyatli bekor qilindi va mahsulot miqdorlari qaytarildi',
+      order: result
     });
+    
   } catch (error) {
     console.error('Error cancelling order:', error);
     res.status(400).json({ 
+      success: false,
       error: 'Buyurtmani bekor qilishda xatolik',
       message: error.message 
     });
