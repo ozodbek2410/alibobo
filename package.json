@@ -27,7 +27,7 @@
     "build:analyze": "npm run build && npm run analyze-bundle",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "dev": "cross-env DISABLE_ESLINT_PLUGIN=true ESLINT_NO_DEV_ERRORS=true concurrently \"npm run client\" \"cd backend && npm run dev\"",
+    "dev": "cross-env DISABLE_ESLINT_PLUGIN=true ESLINT_NO_DEV_ERRORS=true concurrently \"npm run client\" \"cd backend && npm run dev\""
   },
   "eslintConfig": {
     "extends": [
@@ -41,18 +41,3 @@
       "not dead",
       "not op_mini all"
     ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "devDependencies": {
-    "autoprefixer": "^10.4.16",
-    "concurrently": "^8.2.2",
-    "cross-env": "^7.0.3",
-    "postcss": "^8.4.32",
-    "tailwindcss": "^3.3.6",
-    "webpack-bundle-analyzer": "^4.10.2"
-  }
-}
